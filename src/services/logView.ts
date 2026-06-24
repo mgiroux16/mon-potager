@@ -38,7 +38,7 @@ export const LOG_TYPE_LABELS: Record<LogEntryType, string> = {
   note: 'Note',
 }
 
-function resolveTarget(entry: GardenLogEntry, refs: LogRefs): string | undefined {
+export function resolveTargetName(entry: GardenLogEntry, refs: LogRefs): string | undefined {
   if (entry.parcelId != null) return refs.parcels.get(entry.parcelId)?.name
   if (entry.cropId != null) return refs.crops.get(entry.cropId)?.name
   if (entry.oyaId != null) return refs.oyas.get(entry.oyaId)?.name
@@ -56,7 +56,7 @@ function resolveDetail(entry: GardenLogEntry): string | undefined {
 export function describeLogEntry(entry: GardenLogEntry, refs: LogRefs): LogEntryView {
   return {
     typeLabel: LOG_TYPE_LABELS[entry.type],
-    target: resolveTarget(entry, refs),
+    target: resolveTargetName(entry, refs),
     detail: resolveDetail(entry),
   }
 }
