@@ -1,0 +1,27 @@
+import { BrowserRouter, Route, Routes } from 'react-router-dom'
+import { Layout } from './components/Layout'
+import { DashboardPage } from './pages/DashboardPage'
+import { JournalPage } from './pages/JournalPage'
+import { QuickAddPage } from './pages/QuickAddPage'
+import { GardenPage } from './pages/GardenPage'
+import { WaterPage } from './pages/WaterPage'
+import { SettingsPage } from './pages/SettingsPage'
+
+function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route element={<Layout />}>
+          <Route index element={<DashboardPage />} />
+          <Route path="journal" element={<JournalPage />} />
+          <Route path="ajouter" element={<QuickAddPage />} />
+          <Route path="jardin" element={<GardenPage />} />
+          <Route path="eau" element={<WaterPage />} />
+          <Route path="reglages" element={<SettingsPage />} />
+        </Route>
+      </Routes>
+    </BrowserRouter>
+  )
+}
+
+export default App
