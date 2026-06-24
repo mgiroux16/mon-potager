@@ -7,6 +7,7 @@ import type { LogEntryType } from '../data/model'
 import { addLogEntry, type NewLogEntry } from '../services/logService'
 import { LOG_TYPE_LABELS } from '../services/logView'
 import { LOG_TYPE_ICONS } from '../components/logTypeIcons'
+import { PhotoInput } from '../components/PhotoInput'
 
 type TargetKind = 'parcelle' | 'oya' | 'culture' | 'element' | 'none'
 type MeasureKind = 'volume' | 'quantite' | 'description' | 'titre_description' | 'none'
@@ -64,6 +65,7 @@ function EntryForm({ config, onSaved, onCancel }: {
   const [quantity, setQuantity] = useState('')
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
+  const [photos, setPhotos] = useState<string[]>([])
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -87,6 +89,8 @@ function EntryForm({ config, onSaved, onCancel }: {
       if (title) entry.title = title
       if (description) entry.description = description
     }
+
+    if (photos.length) entry.photoUrls = photos
 
     await addLogEntry(entry)
     onSaved()
@@ -240,6 +244,8 @@ function EntryForm({ config, onSaved, onCancel }: {
           />
         </label>
       )}
+
+      <PhotoInput photos={photos} onChange={setPhotos} />
 
       <div className="flex gap-3">
         <label className="flex flex-1 flex-col gap-1 text-sm text-green-800">
