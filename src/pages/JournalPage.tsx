@@ -13,6 +13,7 @@ import {
 } from '../services/logView'
 import { searchLogEntries } from '../services/logSearch'
 import { LOG_TYPE_ICONS } from '../components/logTypeIcons'
+import { PhotoThumbs } from '../components/PhotoThumbs'
 import type { LogEntryType } from '../data/model'
 
 function chipClass(active: boolean): string {
@@ -112,6 +113,9 @@ export function JournalPage() {
                   {view.target ? ` · ${view.target}` : ''}
                 </p>
                 {view.detail && <p className="truncate text-sm text-green-700/80">{view.detail}</p>}
+                {entry.photoUrls && entry.photoUrls.length > 0 && (
+                  <PhotoThumbs urls={entry.photoUrls} />
+                )}
               </div>
               <span className="shrink-0 text-xs text-green-700/60">{formatLogDate(entry, now)}</span>
             </li>

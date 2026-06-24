@@ -67,4 +67,16 @@ describe('JournalPage', () => {
     expect(screen.getByText('2 kg')).toBeInTheDocument()
     expect(screen.queryByText('feuilles jaunes')).not.toBeInTheDocument()
   })
+
+  it('affiche les vignettes des photos d\'une entrée', async () => {
+    await addLogEntry({
+      type: 'observation',
+      date: '2026-06-24',
+      description: 'feuilles jaunes',
+      photoUrls: ['data:image/jpeg;base64,A'],
+    })
+    renderJournal()
+    await waitFor(() => expect(screen.getByText('feuilles jaunes')).toBeInTheDocument())
+    expect(screen.getByRole('button', { name: 'Agrandir la photo 1' })).toBeInTheDocument()
+  })
 })
