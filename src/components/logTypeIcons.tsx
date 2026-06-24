@@ -1,0 +1,37 @@
+import {
+  AlertTriangle,
+  Carrot,
+  CloudRain,
+  Droplet,
+  Droplets,
+  Euro,
+  Eye,
+  Layers,
+  Recycle,
+  Scissors,
+  Shovel,
+  SprayCan,
+  Sprout,
+  Stethoscope,
+  StickyNote,
+} from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
+import type { LogEntryType } from '../data/model'
+
+export const LOG_TYPE_ICONS: Record<LogEntryType, LucideIcon> = {
+  arrosage: Droplets,
+  remplissage_oya: Droplet,
+  releve_pluie: CloudRain,
+  recolte: Carrot,
+  semis: Sprout,
+  plantation: Shovel,
+  paillage: Layers,
+  traitement: SprayCan,
+  observation: Eye,
+  probleme: AlertTriangle,
+  compost: Recycle,
+  taille: Scissors,
+  depense: Euro,
+  diagnostic: Stethoscope,
+  note: StickyNote,
+}
