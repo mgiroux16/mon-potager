@@ -55,6 +55,8 @@ export function buildVoicePrompt(
   ].join('\n')
 }
 
+// Listes blanches a garder en phase avec GardenLogEntry (data/model.ts) : un champ
+// ajoute la-bas sans l'ajouter ici est simplement ignore dans les brouillons vocaux.
 const STRING_FIELDS = ['date', 'time', 'title', 'description'] as const
 const NUMBER_FIELDS = ['volumeLiters', 'rainMm', 'quantityKg'] as const
 const ID_FIELDS = [
@@ -106,6 +108,9 @@ export function parseVoiceDraft(
 
   const draft: Partial<NewLogEntry> = { type }
 
+  // `field` vient toujours des tableaux litteraux ci-dessus, jamais des cles de `raw` :
+  // aucune cle controlee par le modele (ex : __proto__) ne peut donc devenir une cible
+  // d'affectation. C'est ce qui rend la copie de la sortie LLM sure.
   for (const field of STRING_FIELDS) {
     const value = raw[field]
     if (typeof value === 'string' && value.trim() !== '') {
