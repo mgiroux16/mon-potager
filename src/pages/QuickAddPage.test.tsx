@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { db } from '../data/db'
 import { listLog } from '../services/logService'
+import { findOrCreateVariety } from '../services/varietyService'
 import { QuickAddPage } from './QuickAddPage'
 
 vi.mock('../services/imageService', () => ({
@@ -127,5 +128,40 @@ describe('QuickAddPage avec brouillon vocal', () => {
       </MemoryRouter>,
     )
     expect(screen.getByRole('heading', { name: 'Saisie rapide' })).toBeInTheDocument()
+  })
+})
+
+describe('QuickAddPage avec selecteur de variete', () => {
+  it('enregistre la varietyId choisie sur une récolte', async () => {
+    await db.catalog.add({ id: 3, vegetable: 'Courgette', family: 'cucurbitacees' })
+    await db.crops.add({ id: 1, name: 'Courgettes', catalogId: 3, status: 'en_place' })
+    await db.parcels.add({ id: 1, name: 'Buttes' })
+    await findOrCreateVariety('Ronde de Nice', 'Courgette')
+
+    render(
+      <MemoryRouter>
+        <QuickAddPage />
+      </MemoryRouter>,
+    )
+    const user = userEvent.setup()
+
+    await user.click(screen.getByRole('button', { name: 'Récolte' }))
+
+    const cropOption = await screen.findByRole('option', { name: 'Courgettes' })
+    await user.selectOptions(screen.getByLabelText('Culture'), cropOption)
+
+    const varietyOption = await screen.findByRole('option', { name: 'Ronde de Nice' })
+    await user.selectOptions(screen.getByLabelText('Variété'), varietyOption)
+
+    await user.type(screen.getByLabelText('Quantité (kg)'), '1.5')
+    await user.click(screen.getByRole('button', { name: 'Valider' }))
+
+    await waitFor(async () => {
+      const all = await db.log.toArray()
+      expect(all).toHaveLength(1)
+    })
+    const [entry] = await db.log.toArray()
+    expect(entry.varietyId).toBeDefined()
+    expect(entry.quantityKg).toBe(1.5)
   })
 })

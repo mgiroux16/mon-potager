@@ -7,6 +7,7 @@ import type {
   WaterTank,
   Oya,
   CatalogItem,
+  Variety,
 } from './model'
 
 export const seedParcels: Parcel[] = [
@@ -39,7 +40,7 @@ export const seedCatalog: CatalogItem[] = [
 
 export const seedCrops: Crop[] = [
   { id: 1, name: 'Tomates', parcelId: 1, catalogId: 1, status: 'en_place', waterNeed: 'eleve', notes: '~100 pieds, dont 30 aux oyas' },
-  { id: 2, name: 'Pommes de terre Agata', variety: 'Agata', parcelId: 2, catalogId: 2, status: 'en_place', waterNeed: 'moyen', notes: '20 m linéaires' },
+  { id: 2, name: 'Pommes de terre Agata', variety: 'Agata', varietyId: 1, parcelId: 2, catalogId: 2, status: 'en_place', waterNeed: 'moyen', notes: '20 m linéaires' },
   { id: 3, name: 'Courgettes', parcelId: 3, catalogId: 3, status: 'en_place', waterNeed: 'eleve' },
   { id: 4, name: 'Courges', parcelId: 3, catalogId: 4, status: 'en_place', waterNeed: 'moyen' },
   { id: 5, name: 'Patisson', parcelId: 3, catalogId: 5, status: 'en_place', waterNeed: 'moyen' },
@@ -59,6 +60,10 @@ export const seedTrees: FruitTree[] = [
   { id: 6, name: 'Poirier Williams', variety: 'Williams', waterNeed: 'moyen' },
   { id: 7, name: 'Poirier portugais', variety: 'portugais', waterNeed: 'moyen' },
   { id: 8, name: 'Nectarinier portugais', variety: 'portugais', waterNeed: 'moyen' },
+]
+
+export const seedVarieties: Variety[] = [
+  { id: 1, name: 'Agata', vegetable: 'Pomme de terre', catalogId: 2 },
 ]
 
 export const seedOyas: Oya[] = [
@@ -81,12 +86,14 @@ export async function seedDatabase(database: PotagerDB = db): Promise<void> {
       database.crops,
       database.trees,
       database.oyas,
+      database.varieties,
     ],
     async () => {
       await database.settings.put(DEFAULT_SETTINGS)
       await database.tanks.bulkPut(seedTanks)
       await database.parcels.bulkPut(seedParcels)
       await database.catalog.bulkPut(seedCatalog)
+      await database.varieties.bulkPut(seedVarieties)
       await database.crops.bulkPut(seedCrops)
       await database.trees.bulkPut(seedTrees)
       await database.oyas.bulkPut(seedOyas)

@@ -6,6 +6,17 @@ export type ISODate = string // 'YYYY-MM-DD'
 export type ISOTime = string // 'HH:mm'
 export type WaterNeed = 'faible' | 'moyen' | 'eleve'
 
+export type EntryStatus = 'brouillon' | 'valide'
+
+export interface WeatherSnapshot {
+  capturedAt: number // epoch ms
+  tempC?: number
+  tempMinC?: number
+  tempMaxC?: number
+  rainMm?: number
+  source: 'open-meteo' | 'manuel'
+}
+
 export const LOG_ENTRY_TYPES = [
   'arrosage',
   'remplissage_oya',
@@ -37,6 +48,10 @@ export interface GardenLogEntry {
   cropId?: number
   oyaId?: number
   treeId?: number
+  varietyId?: number
+  status?: EntryStatus
+  sourcePhrase?: string // la phrase naturelle d'origine, si saisie vocale/IA
+  weather?: WeatherSnapshot // snapshot figé, rempli au palier 4b
   volumeLiters?: number
   rainMm?: number
   quantityKg?: number
@@ -66,11 +81,22 @@ export interface Crop {
   variety?: string
   parcelId?: number
   catalogId?: number
+  varietyId?: number
+  plantCount?: number
   sowingDate?: ISODate
   plantingDate?: ISODate
   harvestDate?: ISODate
   status: CropStatus
   waterNeed?: WaterNeed
+  notes?: string
+}
+
+export interface Variety {
+  id?: number
+  name: string // ex : 'Saint-Pierre'
+  vegetable: string // ex : 'Tomate' (lien logique vers le catalogue)
+  catalogId?: number // lien dur vers CatalogItem si présent
+  source?: string // semencier, échange, ferme...
   notes?: string
 }
 
