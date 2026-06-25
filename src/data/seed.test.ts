@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { db } from './db'
-import { seedDatabase, seedParcels, seedCrops } from './seed'
+import { seedDatabase, seedParcels, seedCrops, seedVarieties } from './seed'
 
 beforeEach(async () => {
   await Promise.all(db.tables.map((t) => t.clear()))
@@ -33,5 +33,12 @@ describe('seedDatabase', () => {
         expect(parcelIds.has(crop.parcelId)).toBe(true)
       }
     }
+  })
+
+  it('seede au moins la variété Agata reliée à la pomme de terre', async () => {
+    await seedDatabase(db)
+    const all = await db.varieties.toArray()
+    expect(all.some((v) => v.name === 'Agata')).toBe(true)
+    expect(seedVarieties.length).toBeGreaterThan(0)
   })
 })
