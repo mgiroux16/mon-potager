@@ -8,9 +8,12 @@ import {
   describeLogEntry,
   formatLogDate,
   LOG_TYPE_LABELS,
+  resolveTargetName,
   type LogRefs,
 } from '../services/logView'
+import { searchLogEntries } from '../services/logSearch'
 import { LOG_TYPE_ICONS } from '../components/logTypeIcons'
+import { PhotoThumbs } from '../components/PhotoThumbs'
 import type { LogEntryType } from '../data/model'
 
 function chipClass(active: boolean): string {
@@ -27,6 +30,7 @@ export function JournalPage() {
   const oyas = useLiveQuery(() => db.oyas.toArray(), [], [])
   const trees = useLiveQuery(() => db.trees.toArray(), [], [])
   const [filter, setFilter] = useState<LogEntryType | 'tout'>('tout')
+  const [query, setQuery] = useState('')
 
   const refs: LogRefs = {
     parcels: new Map(parcels.map((p) => [p.id!, p] as [number, typeof p])),
@@ -58,12 +62,22 @@ export function JournalPage() {
   }
 
   const presentTypes = [...new Set(entries.map((e) => e.type))]
-  const shown = filter === 'tout' ? entries : entries.filter((e) => e.type === filter)
+  const typeFiltered = filter === 'tout' ? entries : entries.filter((e) => e.type === filter)
+  const shown = searchLogEntries(typeFiltered, query, (e) => resolveTargetName(e, refs))
   const now = new Date()
 
   return (
     <section className="flex flex-col gap-4">
       <h1 className="text-xl font-semibold text-green-950">Journal</h1>
+
+      <input
+        type="search"
+        aria-label="Rechercher"
+        placeholder="Rechercher"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        className="w-full rounded-lg border border-green-200 bg-white px-3 py-2 text-sm text-green-950"
+      />
 
       <div className="flex flex-wrap gap-2">
         <button type="button" onClick={() => setFilter('tout')} className={chipClass(filter === 'tout')}>
@@ -99,6 +113,9 @@ export function JournalPage() {
                   {view.target ? ` · ${view.target}` : ''}
                 </p>
                 {view.detail && <p className="truncate text-sm text-green-700/80">{view.detail}</p>}
+                {entry.photoUrls && entry.photoUrls.length > 0 && (
+                  <PhotoThumbs urls={entry.photoUrls} />
+                )}
               </div>
               <span className="shrink-0 text-xs text-green-700/60">{formatLogDate(entry, now)}</span>
             </li>

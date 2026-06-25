@@ -41,4 +41,42 @@ describe('JournalPage', () => {
     expect(screen.queryByText('30 L')).not.toBeInTheDocument()
     expect(screen.getByText('2 kg')).toBeInTheDocument()
   })
+
+  it('la recherche restreint la liste affichée', async () => {
+    await addLogEntry({ type: 'observation', date: '2026-06-24', description: 'feuilles jaunes' })
+    await addLogEntry({ type: 'recolte', date: '2026-06-24', quantityKg: 2 })
+    renderJournal()
+    await waitFor(() => expect(screen.getByText('feuilles jaunes')).toBeInTheDocument())
+
+    const user = userEvent.setup()
+    await user.type(screen.getByPlaceholderText('Rechercher'), 'jaunes')
+
+    expect(screen.getByText('feuilles jaunes')).toBeInTheDocument()
+    expect(screen.queryByText('2 kg')).not.toBeInTheDocument()
+  })
+
+  it('la recherche est insensible aux accents via le libellé de type', async () => {
+    await addLogEntry({ type: 'observation', date: '2026-06-24', description: 'feuilles jaunes' })
+    await addLogEntry({ type: 'recolte', date: '2026-06-24', quantityKg: 2 })
+    renderJournal()
+    await waitFor(() => expect(screen.getByText('2 kg')).toBeInTheDocument())
+
+    const user = userEvent.setup()
+    await user.type(screen.getByPlaceholderText('Rechercher'), 'recolte')
+
+    expect(screen.getByText('2 kg')).toBeInTheDocument()
+    expect(screen.queryByText('feuilles jaunes')).not.toBeInTheDocument()
+  })
+
+  it('affiche les vignettes des photos d\'une entrée', async () => {
+    await addLogEntry({
+      type: 'observation',
+      date: '2026-06-24',
+      description: 'feuilles jaunes',
+      photoUrls: ['data:image/jpeg;base64,A'],
+    })
+    renderJournal()
+    await waitFor(() => expect(screen.getByText('feuilles jaunes')).toBeInTheDocument())
+    expect(screen.getByRole('button', { name: 'Agrandir la photo 1' })).toBeInTheDocument()
+  })
 })
