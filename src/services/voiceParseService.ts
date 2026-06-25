@@ -1,7 +1,7 @@
 // Cœur pur de la voix : construit le prompt Gemini et valide le JSON renvoyé.
 // Aucun réseau ici ; callGemini est appelé par l'orchestrateur (VoiceCapture).
 
-import { LOG_ENTRY_TYPES } from '../data/model'
+import { LOG_ENTRY_TYPES, type LogEntryType } from '../data/model'
 import type { NewLogEntry } from './logService'
 
 export interface CatalogEntry {
@@ -17,7 +17,7 @@ export interface GardenCatalog {
 }
 
 export interface VoiceDraft {
-  draft: NewLogEntry
+  draft: Partial<NewLogEntry>
   parsed: boolean
 }
 
@@ -53,4 +53,79 @@ export function buildVoicePrompt(
     'Une entree peut porter a la fois parcelId et cropId.',
     'N invente jamais un identifiant absent du catalogue.',
   ].join('\n')
+}
+
+const STRING_FIELDS = ['date', 'time', 'title', 'description'] as const
+const NUMBER_FIELDS = ['volumeLiters', 'rainMm', 'quantityKg'] as const
+const ID_FIELDS = [
+  { field: 'parcelId', list: 'parcels' },
+  { field: 'cropId', list: 'crops' },
+  { field: 'oyaId', list: 'oyas' },
+  { field: 'treeId', list: 'trees' },
+] as const
+
+function extractJson(text: string): string | null {
+  const start = text.indexOf('{')
+  const end = text.lastIndexOf('}')
+  if (start === -1 || end === -1 || end < start) return null
+  return text.slice(start, end + 1)
+}
+
+function fallback(transcript: string): VoiceDraft {
+  return { draft: { type: 'note', description: transcript }, parsed: false }
+}
+
+function asNumber(value: unknown): number | undefined {
+  if (typeof value === 'number' && Number.isFinite(value)) return value
+  if (typeof value === 'string' && value.trim() !== '' && Number.isFinite(Number(value))) {
+    return Number(value)
+  }
+  return undefined
+}
+
+export function parseVoiceDraft(
+  geminiText: string,
+  catalog: GardenCatalog,
+  transcript: string,
+): VoiceDraft {
+  const json = extractJson(geminiText)
+  if (!json) return fallback(transcript)
+
+  let raw: Record<string, unknown>
+  try {
+    const parsed = JSON.parse(json)
+    if (typeof parsed !== 'object' || parsed === null) return fallback(transcript)
+    raw = parsed as Record<string, unknown>
+  } catch {
+    return fallback(transcript)
+  }
+
+  const type: LogEntryType = LOG_ENTRY_TYPES.includes(raw.type as LogEntryType)
+    ? (raw.type as LogEntryType)
+    : 'note'
+
+  const draft: Partial<NewLogEntry> = { type }
+
+  for (const field of STRING_FIELDS) {
+    const value = raw[field]
+    if (typeof value === 'string' && value.trim() !== '') {
+      ;(draft as Record<string, unknown>)[field] = value
+    }
+  }
+
+  for (const field of NUMBER_FIELDS) {
+    const value = asNumber(raw[field])
+    if (value !== undefined) {
+      ;(draft as Record<string, unknown>)[field] = value
+    }
+  }
+
+  for (const { field, list } of ID_FIELDS) {
+    const value = asNumber(raw[field])
+    if (value !== undefined && catalog[list].some((e) => e.id === value)) {
+      ;(draft as Record<string, unknown>)[field] = value
+    }
+  }
+
+  return { draft, parsed: true }
 }
