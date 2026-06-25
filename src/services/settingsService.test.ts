@@ -27,4 +27,18 @@ describe('settingsService', () => {
     const s = await getSettings()
     expect(s.heatThresholdC).toBe(33)
   })
+
+  it('renvoie une copie des réglages par défaut, jamais la référence partagée', async () => {
+    const a = await getSettings()
+    a.locationName = 'MUTÉ'
+    const b = await getSettings()
+    expect(b.locationName).toBe(DEFAULT_SETTINGS.locationName)
+    expect(DEFAULT_SETTINGS.locationName).not.toBe('MUTÉ')
+  })
+
+  it('persiste et relit la clé Gemini', async () => {
+    await saveSettings({ ...DEFAULT_SETTINGS, geminiApiKey: 'AIza-test-123' })
+    const s = await getSettings()
+    expect(s.geminiApiKey).toBe('AIza-test-123')
+  })
 })
