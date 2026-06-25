@@ -6,6 +6,7 @@ import { ArrowLeft, MoreHorizontal } from 'lucide-react'
 import { db } from '../data/db'
 import type { LogEntryType } from '../data/model'
 import { addLogEntry, type NewLogEntry } from '../services/logService'
+import { findOrCreateVariety } from '../services/varietyService'
 import { LOG_TYPE_LABELS } from '../services/logView'
 import { LOG_TYPE_ICONS } from '../components/logTypeIcons'
 import { PhotoInput } from '../components/PhotoInput'
@@ -82,6 +83,8 @@ function EntryForm({ config, initial, onSaved, onCancel }: {
   const crops = useLiveQuery(() => db.crops.toArray(), [], [])
   const oyas = useLiveQuery(() => db.oyas.toArray(), [], [])
   const trees = useLiveQuery(() => db.trees.toArray(), [], [])
+  const varieties = useLiveQuery(() => db.varieties.toArray(), [], [])
+  const catalog = useLiveQuery(() => db.catalog.toArray(), [], [])
 
   const [date, setDate] = useState(initial?.date ?? todayISO())
   const [time, setTime] = useState(initial?.time ?? nowHM())
@@ -89,6 +92,8 @@ function EntryForm({ config, initial, onSaved, onCancel }: {
   const [cropId, setCropId] = useState(initial?.cropId != null ? String(initial.cropId) : '')
   const [oyaId, setOyaId] = useState(initial?.oyaId != null ? String(initial.oyaId) : '')
   const [treeId, setTreeId] = useState(initial?.treeId != null ? String(initial.treeId) : '')
+  const [varietyId, setVarietyId] = useState(initial?.varietyId != null ? String(initial.varietyId) : '')
+  const [newVarietyName, setNewVarietyName] = useState('')
   const [elementValue, setElementValue] = useState('')
   const [volume, setVolume] = useState(initial?.volumeLiters != null ? String(initial.volumeLiters) : '')
   const [quantity, setQuantity] = useState(initial?.quantityKg != null ? String(initial.quantityKg) : '')
@@ -107,6 +112,13 @@ function EntryForm({ config, initial, onSaved, onCancel }: {
       initial.treeId != null)
   const useLegacyElement = config.target === 'element' && !hasDraftTarget
   const visible = visibleTargets(config, initial)
+
+  const selectedCrop = crops.find((c) => String(c.id) === cropId)
+  const cropCatalog = catalog.find((c) => c.id === selectedCrop?.catalogId)
+  const cropVegetable = cropCatalog?.vegetable ?? selectedCrop?.name ?? ''
+  const cropVarieties = varieties.filter(
+    (v) => cropVegetable && v.vegetable.toLowerCase() === cropVegetable.toLowerCase(),
+  )
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -136,6 +148,18 @@ function EntryForm({ config, initial, onSaved, onCancel }: {
     }
 
     if (photos.length) entry.photoUrls = photos
+
+    // Variété : id existant, ou création à la volée si « + Nouvelle variété… »
+    if (entry.cropId != null) {
+      if (varietyId === '__new' && newVarietyName.trim()) {
+        entry.varietyId = await findOrCreateVariety(newVarietyName, cropVegetable || 'Inconnu')
+      } else if (varietyId && varietyId !== '__new') {
+        entry.varietyId = Number(varietyId)
+      }
+    }
+
+    // Transport depuis un brouillon vocal (phrase d'origine), si présent.
+    if (initial?.sourcePhrase) entry.sourcePhrase = initial.sourcePhrase
 
     await addLogEntry(entry)
     onSaved()
@@ -187,6 +211,37 @@ function EntryForm({ config, initial, onSaved, onCancel }: {
               <option key={c.id} value={String(c.id)}>{c.name}</option>
             ))}
           </select>
+        </label>
+      )}
+
+      {!useLegacyElement && visible.has('culture') && cropId && (
+        <label className="flex flex-col gap-1 text-sm text-green-800">
+          Variété
+          <select
+            aria-label="Variété"
+            value={varietyId}
+            onChange={(e) => setVarietyId(e.target.value)}
+            className={fieldClass}
+          >
+            <option value="">(aucune)</option>
+            {cropVarieties.map((v) => (
+              <option key={v.id} value={String(v.id)}>{v.name}</option>
+            ))}
+            <option value="__new">+ Nouvelle variété…</option>
+          </select>
+        </label>
+      )}
+
+      {varietyId === '__new' && (
+        <label className="flex flex-col gap-1 text-sm text-green-800">
+          Nom de la nouvelle variété
+          <input
+            aria-label="Nom de la nouvelle variété"
+            type="text"
+            value={newVarietyName}
+            onChange={(e) => setNewVarietyName(e.target.value)}
+            className={fieldClass}
+          />
         </label>
       )}
 
