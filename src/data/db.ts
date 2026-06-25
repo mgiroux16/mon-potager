@@ -10,6 +10,7 @@ import type {
   Expense,
   SoilNote,
   AppSettings,
+  Variety,
 } from './model'
 
 export class PotagerDB extends Dexie {
@@ -23,6 +24,7 @@ export class PotagerDB extends Dexie {
   expenses!: Table<Expense, number>
   soil!: Table<SoilNote, number>
   settings!: Table<AppSettings, number>
+  varieties!: Table<Variety, number>
 
   constructor() {
     super('mon-potager')
@@ -37,6 +39,11 @@ export class PotagerDB extends Dexie {
       expenses: '++id, date, amortization, parcelId, cropId',
       soil: '++id, date, parcelId',
       settings: '++id',
+    })
+    this.version(2).stores({
+      log: '++id, type, date, parcelId, cropId, oyaId, treeId, varietyId',
+      crops: '++id, name, parcelId, catalogId, status, varietyId',
+      varieties: '++id, name, vegetable, catalogId',
     })
   }
 }

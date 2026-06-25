@@ -6,7 +6,7 @@ beforeEach(async () => {
 })
 
 describe('PotagerDB', () => {
-  it('expose les 10 tables du modèle', () => {
+  it('expose les 11 tables du modèle', () => {
     const names = db.tables.map((t) => t.name).sort()
     expect(names).toEqual(
       [
@@ -20,6 +20,7 @@ describe('PotagerDB', () => {
         'soil',
         'tanks',
         'trees',
+        'varieties',
       ].sort(),
     )
   })
@@ -34,5 +35,20 @@ describe('PotagerDB', () => {
     const back = await db.log.get(id)
     expect(back?.type).toBe('arrosage')
     expect(back?.volumeLiters).toBe(30)
+  })
+})
+
+describe('migration version 2', () => {
+  it('expose le store varieties', async () => {
+    const id = await db.varieties.add({ name: 'Saint-Pierre', vegetable: 'Tomate' })
+    const stored = await db.varieties.get(id)
+    expect(stored?.name).toBe('Saint-Pierre')
+  })
+
+  it('permet de filtrer le journal par varietyId', async () => {
+    await db.log.add({ type: 'recolte', date: '2026-06-25', varietyId: 7, createdAt: 1 })
+    await db.log.add({ type: 'recolte', date: '2026-06-25', varietyId: 9, createdAt: 2 })
+    const found = await db.log.where('varietyId').equals(7).toArray()
+    expect(found).toHaveLength(1)
   })
 })
