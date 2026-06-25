@@ -65,3 +65,67 @@ describe('QuickAddPage', () => {
     expect(entry.photoUrls).toEqual(['data:image/jpeg;base64,COMPRESSED'])
   })
 })
+
+describe('QuickAddPage avec brouillon vocal', () => {
+  async function seedVoice() {
+    await db.parcels.add({ id: 1, name: 'Parcelle A' })
+    await db.crops.add({ id: 10, name: 'Tomates', status: 'en_place' })
+  }
+
+  it('ouvre EntryForm prerempli (type + volume) depuis le router state', async () => {
+    await seedVoice()
+    render(
+      <MemoryRouter
+        initialEntries={[
+          {
+            pathname: '/ajouter',
+            state: { voiceDraft: { type: 'arrosage', volumeLiters: 10, parcelId: 1, cropId: 10 } },
+          },
+        ]}
+      >
+        <QuickAddPage />
+      </MemoryRouter>,
+    )
+
+    expect(await screen.findByRole('heading', { name: 'Arrosage' })).toBeInTheDocument()
+    expect(screen.getByLabelText('Volume (litres)')).toHaveValue(10)
+    expect(screen.getByLabelText('Parcelle')).toBeInTheDocument()
+    expect(screen.getByLabelText('Culture')).toBeInTheDocument()
+  })
+
+  it('valide une entree avec parcelId ET cropId', async () => {
+    await seedVoice()
+    const user = userEvent.setup()
+    render(
+      <MemoryRouter
+        initialEntries={[
+          {
+            pathname: '/ajouter',
+            state: { voiceDraft: { type: 'arrosage', volumeLiters: 10, parcelId: 1, cropId: 10 } },
+          },
+        ]}
+      >
+        <QuickAddPage />
+      </MemoryRouter>,
+    )
+
+    await user.click(await screen.findByRole('button', { name: 'Valider' }))
+
+    await waitFor(async () => {
+      const entries = await listLog()
+      expect(entries).toHaveLength(1)
+      expect(entries[0].parcelId).toBe(1)
+      expect(entries[0].cropId).toBe(10)
+      expect(entries[0].volumeLiters).toBe(10)
+    })
+  })
+
+  it('sans brouillon, affiche la grille de saisie rapide (non-regression)', () => {
+    render(
+      <MemoryRouter initialEntries={['/ajouter']}>
+        <QuickAddPage />
+      </MemoryRouter>,
+    )
+    expect(screen.getByRole('heading', { name: 'Saisie rapide' })).toBeInTheDocument()
+  })
+})
