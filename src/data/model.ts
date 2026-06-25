@@ -6,22 +6,25 @@ export type ISODate = string // 'YYYY-MM-DD'
 export type ISOTime = string // 'HH:mm'
 export type WaterNeed = 'faible' | 'moyen' | 'eleve'
 
-export type LogEntryType =
-  | 'arrosage'
-  | 'remplissage_oya'
-  | 'releve_pluie'
-  | 'recolte'
-  | 'semis'
-  | 'plantation'
-  | 'paillage'
-  | 'traitement'
-  | 'observation'
-  | 'probleme'
-  | 'compost'
-  | 'taille'
-  | 'depense'
-  | 'diagnostic'
-  | 'note'
+export const LOG_ENTRY_TYPES = [
+  'arrosage',
+  'remplissage_oya',
+  'releve_pluie',
+  'recolte',
+  'semis',
+  'plantation',
+  'paillage',
+  'traitement',
+  'observation',
+  'probleme',
+  'compost',
+  'taille',
+  'depense',
+  'diagnostic',
+  'note',
+] as const
+
+export type LogEntryType = (typeof LOG_ENTRY_TYPES)[number]
 
 export interface GardenLogEntry {
   id?: number

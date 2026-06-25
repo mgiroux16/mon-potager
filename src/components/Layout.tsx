@@ -8,6 +8,7 @@ import {
   Sprout,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
+import { VoiceCapture } from './VoiceCapture'
 
 type NavItem = {
   to: string
@@ -86,6 +87,8 @@ export function Layout() {
           ))}
         </ul>
       </nav>
+
+      <VoiceCapture />
     </div>
   )
 }
