@@ -38,4 +38,24 @@ describe('logService', () => {
     expect(arrosages).toHaveLength(2)
     expect(arrosages.every((e) => e.type === 'arrosage')).toBe(true)
   })
+
+  it('met le statut à "valide" par défaut et conserve les champs variété/phrase', async () => {
+    await addLogEntry({
+      type: 'recolte',
+      date: '2026-06-25',
+      quantityKg: 2.4,
+      varietyId: 1,
+      sourcePhrase: 'Aujourd hui 2,4 kg de courgettes',
+    })
+    const [entry] = await listLog()
+    expect(entry.status).toBe('valide')
+    expect(entry.varietyId).toBe(1)
+    expect(entry.sourcePhrase).toBe('Aujourd hui 2,4 kg de courgettes')
+  })
+
+  it('respecte un statut explicite', async () => {
+    await addLogEntry({ type: 'note', date: '2026-06-25', status: 'brouillon' })
+    const [entry] = await listLog()
+    expect(entry.status).toBe('brouillon')
+  })
 })

@@ -9,6 +9,7 @@ export type NewLogEntry = Omit<GardenLogEntry, 'id' | 'createdAt'> & {
 export async function addLogEntry(entry: NewLogEntry): Promise<number> {
   return db.log.add({
     ...entry,
+    status: entry.status ?? 'valide',
     createdAt: entry.createdAt ?? Date.now(),
   })
 }
