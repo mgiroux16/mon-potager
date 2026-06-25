@@ -154,4 +154,5 @@ export interface AppSettings {
   defaultWateringFlowLh: number
   totalTankCapacityLiters: number
   aiLevel: 'aucune' | 'photo' | 'photo_assistant'
+  geminiApiKey?: string // clé API Gemini, stockée sur l'appareil ; vide par défaut
 }
