@@ -3,6 +3,7 @@ import type { FormEvent } from 'react'
 import type { AppSettings } from '../data/model'
 import { getSettings, saveSettings } from '../services/settingsService'
 import { testGeminiConnection } from '../services/geminiService'
+import { ExportButton } from '../components/ExportButton'
 
 type TestState =
   | { status: 'idle' }
@@ -142,6 +143,11 @@ export function SettingsPage() {
           Réglages enregistrés.
         </p>
       )}
+
+      <section className="flex flex-col gap-2">
+        <h2 className="text-sm font-semibold text-green-900">Sauvegarde</h2>
+        <ExportButton />
+      </section>
     </form>
   )
 }
