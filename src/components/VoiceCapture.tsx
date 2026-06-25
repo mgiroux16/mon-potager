@@ -57,6 +57,9 @@ async function loadCatalog(): Promise<GardenCatalog> {
 export function VoiceCapture() {
   const navigate = useNavigate()
   const sessionRef = useRef<SpeechSession | null>(null)
+  // Passe a true quand l'utilisateur ferme l'overlay : un finalize() encore en vol
+  // (appel Gemini) ne doit plus naviguer une fois la dictee annulee.
+  const cancelledRef = useRef(false)
   const [phase, setPhase] = useState<Phase>('idle')
   const [transcript, setTranscript] = useState('')
   const [message, setMessage] = useState('')
@@ -64,6 +67,7 @@ export function VoiceCapture() {
   if (!isSpeechSupported()) return null
 
   function close() {
+    cancelledRef.current = true
     sessionRef.current?.stop()
     sessionRef.current = null
     setPhase('idle')
@@ -74,21 +78,25 @@ export function VoiceCapture() {
   // Transforme la phrase finale en brouillon puis ouvre le formulaire prerempli.
   async function finalize(finalText: string) {
     setPhase('processing')
-    const settings = await getSettings()
-    const key = settings.geminiApiKey?.trim()
 
+    // Repli par defaut : si pas de cle, ou si getSettings/Gemini/JSON echoue, on garde
+    // la phrase brute en note. finalize ne jette jamais : tout est couvert par le catch.
     let voiceDraft: Partial<NewLogEntry> = { type: 'note', description: finalText }
-    if (key) {
-      try {
+    try {
+      const settings = await getSettings()
+      const key = settings.geminiApiKey?.trim()
+      if (key) {
         const catalog = await loadCatalog()
         const prompt = buildVoicePrompt(finalText, catalog, todayISO())
         const answer = await callGemini(prompt, key)
         voiceDraft = parseVoiceDraft(answer, catalog, finalText).draft
-      } catch {
-        // Reseau coupe, quota, JSON casse : on garde le repli note + phrase brute.
-        voiceDraft = { type: 'note', description: finalText }
       }
+    } catch {
+      voiceDraft = { type: 'note', description: finalText }
     }
+
+    // L'utilisateur a ferme l'overlay pendant l'attente : on n'ouvre pas le formulaire.
+    if (cancelledRef.current) return
 
     sessionRef.current = null
     setPhase('idle')
@@ -97,6 +105,7 @@ export function VoiceCapture() {
   }
 
   function start() {
+    cancelledRef.current = false
     setPhase('listening')
     setTranscript('')
     setMessage('')
