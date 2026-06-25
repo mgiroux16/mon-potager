@@ -31,7 +31,7 @@ describe('callGemini', () => {
   })
 
   it('appelle une URL contenant le modèle et la clé', async () => {
-    const fetchMock = vi.fn(() => geminiOk('OK'))
+    const fetchMock = vi.fn((_url: RequestInfo | URL, _init?: RequestInit) => geminiOk('OK'))
     vi.stubGlobal('fetch', fetchMock)
     await callGemini('p', 'AIza-secret')
     const url = String(fetchMock.mock.calls[0][0])
