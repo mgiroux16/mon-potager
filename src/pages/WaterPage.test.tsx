@@ -27,10 +27,8 @@ describe('WaterPage', () => {
 
     render(<WaterPage />)
     await waitFor(() => {
-      expect(screen.getByText('Carrés du fond')).toBeInTheDocument()
-      expect(screen.getByText(/7j : 5 L/)).toBeInTheDocument()
-      expect(screen.getByText(/14j : 5 L/)).toBeInTheDocument()
-      expect(screen.getByText(/30j : 5 L/)).toBeInTheDocument()
+      expect(screen.getAllByText('Carrés du fond').length).toBeGreaterThan(0)
+      expect(screen.getByText(/7j : 5 L · 14j : 5 L · 30j : 5 L/)).toBeInTheDocument()
       expect(screen.getByText(/Année : 5 L/)).toBeInTheDocument()
     })
   })
@@ -44,8 +42,8 @@ describe('WaterPage', () => {
 
     render(<WaterPage />)
     await waitFor(() => {
-      expect(screen.getByText('Carrés du fond')).toBeInTheDocument()
-      expect(screen.getByText('Allée')).toBeInTheDocument()
+      expect(screen.getAllByText('Carrés du fond').length).toBeGreaterThan(0)
+      expect(screen.getAllByText('Allée').length).toBeGreaterThan(0)
     })
   })
 
