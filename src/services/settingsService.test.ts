@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { db } from '../data/db'
 import { getSettings, saveSettings, DEFAULT_SETTINGS } from './settingsService'
+import type { AppSettings } from '../data/model'
 
 beforeEach(async () => {
   await Promise.all(db.tables.map((t) => t.clear()))
@@ -53,5 +54,24 @@ describe('settingsService', () => {
     const s = await getSettings()
     expect(s.seasonStartMonth).toBe(4)
     expect(s.seasonEndMonth).toBe(10)
+  })
+
+  it('complete les champs manquants par defaut sur un enregistrement existant ancien', async () => {
+    const legacyRecord = {
+      id: 1,
+      locationName: 'Champniers (16430)',
+      latitude: 45.72,
+      longitude: 0.19,
+      frostThresholdC: 0,
+      significantRainMm: 5,
+      heatThresholdC: 30,
+      defaultWateringFlowLh: 100,
+      totalTankCapacityLiters: 2500,
+      aiLevel: 'photo_assistant',
+    } as AppSettings
+    await db.settings.put(legacyRecord)
+    const s = await getSettings()
+    expect(s.seasonStartMonth).toBe(3)
+    expect(s.seasonEndMonth).toBe(11)
   })
 })
