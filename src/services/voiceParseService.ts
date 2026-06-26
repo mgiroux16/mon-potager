@@ -21,6 +21,8 @@ export interface VoiceDraft {
   parsed: boolean
 }
 
+const MAX_DRAFTS = 5
+
 function listForPrompt(label: string, entries: CatalogEntry[]): string {
   if (entries.length === 0) return `${label} : (aucun)`
   const items = entries.map((e) => `${e.id} = ${e.name}`).join(', ')
@@ -29,8 +31,8 @@ function listForPrompt(label: string, entries: CatalogEntry[]): string {
 
 export function buildVoiceAudioPrompt(catalog: GardenCatalog, todayISO: string): string {
   return [
-    'Tu reçois un enregistrement audio en français où une personne décrit une action de',
-    'jardinage. Transcris-le puis transforme-le en une entree de journal structuree.',
+    'Tu reçois un enregistrement audio en français où une personne décrit une ou plusieurs',
+    'actions de jardinage. Transcris-le puis transforme-le en entrees de journal structurees.',
     `Date du jour : ${todayISO} (resous "ce matin", "hier", "aujourd hui" par rapport a elle).`,
     '',
     `Types valides (champ "type") : ${LOG_ENTRY_TYPES.join(', ')}.`,
@@ -41,12 +43,14 @@ export function buildVoiceAudioPrompt(catalog: GardenCatalog, todayISO: string):
     listForPrompt('Oyas (oyaId)', catalog.oyas),
     listForPrompt('Arbres (treeId)', catalog.trees),
     '',
-    'Reponds UNIQUEMENT par un objet JSON, sans texte autour, avec seulement les champs reconnus :',
+    'La phrase peut decrire plusieurs actions distinctes (ex : une recolte puis un arrosage).',
+    'Reponds UNIQUEMENT par un tableau JSON d objets, sans texte autour, meme s il n y a qu',
+    'une seule action detectee. Chaque objet ne porte que les champs reconnus :',
     'type, date (YYYY-MM-DD), time (HH:mm), title, description,',
     'parcelId, cropId, oyaId, treeId, volumeLiters, rainMm, quantityKg.',
     'Omets tout champ non mentionne dans la phrase.',
     'Une entree peut porter a la fois parcelId et cropId.',
-    'Mets toujours dans "description" la transcription de ce qui a ete dit.',
+    'Mets toujours dans "description" la transcription de ce qui a ete dit pour cette action.',
     'N invente jamais un identifiant absent du catalogue.',
   ].join('\n')
 }
@@ -62,15 +66,15 @@ const ID_FIELDS = [
   { field: 'treeId', list: 'trees' },
 ] as const
 
-function extractJson(text: string): string | null {
-  const start = text.indexOf('{')
-  const end = text.lastIndexOf('}')
+function extractJsonArray(text: string): string | null {
+  const start = text.indexOf('[')
+  const end = text.lastIndexOf(']')
   if (start === -1 || end === -1 || end < start) return null
   return text.slice(start, end + 1)
 }
 
-function fallback(transcript: string): VoiceDraft {
-  return { draft: { type: 'note', description: transcript }, parsed: false }
+function fallback(transcript: string): VoiceDraft[] {
+  return [{ draft: { type: 'note', description: transcript }, parsed: false }]
 }
 
 function asNumber(value: unknown): number | undefined {
@@ -81,23 +85,7 @@ function asNumber(value: unknown): number | undefined {
   return undefined
 }
 
-export function parseVoiceDraft(
-  geminiText: string,
-  catalog: GardenCatalog,
-  transcript: string,
-): VoiceDraft {
-  const json = extractJson(geminiText)
-  if (!json) return fallback(transcript)
-
-  let raw: Record<string, unknown>
-  try {
-    const parsed = JSON.parse(json)
-    if (typeof parsed !== 'object' || parsed === null) return fallback(transcript)
-    raw = parsed as Record<string, unknown>
-  } catch {
-    return fallback(transcript)
-  }
-
+function parseOneDraft(raw: Record<string, unknown>, catalog: GardenCatalog): VoiceDraft {
   const type: LogEntryType = LOG_ENTRY_TYPES.includes(raw.type as LogEntryType)
     ? (raw.type as LogEntryType)
     : 'note'
@@ -129,4 +117,29 @@ export function parseVoiceDraft(
   }
 
   return { draft, parsed: true }
+}
+
+export function parseVoiceDrafts(
+  geminiText: string,
+  catalog: GardenCatalog,
+  transcript: string,
+): VoiceDraft[] {
+  const json = extractJsonArray(geminiText)
+  if (!json) return fallback(transcript)
+
+  let rawArray: unknown
+  try {
+    rawArray = JSON.parse(json)
+  } catch {
+    return fallback(transcript)
+  }
+  if (!Array.isArray(rawArray) || rawArray.length === 0) return fallback(transcript)
+
+  const items = rawArray
+    .filter((item): item is Record<string, unknown> => typeof item === 'object' && item !== null)
+    .slice(0, MAX_DRAFTS)
+
+  if (items.length === 0) return fallback(transcript)
+
+  return items.map((raw) => parseOneDraft(raw, catalog))
 }
