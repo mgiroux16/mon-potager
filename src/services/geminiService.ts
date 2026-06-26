@@ -1,5 +1,7 @@
 // Modèle gratuit utilisé pour les appels Gemini. Changer ici suffit à basculer.
-export const GEMINI_MODEL = 'gemini-2.0-flash'
+// gemini-2.0-flash a été arrêté par Google le 2026-06-01 (quota gratuit tombé à 0,
+// d'où des 429 "limit: 0") ; 2.5-flash est le modèle gratuit courant, multimodal (audio).
+export const GEMINI_MODEL = 'gemini-2.5-flash'
 
 const ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models'
 
