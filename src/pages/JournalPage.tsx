@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Link } from 'react-router-dom'
 import { NotebookPen } from 'lucide-react'
@@ -7,14 +7,23 @@ import { listLog } from '../services/logService'
 import {
   describeLogEntry,
   formatLogDate,
+  formatSnapshotTemp,
   LOG_TYPE_LABELS,
   resolveTargetName,
   type LogRefs,
 } from '../services/logView'
 import { searchLogEntries } from '../services/logSearch'
+import { fetchDailyHistory, type DailyWeather } from '../services/weatherService'
+import {
+  summarizeWeather,
+  describeWeatherContext,
+  countArrosagesBetween,
+} from '../services/weatherSummary'
+import { getSettings } from '../services/settingsService'
 import { LOG_TYPE_ICONS } from '../components/logTypeIcons'
 import { PhotoThumbs } from '../components/PhotoThumbs'
-import type { LogEntryType } from '../data/model'
+import { WeatherContextBanner } from '../components/WeatherContextBanner'
+import type { GardenLogEntry, LogEntryType } from '../data/model'
 
 function chipClass(active: boolean): string {
   return [
@@ -31,6 +40,32 @@ export function JournalPage() {
   const trees = useLiveQuery(() => db.trees.toArray(), [], [])
   const [filter, setFilter] = useState<LogEntryType | 'tout'>('tout')
   const [query, setQuery] = useState('')
+  const settings = useLiveQuery(() => getSettings(), [], undefined)
+  const [history, setHistory] = useState<DailyWeather[] | null>(null)
+
+  useEffect(() => {
+    if (!settings) return
+    let alive = true
+    fetchDailyHistory(settings.latitude, settings.longitude, 30).then((h) => {
+      if (alive) setHistory(h)
+    })
+    return () => {
+      alive = false
+    }
+  }, [settings])
+
+  function contextFor(entry: GardenLogEntry): string | null {
+    if (!history || !settings) return null
+    if (entry.type !== 'observation' && entry.type !== 'probleme') return null
+    const opts = {
+      heatThresholdC: settings.heatThresholdC,
+      significantRainMm: settings.significantRainMm,
+    }
+    const summary = summarizeWeather(history, entry.date, opts)
+    const start = history.length > 0 ? history[Math.max(0, history.length - 14)].date : entry.date
+    const arrosages = countArrosagesBetween(entries, start, entry.date)
+    return describeWeatherContext(summary, arrosages)
+  }
 
   const refs: LogRefs = {
     parcels: new Map(parcels.map((p) => [p.id!, p] as [number, typeof p])),
@@ -113,11 +148,19 @@ export function JournalPage() {
                   {view.target ? ` · ${view.target}` : ''}
                 </p>
                 {view.detail && <p className="truncate text-sm text-green-700/80">{view.detail}</p>}
+                <WeatherContextBanner text={contextFor(entry)} />
                 {entry.photoUrls && entry.photoUrls.length > 0 && (
                   <PhotoThumbs urls={entry.photoUrls} />
                 )}
               </div>
-              <span className="shrink-0 text-xs text-green-700/60">{formatLogDate(entry, now)}</span>
+              <div className="flex shrink-0 flex-col items-end gap-1">
+                <span className="text-xs text-green-700/60">{formatLogDate(entry, now)}</span>
+                {formatSnapshotTemp(entry.weather) && (
+                  <span className="rounded bg-amber-100 px-1.5 py-0.5 text-xs font-medium text-amber-800">
+                    {formatSnapshotTemp(entry.weather)}
+                  </span>
+                )}
+              </div>
             </li>
           )
         })}

@@ -1,10 +1,20 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { db } from '../data/db'
 import { addLogEntry } from '../services/logService'
 import { JournalPage } from './JournalPage'
+
+vi.mock('../services/weatherService', () => ({
+  fetchDailyHistory: vi.fn(async () => [
+    { date: '2026-06-23', tempMaxC: 43.3, tempMinC: 26.1, rainMm: 0 },
+    { date: '2026-06-24', tempMaxC: 42.9, tempMinC: 24.4, rainMm: 0 },
+    { date: '2026-06-25', tempMaxC: 40.6, tempMinC: 26.4, rainMm: 0 },
+  ]),
+  fetchTodaySnapshot: vi.fn(async () => null),
+  __clearWeatherCache: vi.fn(),
+}))
 
 beforeEach(async () => {
   await Promise.all(db.tables.map((t) => t.clear()))
@@ -78,5 +88,28 @@ describe('JournalPage', () => {
     renderJournal()
     await waitFor(() => expect(screen.getByText('feuilles jaunes')).toBeInTheDocument())
     expect(screen.getByRole('button', { name: 'Agrandir la photo 1' })).toBeInTheDocument()
+  })
+
+  it('affiche le badge température sur une entrée qui porte un snapshot', async () => {
+    await db.log.add({
+      type: 'observation',
+      date: '2026-06-25',
+      description: 'feuilles flétries',
+      createdAt: 1,
+      weather: { capturedAt: 1, source: 'open-meteo', tempC: 36.3 },
+    })
+    renderJournal()
+    expect(await screen.findByText('36 °C')).toBeInTheDocument()
+  })
+
+  it('affiche le bandeau de contexte météo sous une observation', async () => {
+    await db.log.add({
+      type: 'observation',
+      date: '2026-06-25',
+      description: 'tomates à l arrêt',
+      createdAt: 2,
+    })
+    renderJournal()
+    expect(await screen.findByText(/forte chaleur/)).toBeInTheDocument()
   })
 })
