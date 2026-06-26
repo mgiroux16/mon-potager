@@ -98,6 +98,9 @@ export function EntryForm({ config, initial, onSaved, onCancel }: {
   const [newVarietyName, setNewVarietyName] = useState('')
   const [elementValue, setElementValue] = useState('')
   const [volume, setVolume] = useState(initial?.volumeLiters != null ? String(initial.volumeLiters) : '')
+  const [duration, setDuration] = useState(
+    initial?.durationMinutes != null ? String(initial.durationMinutes) : '',
+  )
   const [quantity, setQuantity] = useState(initial?.quantityKg != null ? String(initial.quantityKg) : '')
   const [title, setTitle] = useState(initial?.title ?? '')
   const [description, setDescription] = useState(initial?.description ?? '')
@@ -142,6 +145,7 @@ export function EntryForm({ config, initial, onSaved, onCancel }: {
     }
 
     if (config.measure === 'volume' && volume) entry.volumeLiters = Number(volume)
+    if (config.measure === 'volume' && duration) entry.durationMinutes = Number(duration)
     if (config.measure === 'quantite' && quantity) entry.quantityKg = Number(quantity)
     if (config.measure === 'description' && description) entry.description = description
     if (config.measure === 'titre_description') {
@@ -326,6 +330,20 @@ export function EntryForm({ config, initial, onSaved, onCancel }: {
             inputMode="numeric"
             value={volume}
             onChange={(e) => setVolume(e.target.value)}
+            className={fieldClass}
+          />
+        </label>
+      )}
+
+      {config.measure === 'volume' && (
+        <label className="flex flex-col gap-1 text-sm text-green-800">
+          Durée (minutes)
+          <input
+            aria-label="Durée (minutes)"
+            type="number"
+            inputMode="numeric"
+            value={duration}
+            onChange={(e) => setDuration(e.target.value)}
             className={fieldClass}
           />
         </label>

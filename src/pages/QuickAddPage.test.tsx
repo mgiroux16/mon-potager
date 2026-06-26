@@ -48,6 +48,57 @@ describe('QuickAddPage', () => {
     expect(entry.parcelId).toBeDefined()
   })
 
+  it('enregistre durationMinutes independamment du volume sur une entree arrosage', async () => {
+    await db.parcels.add({ name: 'Planche test' })
+    render(
+      <MemoryRouter>
+        <QuickAddPage />
+      </MemoryRouter>,
+    )
+    const user = userEvent.setup()
+
+    await user.click(screen.getByRole('button', { name: 'Arrosage' }))
+
+    const option = await screen.findByRole('option', { name: 'Planche test' })
+    await user.selectOptions(screen.getByLabelText('Parcelle'), option)
+    await user.type(screen.getByLabelText('Volume (litres)'), '10')
+    await user.type(screen.getByLabelText('Durée (minutes)'), '15')
+    await user.click(screen.getByRole('button', { name: 'Valider' }))
+
+    await waitFor(async () => {
+      const all = await listLog()
+      expect(all).toHaveLength(1)
+    })
+    const [entry] = await listLog()
+    expect(entry.volumeLiters).toBe(10)
+    expect(entry.durationMinutes).toBe(15)
+  })
+
+  it('permet de saisir la duree seule, sans volume', async () => {
+    await db.parcels.add({ name: 'Planche test' })
+    render(
+      <MemoryRouter>
+        <QuickAddPage />
+      </MemoryRouter>,
+    )
+    const user = userEvent.setup()
+
+    await user.click(screen.getByRole('button', { name: 'Arrosage' }))
+
+    const option = await screen.findByRole('option', { name: 'Planche test' })
+    await user.selectOptions(screen.getByLabelText('Parcelle'), option)
+    await user.type(screen.getByLabelText('Durée (minutes)'), '20')
+    await user.click(screen.getByRole('button', { name: 'Valider' }))
+
+    await waitFor(async () => {
+      const all = await listLog()
+      expect(all).toHaveLength(1)
+    })
+    const [entry] = await listLog()
+    expect(entry.durationMinutes).toBe(20)
+    expect(entry.volumeLiters).toBeUndefined()
+  })
+
   it('attache une photo compressée à l\'entrée enregistrée', async () => {
     render(
       <MemoryRouter>
