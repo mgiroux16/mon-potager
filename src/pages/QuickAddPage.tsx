@@ -7,6 +7,8 @@ import { db } from '../data/db'
 import type { LogEntryType } from '../data/model'
 import { addLogEntry, type NewLogEntry } from '../services/logService'
 import { findOrCreateVariety } from '../services/varietyService'
+import { fetchTodaySnapshot } from '../services/weatherService'
+import { getSettings } from '../services/settingsService'
 import { LOG_TYPE_LABELS } from '../services/logView'
 import { LOG_TYPE_ICONS } from '../components/logTypeIcons'
 import { PhotoInput } from '../components/PhotoInput'
@@ -160,6 +162,13 @@ function EntryForm({ config, initial, onSaved, onCancel }: {
 
     // Transport depuis un brouillon vocal (phrase d'origine), si présent.
     if (initial?.sourcePhrase) entry.sourcePhrase = initial.sourcePhrase
+
+    // Snapshot météo figé, seulement pour une saisie datée d'aujourd'hui. Jamais bloquant.
+    if (date === todayISO()) {
+      const settings = await getSettings()
+      const snap = await fetchTodaySnapshot(settings.latitude, settings.longitude)
+      if (snap) entry.weather = snap
+    }
 
     await addLogEntry(entry)
     onSaved()

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import type { GardenLogEntry } from '../data/model'
-import { describeLogEntry, formatLogDate, type LogRefs } from './logView'
+import { describeLogEntry, formatLogDate, formatSnapshotTemp, type LogRefs } from './logView'
 
 const refs: LogRefs = {
   parcels: new Map([[1, { id: 1, name: 'Planche tomates' }]]),
@@ -77,5 +77,18 @@ describe('formatLogDate', () => {
 
   it('date ancienne en JJ/MM/AAAA', () => {
     expect(formatLogDate(entry({ date: '2026-05-01' }), now)).toBe('01/05/2026')
+  })
+})
+
+describe('formatSnapshotTemp', () => {
+  it('arrondit la température courante du snapshot', () => {
+    expect(formatSnapshotTemp({ capturedAt: 1, source: 'open-meteo', tempC: 36.3 })).toBe('36 °C')
+  })
+  it('retombe sur le max si pas de température courante', () => {
+    expect(formatSnapshotTemp({ capturedAt: 1, source: 'open-meteo', tempMaxC: 40.6 })).toBe('41 °C')
+  })
+  it('renvoie null si aucune température', () => {
+    expect(formatSnapshotTemp({ capturedAt: 1, source: 'manuel' })).toBeNull()
+    expect(formatSnapshotTemp(undefined)).toBeNull()
   })
 })
