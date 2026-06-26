@@ -104,4 +104,37 @@ describe('VoiceReviewPage', () => {
       expect(h.navigateSpy).toHaveBeenCalledWith('/journal', { replace: true })
     })
   })
+
+  it('Modifier puis Retour laisse la carte intacte dans la liste', async () => {
+    const user = userEvent.setup()
+    renderReview([
+      { type: 'arrosage', volumeLiters: 15, date: '2026-06-20' },
+      { type: 'recolte', quantityKg: 3, date: '2026-06-20' },
+    ])
+
+    await user.click(screen.getAllByRole('button', { name: 'Modifier' })[0])
+    expect(screen.getByLabelText('Volume (litres)')).toHaveValue(15)
+
+    await user.click(screen.getByRole('button', { name: 'Retour' }))
+
+    expect(screen.getByText('15 L')).toBeInTheDocument()
+    expect(screen.getByText('3 kg')).toBeInTheDocument()
+    const all = await listLog()
+    expect(all).toHaveLength(0)
+  })
+
+  it('Valider sauvegarde une date par defaut quand le brouillon n en a pas', async () => {
+    const user = userEvent.setup()
+    renderReview([{ type: 'observation', description: 'tout va bien' }])
+
+    await user.click(screen.getByRole('button', { name: 'Valider' }))
+
+    await waitFor(async () => {
+      const all = await listLog()
+      expect(all).toHaveLength(1)
+    })
+    const [entry] = await listLog()
+    expect(typeof entry.date).toBe('string')
+    expect(entry.date.length).toBeGreaterThan(0)
+  })
 })
