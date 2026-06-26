@@ -12,7 +12,7 @@ import {
 } from '../services/audioRecordService'
 import {
   buildVoiceAudioPrompt,
-  parseVoiceDraft,
+  parseVoiceDrafts,
   type GardenCatalog,
 } from '../services/voiceParseService'
 import type { NewLogEntry } from '../services/logService'
@@ -89,14 +89,14 @@ export function VoiceCapture() {
 
     // Repli par defaut : si Gemini ou le JSON echoue, on ouvre quand meme une note vide
     // a completer a la main plutot que de tout perdre.
-    let voiceDraft: Partial<NewLogEntry> = { type: 'note' }
+    let voiceDrafts: Partial<NewLogEntry>[] = [{ type: 'note' }]
     try {
       const catalog = await loadCatalog()
       const prompt = buildVoiceAudioPrompt(catalog, todayISO())
       const answer = await callGeminiAudio(prompt, audio, key)
-      voiceDraft = parseVoiceDraft(answer, catalog, '').draft
+      voiceDrafts = parseVoiceDrafts(answer, catalog, '').map((d) => d.draft)
     } catch {
-      voiceDraft = { type: 'note' }
+      voiceDrafts = [{ type: 'note' }]
     }
 
     // L'utilisateur a ferme l'overlay pendant l'attente : on n'ouvre pas le formulaire.
@@ -104,7 +104,11 @@ export function VoiceCapture() {
 
     sessionRef.current = null
     setPhase('idle')
-    navigate('/ajouter', { state: { voiceDraft } })
+    if (voiceDrafts.length <= 1) {
+      navigate('/ajouter', { state: { voiceDraft: voiceDrafts[0] ?? { type: 'note' } } })
+    } else {
+      navigate('/revue-vocale', { state: { voiceDrafts } })
+    }
   }
 
   async function start() {

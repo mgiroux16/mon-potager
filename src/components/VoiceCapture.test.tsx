@@ -118,9 +118,57 @@ describe('VoiceCapture', () => {
 
     // Gemini repond apres la fermeture : la dictee est annulee, on ne navigue pas.
     await act(async () => {
-      resolveGemini('{"type":"note","description":"x"}')
+      resolveGemini('[{"type":"note","description":"x"}]')
     })
 
     expect(h.navigateSpy).not.toHaveBeenCalled()
+  })
+
+  it('un seul brouillon detecte navigue directement vers /ajouter', async () => {
+    mockedSupported.mockReturnValue(true)
+    h.getSettings.mockResolvedValue({ geminiApiKey: 'fake-key' })
+    h.callGeminiAudio.mockResolvedValue(
+      JSON.stringify([{ type: 'arrosage', volumeLiters: 10 }]),
+    )
+
+    const user = userEvent.setup()
+    renderCapture()
+    await user.click(screen.getByRole('button', { name: 'Dicter une entrée' }))
+    await act(async () => {
+      h.handlers.current?.onReady(audio)
+    })
+
+    await waitFor(() => expect(h.navigateSpy).toHaveBeenCalled())
+    expect(h.navigateSpy).toHaveBeenCalledWith('/ajouter', {
+      state: { voiceDraft: { type: 'arrosage', volumeLiters: 10 } },
+    })
+  })
+
+  it('deux brouillons ou plus naviguent vers la revue vocale', async () => {
+    mockedSupported.mockReturnValue(true)
+    h.getSettings.mockResolvedValue({ geminiApiKey: 'fake-key' })
+    h.callGeminiAudio.mockResolvedValue(
+      JSON.stringify([
+        { type: 'recolte', quantityKg: 3 },
+        { type: 'arrosage', volumeLiters: 20 },
+      ]),
+    )
+
+    const user = userEvent.setup()
+    renderCapture()
+    await user.click(screen.getByRole('button', { name: 'Dicter une entrée' }))
+    await act(async () => {
+      h.handlers.current?.onReady(audio)
+    })
+
+    await waitFor(() => expect(h.navigateSpy).toHaveBeenCalled())
+    expect(h.navigateSpy).toHaveBeenCalledWith('/revue-vocale', {
+      state: {
+        voiceDrafts: [
+          { type: 'recolte', quantityKg: 3 },
+          { type: 'arrosage', volumeLiters: 20 },
+        ],
+      },
+    })
   })
 })
