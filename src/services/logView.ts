@@ -39,7 +39,11 @@ export const LOG_TYPE_LABELS: Record<LogEntryType, string> = {
   note: 'Note',
 }
 
-export function resolveTargetName(entry: GardenLogEntry, refs: LogRefs): string | undefined {
+// Pick<...> plutot que GardenLogEntry entier : ces deux helpers servent aussi a resumer
+// un brouillon vocal partiel (VoiceReviewPage), pas seulement une entree deja en base.
+export type TargetFields = Pick<GardenLogEntry, 'parcelId' | 'cropId' | 'oyaId' | 'treeId'>
+
+export function resolveTargetName(entry: TargetFields, refs: LogRefs): string | undefined {
   if (entry.parcelId != null) return refs.parcels.get(entry.parcelId)?.name
   if (entry.cropId != null) return refs.crops.get(entry.cropId)?.name
   if (entry.oyaId != null) return refs.oyas.get(entry.oyaId)?.name
@@ -47,7 +51,12 @@ export function resolveTargetName(entry: GardenLogEntry, refs: LogRefs): string 
   return undefined
 }
 
-function resolveDetail(entry: GardenLogEntry): string | undefined {
+export type DetailFields = Pick<
+  GardenLogEntry,
+  'volumeLiters' | 'quantityKg' | 'rainMm' | 'description' | 'title'
+>
+
+export function resolveDetail(entry: DetailFields): string | undefined {
   if (entry.volumeLiters != null) return `${entry.volumeLiters} L`
   if (entry.quantityKg != null) return `${entry.quantityKg} kg`
   if (entry.rainMm != null) return `${entry.rainMm} mm`

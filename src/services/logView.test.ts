@@ -1,6 +1,12 @@
 import { describe, it, expect } from 'vitest'
 import type { GardenLogEntry } from '../data/model'
-import { describeLogEntry, formatLogDate, formatSnapshotTemp, type LogRefs } from './logView'
+import {
+  describeLogEntry,
+  formatLogDate,
+  formatSnapshotTemp,
+  resolveDetail,
+  type LogRefs,
+} from './logView'
 
 const refs: LogRefs = {
   parcels: new Map([[1, { id: 1, name: 'Planche tomates' }]]),
@@ -53,6 +59,22 @@ describe('describeLogEntry', () => {
     const view = describeLogEntry(entry({ type: 'recolte', cropId: 999, quantityKg: 1 }), refs)
     expect(view.target).toBeUndefined()
     expect(view.detail).toBe('1 kg')
+  })
+})
+
+describe('resolveDetail', () => {
+  it('priorise volume, puis quantite, puis pluie, puis description, puis titre', () => {
+    expect(resolveDetail({ volumeLiters: 10, quantityKg: 2 })).toBe('10 L')
+    expect(resolveDetail({ quantityKg: 2, rainMm: 5 })).toBe('2 kg')
+    expect(resolveDetail({ rainMm: 5, description: 'x' })).toBe('5 mm')
+    expect(resolveDetail({ description: 'une note', title: 'titre' })).toBe('une note')
+    expect(resolveDetail({ title: 'titre' })).toBe('titre')
+    expect(resolveDetail({})).toBeUndefined()
+  })
+
+  it('accepte un brouillon vocal partiel, pas seulement une GardenLogEntry complete', () => {
+    const draft: { volumeLiters?: number } = { volumeLiters: 15 }
+    expect(resolveDetail(draft)).toBe('15 L')
   })
 })
 
