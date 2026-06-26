@@ -5,6 +5,7 @@ import { JournalPage } from './pages/JournalPage'
 import { QuickAddPage } from './pages/QuickAddPage'
 import { VoiceReviewPage } from './pages/VoiceReviewPage'
 import { GardenPage } from './pages/GardenPage'
+import { HarvestPage } from './pages/HarvestPage'
 import { WaterPage } from './pages/WaterPage'
 import { SettingsPage } from './pages/SettingsPage'
 
@@ -18,6 +19,7 @@ function App() {
           <Route path="ajouter" element={<QuickAddPage />} />
           <Route path="revue-vocale" element={<VoiceReviewPage />} />
           <Route path="jardin" element={<GardenPage />} />
+          <Route path="recoltes" element={<HarvestPage />} />
           <Route path="eau" element={<WaterPage />} />
           <Route path="reglages" element={<SettingsPage />} />
         </Route>
