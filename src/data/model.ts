@@ -189,3 +189,11 @@ export interface AppSettings {
   seasonStartMonth: number // 1-12, mois de debut de la saison de culture, ex: 3 pour mars
   seasonEndMonth: number // 1-12, mois de fin de la saison de culture, ex: 11 pour novembre
 }
+
+export interface SeasonNote {
+  id?: number
+  year: number
+  cropId?: number
+  parcelId?: number
+  text: string
+}
