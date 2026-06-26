@@ -89,6 +89,7 @@ export interface Crop {
   status: CropStatus
   waterNeed?: WaterNeed
   notes?: string
+  pricePerKg?: number // € au kg, saisi manuellement par Mathieu (marché/magasin)
 }
 
 export interface Variety {
