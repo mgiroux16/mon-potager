@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { callGemini, testGeminiConnection, GEMINI_MODEL } from './geminiService'
+import { callGemini, callGeminiAudio, testGeminiConnection, GEMINI_MODEL } from './geminiService'
 
 function mockFetchOnce(impl: () => Response | Promise<Response>) {
   vi.stubGlobal('fetch', vi.fn(impl))
@@ -42,6 +42,35 @@ describe('callGemini', () => {
   it('lève une erreur lisible sur une réponse HTTP en erreur', async () => {
     mockFetchOnce(() => geminiError(400, 'API key not valid'))
     await expect(callGemini('p', 'mauvaise')).rejects.toThrow(/API key not valid/)
+  })
+})
+
+describe('callGeminiAudio', () => {
+  it('renvoie le texte extrait de la réponse Gemini', async () => {
+    mockFetchOnce(() => geminiOk('{"type":"note"}'))
+    const out = await callGeminiAudio('range ça', { data: 'QUJD', mimeType: 'audio/webm' }, 'AIza-x')
+    expect(out).toBe('{"type":"note"}')
+  })
+
+  it('envoie le prompt ET l audio (inlineData base64 + mimeType) dans le corps', async () => {
+    const fetchMock = vi.fn((_url: RequestInfo | URL, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body))
+      const parts = body.contents[0].parts
+      expect(parts.some((p: { text?: string }) => p.text === 'range ça')).toBe(true)
+      const audioPart = parts.find((p: { inlineData?: unknown }) => p.inlineData)
+      expect(audioPart.inlineData).toEqual({ data: 'QUJD', mimeType: 'audio/webm' })
+      return geminiOk('{}')
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    await callGeminiAudio('range ça', { data: 'QUJD', mimeType: 'audio/webm' }, 'AIza-x')
+    expect(fetchMock).toHaveBeenCalledOnce()
+  })
+
+  it('lève une erreur lisible sur une réponse HTTP en erreur', async () => {
+    mockFetchOnce(() => geminiError(400, 'API key not valid'))
+    await expect(
+      callGeminiAudio('p', { data: 'QUJD', mimeType: 'audio/webm' }, 'mauvaise'),
+    ).rejects.toThrow(/API key not valid/)
   })
 })
 

@@ -4,28 +4,28 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 
 type Handlers = {
-  onInterim: (t: string) => void
-  onFinal: (t: string) => void
+  onReady: (audio: { data: string; mimeType: string }) => void
   onError: (r: string) => void
 }
 
 const h = vi.hoisted(() => ({
   navigateSpy: vi.fn(),
   handlers: { current: null as Handlers | null },
-  callGemini: vi.fn(),
+  session: { stop: vi.fn(), cancel: vi.fn() },
+  callGeminiAudio: vi.fn(),
   getSettings: vi.fn(),
 }))
 
-vi.mock('../services/speechService', () => ({
-  isSpeechSupported: vi.fn(),
-  createSpeechSession: vi.fn((handlers: Handlers) => {
+vi.mock('../services/audioRecordService', () => ({
+  isRecordingSupported: vi.fn(),
+  startRecording: vi.fn(async (handlers: Handlers) => {
     h.handlers.current = handlers
-    return { stop: vi.fn() }
+    return h.session
   }),
 }))
 
 vi.mock('../services/geminiService', () => ({
-  callGemini: h.callGemini,
+  callGeminiAudio: h.callGeminiAudio,
 }))
 
 vi.mock('../services/settingsService', () => ({
@@ -37,10 +37,10 @@ vi.mock('react-router-dom', async (importOriginal) => {
   return { ...actual, useNavigate: () => h.navigateSpy }
 })
 
-import { isSpeechSupported } from '../services/speechService'
+import { isRecordingSupported } from '../services/audioRecordService'
 import { VoiceCapture } from './VoiceCapture'
 
-const mockedSupported = vi.mocked(isSpeechSupported)
+const mockedSupported = vi.mocked(isRecordingSupported)
 
 function renderCapture() {
   return render(
@@ -50,13 +50,15 @@ function renderCapture() {
   )
 }
 
+const audio = { data: 'QUJD', mimeType: 'audio/webm' }
+
 afterEach(() => {
   vi.clearAllMocks()
   h.handlers.current = null
 })
 
 describe('VoiceCapture', () => {
-  it('ne rend pas le bouton quand la reconnaissance vocale n est pas supportee', () => {
+  it('ne rend pas le bouton quand l enregistrement n est pas supporte', () => {
     mockedSupported.mockReturnValue(false)
     renderCapture()
     expect(screen.queryByRole('button', { name: 'Dicter une entrée' })).not.toBeInTheDocument()
@@ -74,11 +76,26 @@ describe('VoiceCapture', () => {
     expect(screen.getByText(/J'écoute/i)).toBeInTheDocument()
   })
 
+  it('affiche une erreur si aucune cle Gemini n est configuree', async () => {
+    mockedSupported.mockReturnValue(true)
+    h.getSettings.mockResolvedValue({ geminiApiKey: '' })
+    const user = userEvent.setup()
+    renderCapture()
+    await user.click(screen.getByRole('button', { name: 'Dicter une entrée' }))
+
+    await act(async () => {
+      h.handlers.current?.onReady(audio)
+    })
+
+    await waitFor(() => expect(screen.getByText(/clé Gemini/i)).toBeInTheDocument())
+    expect(h.callGeminiAudio).not.toHaveBeenCalled()
+  })
+
   it('n ouvre pas le formulaire si on ferme l overlay pendant l appel Gemini', async () => {
     mockedSupported.mockReturnValue(true)
     h.getSettings.mockResolvedValue({ geminiApiKey: 'fake-key' })
     let resolveGemini: (v: string) => void = () => {}
-    h.callGemini.mockReturnValue(
+    h.callGeminiAudio.mockReturnValue(
       new Promise<string>((res) => {
         resolveGemini = res
       }),
@@ -88,15 +105,16 @@ describe('VoiceCapture', () => {
     renderCapture()
     await user.click(screen.getByRole('button', { name: 'Dicter une entrée' }))
 
-    // Phrase finale dictee : finalize part, l'overlay passe en "Je range..." et Gemini est appele.
+    // Audio pret : finalize part, l'overlay passe en "Je range..." et Gemini est appele.
     await act(async () => {
-      h.handlers.current?.onFinal('j ai arrose la parcelle')
+      h.handlers.current?.onReady(audio)
     })
-    await waitFor(() => expect(h.callGemini).toHaveBeenCalled())
+    await waitFor(() => expect(h.callGeminiAudio).toHaveBeenCalled())
     expect(screen.getByText(/Je range/i)).toBeInTheDocument()
 
     // L'utilisateur ferme l'overlay avant que Gemini reponde.
     await user.click(screen.getByRole('button', { name: 'Fermer' }))
+    expect(h.session.cancel).toHaveBeenCalled()
 
     // Gemini repond apres la fermeture : la dictee est annulee, on ne navigue pas.
     await act(async () => {

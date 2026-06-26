@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { LOG_ENTRY_TYPES } from '../data/model'
-import { buildVoicePrompt, parseVoiceDraft, type GardenCatalog } from './voiceParseService'
+import { buildVoiceAudioPrompt, parseVoiceDraft, type GardenCatalog } from './voiceParseService'
 
 const catalog: GardenCatalog = {
   parcels: [{ id: 1, name: 'Parcelle A' }, { id: 2, name: 'Parcelle B' }],
@@ -9,11 +9,11 @@ const catalog: GardenCatalog = {
   trees: [{ id: 30, name: 'Pommier' }],
 }
 
-describe('buildVoicePrompt', () => {
-  it('contient la phrase, la date du jour, tous les types et le catalogue', () => {
-    const prompt = buildVoicePrompt('j ai arrose dix litres sur la parcelle A', catalog, '2026-06-25')
+describe('buildVoiceAudioPrompt', () => {
+  it('demande de transcrire l audio, donne la date, tous les types et le catalogue', () => {
+    const prompt = buildVoiceAudioPrompt(catalog, '2026-06-25')
 
-    expect(prompt).toContain('j ai arrose dix litres sur la parcelle A')
+    expect(prompt.toLowerCase()).toContain('audio')
     expect(prompt).toContain('2026-06-25')
     for (const type of LOG_ENTRY_TYPES) {
       expect(prompt).toContain(type)

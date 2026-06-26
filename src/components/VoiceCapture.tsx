@@ -3,15 +3,15 @@ import { useNavigate } from 'react-router-dom'
 import { Mic, X } from 'lucide-react'
 import { db } from '../data/db'
 import { getSettings } from '../services/settingsService'
-import { callGemini } from '../services/geminiService'
+import { callGeminiAudio } from '../services/geminiService'
 import {
-  createSpeechSession,
-  isSpeechSupported,
-  type SpeechErrorReason,
-  type SpeechSession,
-} from '../services/speechService'
+  isRecordingSupported,
+  startRecording,
+  type RecordErrorReason,
+  type RecordingSession,
+} from '../services/audioRecordService'
 import {
-  buildVoicePrompt,
+  buildVoiceAudioPrompt,
   parseVoiceDraft,
   type GardenCatalog,
 } from '../services/voiceParseService'
@@ -24,14 +24,14 @@ function todayISO(): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
-function errorMessage(reason: SpeechErrorReason): string {
+function errorMessage(reason: RecordErrorReason): string {
   switch (reason) {
     case 'not-allowed':
       return 'Micro refusé. Autorise le micro pour dicter.'
-    case 'no-speech':
+    case 'no-audio':
       return 'Je n ai rien entendu. Réessaie.'
     case 'not-supported':
-      return 'La dictée n est pas disponible sur ce navigateur.'
+      return 'L enregistrement n est pas disponible sur ce navigateur.'
     default:
       return 'Souci avec la dictée. Réessaie.'
   }
@@ -56,43 +56,47 @@ async function loadCatalog(): Promise<GardenCatalog> {
 
 export function VoiceCapture() {
   const navigate = useNavigate()
-  const sessionRef = useRef<SpeechSession | null>(null)
+  const sessionRef = useRef<RecordingSession | null>(null)
   // Passe a true quand l'utilisateur ferme l'overlay : un finalize() encore en vol
   // (appel Gemini) ne doit plus naviguer une fois la dictee annulee.
   const cancelledRef = useRef(false)
   const [phase, setPhase] = useState<Phase>('idle')
-  const [transcript, setTranscript] = useState('')
   const [message, setMessage] = useState('')
 
-  if (!isSpeechSupported()) return null
+  if (!isRecordingSupported()) return null
 
   function close() {
     cancelledRef.current = true
-    sessionRef.current?.stop()
+    sessionRef.current?.cancel()
     sessionRef.current = null
     setPhase('idle')
-    setTranscript('')
     setMessage('')
   }
 
-  // Transforme la phrase finale en brouillon puis ouvre le formulaire prerempli.
-  async function finalize(finalText: string) {
+  // Transforme l'audio enregistre en brouillon (transcription + rangement par Gemini)
+  // puis ouvre le formulaire prerempli. finalize ne jette jamais.
+  async function finalize(audio: { data: string; mimeType: string }) {
     setPhase('processing')
 
-    // Repli par defaut : si pas de cle, ou si getSettings/Gemini/JSON echoue, on garde
-    // la phrase brute en note. finalize ne jette jamais : tout est couvert par le catch.
-    let voiceDraft: Partial<NewLogEntry> = { type: 'note', description: finalText }
+    const settings = await getSettings().catch(() => null)
+    const key = settings?.geminiApiKey?.trim()
+    if (!key) {
+      if (cancelledRef.current) return
+      setPhase('error')
+      setMessage('Ajoute ta clé Gemini dans Réglages pour activer la dictée.')
+      return
+    }
+
+    // Repli par defaut : si Gemini ou le JSON echoue, on ouvre quand meme une note vide
+    // a completer a la main plutot que de tout perdre.
+    let voiceDraft: Partial<NewLogEntry> = { type: 'note' }
     try {
-      const settings = await getSettings()
-      const key = settings.geminiApiKey?.trim()
-      if (key) {
-        const catalog = await loadCatalog()
-        const prompt = buildVoicePrompt(finalText, catalog, todayISO())
-        const answer = await callGemini(prompt, key)
-        voiceDraft = parseVoiceDraft(answer, catalog, finalText).draft
-      }
+      const catalog = await loadCatalog()
+      const prompt = buildVoiceAudioPrompt(catalog, todayISO())
+      const answer = await callGeminiAudio(prompt, audio, key)
+      voiceDraft = parseVoiceDraft(answer, catalog, '').draft
     } catch {
-      voiceDraft = { type: 'note', description: finalText }
+      voiceDraft = { type: 'note' }
     }
 
     // L'utilisateur a ferme l'overlay pendant l'attente : on n'ouvre pas le formulaire.
@@ -100,27 +104,28 @@ export function VoiceCapture() {
 
     sessionRef.current = null
     setPhase('idle')
-    setTranscript('')
     navigate('/ajouter', { state: { voiceDraft } })
   }
 
-  function start() {
+  async function start() {
     cancelledRef.current = false
     setPhase('listening')
-    setTranscript('')
     setMessage('')
-    sessionRef.current = createSpeechSession({
-      onInterim: (text) => setTranscript(text),
-      onFinal: (text) => {
-        setTranscript(text)
-        void finalize(text)
-      },
+    const session = await startRecording({
+      onReady: (audio) => void finalize(audio),
       onError: (reason) => {
         sessionRef.current = null
+        if (cancelledRef.current) return
         setPhase('error')
         setMessage(errorMessage(reason))
       },
     })
+    // Fermeture pendant l'init du micro : on relache tout de suite.
+    if (cancelledRef.current) {
+      session.cancel()
+      return
+    }
+    sessionRef.current = session
   }
 
   return (
@@ -157,7 +162,7 @@ export function VoiceCapture() {
               <p className="mt-3 text-sm text-green-800">{message}</p>
             ) : (
               <p className="mt-3 min-h-12 text-sm text-green-800">
-                {transcript || 'Parle, je transcris…'}
+                {phase === 'listening' ? 'Parle, puis appuie sur Terminer…' : 'Je transcris…'}
               </p>
             )}
 

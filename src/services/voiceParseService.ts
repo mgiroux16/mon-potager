@@ -27,16 +27,11 @@ function listForPrompt(label: string, entries: CatalogEntry[]): string {
   return `${label} : ${items}`
 }
 
-export function buildVoicePrompt(
-  transcript: string,
-  catalog: GardenCatalog,
-  todayISO: string,
-): string {
+export function buildVoiceAudioPrompt(catalog: GardenCatalog, todayISO: string): string {
   return [
-    'Tu transformes une phrase de jardinage dictee en une entree de journal structuree.',
+    'Tu reçois un enregistrement audio en français où une personne décrit une action de',
+    'jardinage. Transcris-le puis transforme-le en une entree de journal structuree.',
     `Date du jour : ${todayISO} (resous "ce matin", "hier", "aujourd hui" par rapport a elle).`,
-    '',
-    `Phrase dictee : "${transcript}"`,
     '',
     `Types valides (champ "type") : ${LOG_ENTRY_TYPES.join(', ')}.`,
     '',
@@ -51,6 +46,7 @@ export function buildVoicePrompt(
     'parcelId, cropId, oyaId, treeId, volumeLiters, rainMm, quantityKg.',
     'Omets tout champ non mentionne dans la phrase.',
     'Une entree peut porter a la fois parcelId et cropId.',
+    'Mets toujours dans "description" la transcription de ce qui a ete dit.',
     'N invente jamais un identifiant absent du catalogue.',
   ].join('\n')
 }

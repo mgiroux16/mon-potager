@@ -8,16 +8,19 @@ interface GeminiResponse {
   error?: { message?: string }
 }
 
+// Un morceau de contenu envoyé à Gemini : du texte ou de l'audio encodé en base64.
+type GeminiPart = { text: string } | { inlineData: { data: string; mimeType: string } }
+
 /**
- * Appelle l'API Gemini avec un prompt texte et renvoie le texte de la réponse.
- * La clé n'est jamais journalisée. Lève une erreur lisible si la réponse est en erreur.
+ * Cœur d'appel partagé : poste des `parts` (texte et/ou audio) et renvoie le texte
+ * de la réponse. La clé n'est jamais journalisée ; lève une erreur lisible en cas d'échec.
  */
-export async function callGemini(prompt: string, apiKey: string): Promise<string> {
+async function postGemini(parts: GeminiPart[], apiKey: string): Promise<string> {
   const url = `${ENDPOINT}/${GEMINI_MODEL}:generateContent?key=${apiKey}`
   const response = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }),
+    body: JSON.stringify({ contents: [{ parts }] }),
   })
 
   const data = (await response.json().catch(() => ({}))) as GeminiResponse
@@ -32,6 +35,26 @@ export async function callGemini(prompt: string, apiKey: string): Promise<string
     throw new Error('Réponse Gemini vide ou inattendue')
   }
   return text
+}
+
+/**
+ * Appelle l'API Gemini avec un prompt texte et renvoie le texte de la réponse.
+ */
+export async function callGemini(prompt: string, apiKey: string): Promise<string> {
+  return postGemini([{ text: prompt }], apiKey)
+}
+
+/**
+ * Appelle Gemini avec un prompt texte ET un audio (base64 inline) : le modèle
+ * transcrit puis range en une seule passe. Sert la dictée sur les navigateurs
+ * qui ne supportent pas la reconnaissance vocale native (Brave, Firefox).
+ */
+export async function callGeminiAudio(
+  prompt: string,
+  audio: { data: string; mimeType: string },
+  apiKey: string,
+): Promise<string> {
+  return postGemini([{ text: prompt }, { inlineData: audio }], apiKey)
 }
 
 export type ConnectionResult = { ok: true } | { ok: false; error: string }
