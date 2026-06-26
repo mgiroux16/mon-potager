@@ -11,6 +11,12 @@ vi.mock('../services/imageService', () => ({
   compressImage: vi.fn(async () => 'data:image/jpeg;base64,COMPRESSED'),
 }))
 
+vi.mock('../services/weatherService', () => ({
+  fetchTodaySnapshot: vi.fn(async () => ({ capturedAt: 1_700_000_000_000, source: 'open-meteo', tempC: 36.3, tempMaxC: 40.6, tempMinC: 26.4, rainMm: 0 })),
+  fetchDailyHistory: vi.fn(async () => null),
+  __clearWeatherCache: vi.fn(),
+}))
+
 beforeEach(async () => {
   await Promise.all(db.tables.map((t) => t.clear()))
 })
@@ -64,6 +70,26 @@ describe('QuickAddPage', () => {
     })
     const [entry] = await listLog()
     expect(entry.photoUrls).toEqual(['data:image/jpeg;base64,COMPRESSED'])
+  })
+
+  it('fige le snapshot météo du jour sur une entrée datée aujourd hui', async () => {
+    render(
+      <MemoryRouter>
+        <QuickAddPage />
+      </MemoryRouter>,
+    )
+    const user = userEvent.setup()
+
+    await user.click(screen.getByRole('button', { name: 'Observation' }))
+    await user.type(screen.getByLabelText('Description'), 'feuilles flétries')
+    await user.click(screen.getByRole('button', { name: 'Valider' }))
+
+    await waitFor(async () => {
+      const all = await db.log.toArray()
+      const saved = all.find((e) => e.description === 'feuilles flétries')
+      expect(saved?.weather?.tempC).toBe(36.3)
+      expect(saved?.weather?.source).toBe('open-meteo')
+    })
   })
 })
 
