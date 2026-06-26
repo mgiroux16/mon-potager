@@ -55,6 +55,7 @@ export interface GardenLogEntry {
   volumeLiters?: number
   rainMm?: number
   quantityKg?: number
+  durationMinutes?: number // durée d'arrosage en minutes, informatif, jamais utilisé pour un calcul
   expenseId?: number
   photoUrls?: string[]
   createdAt: number // epoch ms, pour trier de façon stable
