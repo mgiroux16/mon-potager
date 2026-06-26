@@ -3,6 +3,7 @@ import { Layout } from './components/Layout'
 import { DashboardPage } from './pages/DashboardPage'
 import { JournalPage } from './pages/JournalPage'
 import { QuickAddPage } from './pages/QuickAddPage'
+import { VoiceReviewPage } from './pages/VoiceReviewPage'
 import { GardenPage } from './pages/GardenPage'
 import { WaterPage } from './pages/WaterPage'
 import { SettingsPage } from './pages/SettingsPage'
@@ -15,6 +16,7 @@ function App() {
           <Route index element={<DashboardPage />} />
           <Route path="journal" element={<JournalPage />} />
           <Route path="ajouter" element={<QuickAddPage />} />
+          <Route path="revue-vocale" element={<VoiceReviewPage />} />
           <Route path="jardin" element={<GardenPage />} />
           <Route path="eau" element={<WaterPage />} />
           <Route path="reglages" element={<SettingsPage />} />
