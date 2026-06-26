@@ -186,4 +186,6 @@ export interface AppSettings {
   totalTankCapacityLiters: number
   aiLevel: 'aucune' | 'photo' | 'photo_assistant'
   geminiApiKey?: string // clé API Gemini, stockée sur l'appareil ; vide par défaut
+  seasonStartMonth: number // 1-12, mois de debut de la saison de culture, ex: 3 pour mars
+  seasonEndMonth: number // 1-12, mois de fin de la saison de culture, ex: 11 pour novembre
 }

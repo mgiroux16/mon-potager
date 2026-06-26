@@ -14,6 +14,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   defaultWateringFlowLh: 100,
   totalTankCapacityLiters: 2500,
   aiLevel: 'photo_assistant',
+  seasonStartMonth: 3,
+  seasonEndMonth: 11,
 }
 
 export async function getSettings(): Promise<AppSettings> {

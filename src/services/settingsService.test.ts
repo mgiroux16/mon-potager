@@ -41,4 +41,17 @@ describe('settingsService', () => {
     const s = await getSettings()
     expect(s.geminiApiKey).toBe('AIza-test-123')
   })
+
+  it('a des valeurs par defaut de saison mars a novembre', async () => {
+    const s = await getSettings()
+    expect(s.seasonStartMonth).toBe(3)
+    expect(s.seasonEndMonth).toBe(11)
+  })
+
+  it('persiste et relit les mois de saison', async () => {
+    await saveSettings({ ...DEFAULT_SETTINGS, seasonStartMonth: 4, seasonEndMonth: 10 })
+    const s = await getSettings()
+    expect(s.seasonStartMonth).toBe(4)
+    expect(s.seasonEndMonth).toBe(10)
+  })
 })
