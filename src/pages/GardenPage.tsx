@@ -87,6 +87,9 @@ export function GardenPage() {
         <Link to="/recoltes" className="mt-2 inline-block text-sm font-medium text-green-700">
           Voir le bilan des récoltes →
         </Link>
+        <Link to="/bilan" className="mt-2 inline-block text-sm font-medium text-green-700">
+          Voir le bilan de saison →
+        </Link>
       </section>
 
       <section>

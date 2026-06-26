@@ -43,4 +43,11 @@ describe('GardenPage', () => {
       expect(screen.getByText(/2,5\s?€\/kg/)).toBeInTheDocument()
     })
   })
+
+  it('propose un lien vers le bilan de saison', async () => {
+    render(<GardenPage />, { wrapper: MemoryRouter })
+    await waitFor(() => {
+      expect(screen.getByRole('link', { name: /Voir le bilan de saison/ })).toBeInTheDocument()
+    })
+  })
 })

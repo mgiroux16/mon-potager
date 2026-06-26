@@ -7,6 +7,7 @@ import { VoiceReviewPage } from './pages/VoiceReviewPage'
 import { GardenPage } from './pages/GardenPage'
 import { HarvestPage } from './pages/HarvestPage'
 import { WaterPage } from './pages/WaterPage'
+import { SeasonSummaryPage } from './pages/SeasonSummaryPage'
 import { SettingsPage } from './pages/SettingsPage'
 
 function App() {
@@ -21,6 +22,7 @@ function App() {
           <Route path="jardin" element={<GardenPage />} />
           <Route path="recoltes" element={<HarvestPage />} />
           <Route path="eau" element={<WaterPage />} />
+          <Route path="bilan" element={<SeasonSummaryPage />} />
           <Route path="reglages" element={<SettingsPage />} />
         </Route>
       </Routes>
