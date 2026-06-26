@@ -1,19 +1,73 @@
+import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../data/db'
+import type { WaterTank } from '../data/model'
 import { summarizeWaterUsage } from '../services/waterUsageService'
+import { summarizeTankAutonomy } from '../services/tankAutonomyService'
 
 function todayISO(): string {
   return new Date().toISOString().slice(0, 10)
 }
 
+function TankLevelInput({ tank }: { tank: WaterTank }) {
+  const [value, setValue] = useState(
+    tank.estimatedLiters != null ? String(tank.estimatedLiters) : '',
+  )
+
+  async function save() {
+    const parsed = value.trim() === '' ? undefined : Number(value.replace(',', '.'))
+    if (tank.id != null && parsed != null && !Number.isNaN(parsed)) {
+      await db.tanks.update(tank.id, { estimatedLiters: parsed })
+    }
+  }
+
+  return (
+    <li className="flex items-center justify-between rounded bg-green-50 px-3 py-2">
+      <span className="font-medium text-green-900">{tank.name}</span>
+      <label className="flex items-center gap-1 text-sm text-green-800">
+        <input
+          aria-label={`Niveau de ${tank.name} en litres`}
+          type="number"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onBlur={save}
+          onKeyDown={(e) => e.key === 'Enter' && save()}
+          className="w-20 rounded border border-green-300 px-1 py-0.5 text-sm"
+        />
+        L / {tank.capacityLiters} L
+      </label>
+    </li>
+  )
+}
+
 export function WaterPage() {
   const entries = useLiveQuery(() => db.log.toArray(), [], [])
   const parcels = useLiveQuery(() => db.parcels.toArray(), [], [])
+  const tanks = useLiveQuery(() => db.tanks.toArray(), [], [])
   const rows = summarizeWaterUsage(entries, parcels, todayISO())
+  const tankSummary = summarizeTankAutonomy(tanks, entries, todayISO())
 
   return (
     <div className="p-4 space-y-6">
       <h1 className="text-xl font-bold text-green-800">Réserve d'eau</h1>
+
+      <section className="rounded bg-green-50 p-3">
+        <p className="text-sm font-medium text-green-900">
+          Réserve d'eau : {tankSummary.totalEstimatedLiters} / {tankSummary.totalCapacityLiters} L
+        </p>
+        <p className="mt-1 text-sm text-green-900">
+          Autonomie :{' '}
+          {tankSummary.autonomyDays != null ? `${tankSummary.autonomyDays} jours` : 'illimitée'}
+        </p>
+      </section>
+
+      {tanks.length > 0 && (
+        <ul className="space-y-2">
+          {tanks.map((t) => (
+            <TankLevelInput key={t.id} tank={t} />
+          ))}
+        </ul>
+      )}
 
       {rows.length === 0 ? (
         <p className="text-sm text-gray-500">Pas encore d'arrosage enregistré</p>
