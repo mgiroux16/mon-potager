@@ -16,7 +16,7 @@ import { PhotoInput } from '../components/PhotoInput'
 type TargetKind = 'parcelle' | 'oya' | 'culture' | 'element' | 'none'
 type MeasureKind = 'volume' | 'quantite' | 'description' | 'titre_description' | 'none'
 
-interface FormConfig {
+export interface FormConfig {
   type: LogEntryType
   target: TargetKind
   measure: MeasureKind
@@ -40,7 +40,7 @@ function genericConfig(type: LogEntryType): FormConfig {
   return { type, target: 'none', measure: 'titre_description', withTime: false }
 }
 
-function configForType(type: LogEntryType): FormConfig {
+export function configForType(type: LogEntryType): FormConfig {
   return FREQUENT.find((c) => c.type === type) ?? genericConfig(type)
 }
 
@@ -75,7 +75,7 @@ function visibleTargets(config: FormConfig, initial?: Partial<NewLogEntry>): Set
   return s
 }
 
-function EntryForm({ config, initial, onSaved, onCancel }: {
+export function EntryForm({ config, initial, onSaved, onCancel }: {
   config: FormConfig
   initial?: Partial<NewLogEntry>
   onSaved: () => void
