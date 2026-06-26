@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { summarizeWeather } from './weatherSummary'
+import { summarizeWeather, describeWeatherContext, countArrosagesBetween } from './weatherSummary'
 import type { DailyWeather } from './weatherService'
+import type { GardenLogEntry } from '../data/model'
 
 // Petite canicule sèche finissant au 2026-06-25, conforme aux vraies données Champniers.
 const history: DailyWeather[] = [
@@ -67,5 +68,48 @@ describe('summarizeWeather', () => {
     ]
     const s = summarizeWeather(wet, '2026-06-25', opts)
     expect(s.dryDayStreak).toBe(2) // 24 et 25 ; le 23 (12 mm) coupe
+  })
+})
+
+describe('describeWeatherContext', () => {
+  const opts = { heatThresholdC: 30, significantRainMm: 5 }
+  it('décrit une canicule sèche avec arrosages, sans tiret cadratin', () => {
+    const s = summarizeWeather(history, '2026-06-25', opts)
+    const txt = describeWeatherContext(s, 3)
+    expect(txt).toContain('8 jours de forte chaleur')
+    expect(txt).toContain('3 arrosages')
+    expect(txt).not.toContain('—')
+  })
+
+  it('mentionne le manque de pluie quand les cumuls sont faibles', () => {
+    const s = summarizeWeather(history, '2026-06-25', opts)
+    expect(describeWeatherContext(s, 0)).toContain('peu de pluie')
+  })
+
+  it('accorde le singulier (1 arrosage, 1 jour)', () => {
+    const oneHot = [{ date: '2026-06-25', tempMaxC: 35, tempMinC: 20, rainMm: 0 }]
+    const s = summarizeWeather(oneHot, '2026-06-25', opts)
+    const txt = describeWeatherContext(s, 1)
+    expect(txt).toContain('1 jour de forte chaleur')
+    expect(txt).toContain('1 arrosage ')
+    expect(txt).not.toContain('1 arrosages')
+  })
+
+  it('renvoie null si aucun contexte notable', () => {
+    const calm = [{ date: '2026-06-25', tempMaxC: 22, tempMinC: 14, rainMm: 8 }]
+    const s = summarizeWeather(calm, '2026-06-25', opts)
+    expect(describeWeatherContext(s, 0)).toBeNull()
+  })
+})
+
+describe('countArrosagesBetween', () => {
+  const log: GardenLogEntry[] = [
+    { type: 'arrosage', date: '2026-06-20', createdAt: 1 },
+    { type: 'arrosage', date: '2026-06-25', createdAt: 2 },
+    { type: 'arrosage', date: '2026-06-10', createdAt: 3 }, // hors fenêtre
+    { type: 'recolte', date: '2026-06-24', createdAt: 4 }, // mauvais type
+  ]
+  it('compte les arrosages dans la fenêtre [start, end] incluse', () => {
+    expect(countArrosagesBetween(log, '2026-06-18', '2026-06-25')).toBe(2)
   })
 })
