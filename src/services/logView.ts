@@ -5,6 +5,7 @@ import type {
   LogEntryType,
   Oya,
   Parcel,
+  WeatherSnapshot,
 } from '../data/model'
 
 export interface LogRefs {
@@ -70,4 +71,11 @@ export function formatLogDate(entry: GardenLogEntry, now: Date): string {
   if (diffDays === 1) return 'hier'
   if (diffDays >= 2 && diffDays <= 7) return `il y a ${diffDays} j`
   return `${String(d).padStart(2, '0')}/${String(m).padStart(2, '0')}/${y}`
+}
+
+export function formatSnapshotTemp(weather: WeatherSnapshot | undefined): string | null {
+  if (!weather) return null
+  const t = weather.tempC ?? weather.tempMaxC
+  if (t == null) return null
+  return `${Math.round(t)} °C`
 }
