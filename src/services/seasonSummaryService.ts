@@ -110,3 +110,84 @@ export function summarizeCropSeason(
 
   return rows.sort((a, b) => a.cropName.localeCompare(b.cropName))
 }
+
+export interface ParcelSeasonRow {
+  parcelId: number
+  parcelName: string
+  year: number
+  totalKg: number
+  yieldPerM2Kg?: number
+  grossValueEuros?: number
+  expensesEuros: number
+  netEuros?: number
+  totalWaterLiters: number
+  totalRainLiters: number
+}
+
+export function summarizeParcelSeason(
+  entries: GardenLogEntry[],
+  parcels: Parcel[],
+  crops: Crop[],
+  expenses: Expense[],
+  year: number,
+  settings: AppSettings,
+): ParcelSeasonRow[] {
+  const bounds = seasonBounds(year, settings)
+  const byParcel = new Map<number, ParcelSeasonRow>()
+
+  function rowFor(parcelId: number): ParcelSeasonRow {
+    const existing = byParcel.get(parcelId)
+    if (existing) return existing
+    const parcel = parcels.find((p) => p.id === parcelId)
+    const row: ParcelSeasonRow = {
+      parcelId,
+      parcelName: parcel?.name ?? '(parcelle supprimée)',
+      year,
+      totalKg: 0,
+      expensesEuros: 0,
+      totalWaterLiters: 0,
+      totalRainLiters: 0,
+    }
+    byParcel.set(parcelId, row)
+    return row
+  }
+
+  for (const e of entries) {
+    if (e.parcelId == null || !inWindow(e.date, bounds)) continue
+
+    if (e.type === 'recolte' && e.quantityKg != null) {
+      rowFor(e.parcelId).totalKg += e.quantityKg
+    } else if (e.type === 'arrosage' && e.volumeLiters != null) {
+      rowFor(e.parcelId).totalWaterLiters += e.volumeLiters
+    } else if (e.type === 'releve_pluie' && e.rainMm != null) {
+      const parcel = parcels.find((p) => p.id === e.parcelId)
+      if (parcel?.areaM2 != null) {
+        rowFor(e.parcelId).totalRainLiters += e.rainMm * parcel.areaM2
+      }
+    }
+  }
+
+  for (const exp of expenses) {
+    if (exp.parcelId == null || !inWindow(exp.date, bounds)) continue
+    if (!parcels.some((p) => p.id === exp.parcelId)) continue
+    rowFor(exp.parcelId).expensesEuros += exp.amountEuros
+  }
+
+  for (const row of byParcel.values()) {
+    let grossValueEuros: number | undefined
+    for (const e of entries) {
+      if (e.type !== 'recolte' || e.parcelId !== row.parcelId || e.quantityKg == null) continue
+      if (!inWindow(e.date, bounds)) continue
+      const crop = e.cropId != null ? crops.find((c) => c.id === e.cropId) : undefined
+      if (crop?.pricePerKg != null) {
+        grossValueEuros = (grossValueEuros ?? 0) + e.quantityKg * crop.pricePerKg
+      }
+    }
+    row.grossValueEuros = grossValueEuros
+    const parcel = parcels.find((p) => p.id === row.parcelId)
+    row.yieldPerM2Kg = parcel?.areaM2 != null && parcel.areaM2 > 0 ? row.totalKg / parcel.areaM2 : undefined
+    row.netEuros = grossValueEuros != null ? grossValueEuros - row.expensesEuros : undefined
+  }
+
+  return Array.from(byParcel.values()).sort((a, b) => a.parcelName.localeCompare(b.parcelName))
+}

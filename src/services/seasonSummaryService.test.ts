@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { seasonBounds, summarizeCropSeason } from './seasonSummaryService'
+import { seasonBounds, summarizeCropSeason, summarizeParcelSeason } from './seasonSummaryService'
 import { DEFAULT_SETTINGS } from './settingsService'
 import type { GardenLogEntry, Crop, Variety, Parcel, Expense } from '../data/model'
 
@@ -129,5 +129,72 @@ describe('summarizeCropSeason', () => {
       grossValueEuros: undefined,
       netEuros: undefined,
     })
+  })
+})
+
+describe('summarizeParcelSeason', () => {
+  const settings = { ...DEFAULT_SETTINGS, seasonStartMonth: 3, seasonEndMonth: 11 }
+
+  function entry(over: Partial<GardenLogEntry>): GardenLogEntry {
+    return { type: 'recolte', date: '2026-06-01', createdAt: Date.now(), ...over }
+  }
+
+  it('agrege le total kg toutes cultures confondues sur une parcelle', () => {
+    const parcels: Parcel[] = [{ id: 10, name: 'Carre nord', areaM2: 8 }]
+    const crops: Crop[] = [
+      { id: 1, name: 'Tomates', status: 'en_recolte', parcelId: 10, pricePerKg: 3 },
+      { id: 2, name: 'Courgettes', status: 'en_recolte', parcelId: 10, pricePerKg: 1 },
+    ]
+    const entries = [
+      entry({ cropId: 1, parcelId: 10, quantityKg: 2 }),
+      entry({ cropId: 2, parcelId: 10, quantityKg: 4 }),
+    ]
+    const rows = summarizeParcelSeason(entries, parcels, crops, [], 2026, settings)
+    expect(rows).toHaveLength(1)
+    expect(rows[0]).toMatchObject({
+      parcelId: 10,
+      parcelName: 'Carre nord',
+      totalKg: 6,
+      yieldPerM2Kg: 0.75,
+      grossValueEuros: 10,
+    })
+  })
+
+  it('additionne les litres arroses dans la fenetre de saison', () => {
+    const parcels: Parcel[] = [{ id: 10, name: 'Carre nord' }]
+    const entries = [
+      entry({ type: 'arrosage', parcelId: 10, date: '2026-04-01', volumeLiters: 20 }),
+      entry({ type: 'arrosage', parcelId: 10, date: '2026-12-15', volumeLiters: 99 }),
+    ]
+    const rows = summarizeParcelSeason(entries, parcels, [], [], 2026, settings)
+    expect(rows[0].totalWaterLiters).toBe(20)
+  })
+
+  it('additionne la pluie a partir des releves manuels convertis en litres via areaM2', () => {
+    const parcels: Parcel[] = [{ id: 10, name: 'Carre nord', areaM2: 10 }]
+    const entries = [
+      entry({ type: 'releve_pluie', parcelId: 10, date: '2026-05-01', rainMm: 4 }),
+      entry({ type: 'releve_pluie', parcelId: 10, date: '2026-05-02', rainMm: 2 }),
+    ]
+    const rows = summarizeParcelSeason(entries, parcels, [], [], 2026, settings)
+    expect(rows[0].totalRainLiters).toBe(60)
+  })
+
+  it('renvoie aucune ligne sans aucune entree', () => {
+    const parcels: Parcel[] = [{ id: 10, name: 'Carre nord', areaM2: 10 }]
+    const rows = summarizeParcelSeason([], parcels, [], [], 2026, settings)
+    expect(rows).toHaveLength(0)
+  })
+
+  it('soustrait les depenses liees au parcelId dans la fenetre de saison', () => {
+    const parcels: Parcel[] = [{ id: 10, name: 'Carre nord' }]
+    const crops: Crop[] = [{ id: 1, name: 'Tomates', status: 'en_recolte', parcelId: 10, pricePerKg: 3 }]
+    const expenses: Expense[] = [
+      { id: 1, label: 'Paillage', amountEuros: 7, date: '2026-04-01', amortization: 'consommable', parcelId: 10 },
+    ]
+    const entries = [entry({ cropId: 1, parcelId: 10, quantityKg: 2 })]
+    const rows = summarizeParcelSeason(entries, parcels, crops, expenses, 2026, settings)
+    expect(rows[0].expensesEuros).toBe(7)
+    expect(rows[0].netEuros).toBe(-1)
   })
 })
