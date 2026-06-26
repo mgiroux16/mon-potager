@@ -11,6 +11,7 @@ import type {
   SoilNote,
   AppSettings,
   Variety,
+  SeasonNote,
 } from './model'
 
 export class PotagerDB extends Dexie {
@@ -25,6 +26,7 @@ export class PotagerDB extends Dexie {
   soil!: Table<SoilNote, number>
   settings!: Table<AppSettings, number>
   varieties!: Table<Variety, number>
+  seasonNotes!: Table<SeasonNote, number>
 
   constructor() {
     super('mon-potager')
@@ -44,6 +46,9 @@ export class PotagerDB extends Dexie {
       log: '++id, type, date, parcelId, cropId, oyaId, treeId, varietyId',
       crops: '++id, name, parcelId, catalogId, status, varietyId',
       varieties: '++id, name, vegetable, catalogId',
+    })
+    this.version(3).stores({
+      seasonNotes: '++id, year, cropId, parcelId',
     })
   }
 }

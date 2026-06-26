@@ -6,7 +6,7 @@ beforeEach(async () => {
 })
 
 describe('PotagerDB', () => {
-  it('expose les 11 tables du modèle', () => {
+  it('expose les 12 tables du modèle', () => {
     const names = db.tables.map((t) => t.name).sort()
     expect(names).toEqual(
       [
@@ -16,6 +16,7 @@ describe('PotagerDB', () => {
         'log',
         'oyas',
         'parcels',
+        'seasonNotes',
         'settings',
         'soil',
         'tanks',

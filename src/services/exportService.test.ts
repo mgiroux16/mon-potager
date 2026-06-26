@@ -11,7 +11,7 @@ describe('exportService', () => {
     await db.log.add({ type: 'note', date: '2026-06-25', title: 'test', createdAt: 1 })
     await db.varieties.add({ name: 'Agata', vegetable: 'Pomme de terre' })
     const dump = await exportAll()
-    expect(dump.version).toBe(2)
+    expect(dump.version).toBe(3)
     expect(typeof dump.exportedAt).toBe('number')
     expect(dump.tables.log).toHaveLength(1)
     expect(dump.tables.varieties).toHaveLength(1)
