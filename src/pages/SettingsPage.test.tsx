@@ -64,4 +64,20 @@ describe('SettingsPage', () => {
 
     await waitFor(() => expect(screen.getByText(/Clé invalide/)).toBeInTheDocument())
   })
+
+  it('permet de modifier les mois de debut et fin de saison', async () => {
+    const user = userEvent.setup()
+    render(<SettingsPage />)
+    const startInput = await screen.findByLabelText('Mois de début de saison')
+    const endInput = await screen.findByLabelText('Mois de fin de saison')
+    await user.selectOptions(startInput, '4')
+    await user.selectOptions(endInput, '10')
+    await user.click(screen.getByRole('button', { name: 'Enregistrer' }))
+
+    await waitFor(async () => {
+      const saved = await db.settings.get(1)
+      expect(saved?.seasonStartMonth).toBe(4)
+      expect(saved?.seasonEndMonth).toBe(10)
+    })
+  })
 })

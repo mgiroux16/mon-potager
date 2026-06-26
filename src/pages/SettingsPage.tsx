@@ -100,6 +100,39 @@ export function SettingsPage() {
         </select>
       </label>
 
+      <div className="flex gap-3">
+        <label className="flex flex-1 flex-col gap-1 text-sm text-green-800">
+          Mois de début de saison
+          <select
+            aria-label="Mois de début de saison"
+            value={settings.seasonStartMonth}
+            onChange={(e) => update('seasonStartMonth', Number(e.target.value))}
+            className={fieldClass}
+          >
+            {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+              <option key={m} value={m}>
+                {m}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="flex flex-1 flex-col gap-1 text-sm text-green-800">
+          Mois de fin de saison
+          <select
+            aria-label="Mois de fin de saison"
+            value={settings.seasonEndMonth}
+            onChange={(e) => update('seasonEndMonth', Number(e.target.value))}
+            className={fieldClass}
+          >
+            {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => (
+              <option key={m} value={m}>
+                {m}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+
       <label className="flex flex-col gap-1 text-sm text-green-800">
         Clé Gemini
         <input
