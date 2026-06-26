@@ -10,6 +10,9 @@ const httpsForPhone = process.env.HTTPS ? [basicSsl()] : []
 
 // https://vite.dev/config/
 export default defineConfig({
+  // Servi depuis un sous-dossier sur GitHub Pages (https://mgiroux16.github.io/mon-potager/).
+  // En dev, base reste '/' pour ne pas casser localhost.
+  base: process.env.GITHUB_PAGES ? '/mon-potager/' : '/',
   plugins: [
     ...httpsForPhone,
     react(),
@@ -25,7 +28,8 @@ export default defineConfig({
         background_color: '#f0fdf4',
         display: 'standalone',
         orientation: 'portrait',
-        start_url: '/',
+        // Relatif au manifeste : marche aussi bien à la racine qu'en sous-dossier /mon-potager/.
+        start_url: '.',
         icons: [
           { src: 'icon-192.png', sizes: '192x192', type: 'image/png' },
           { src: 'icon-512.png', sizes: '512x512', type: 'image/png' },
