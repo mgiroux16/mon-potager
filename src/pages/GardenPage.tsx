@@ -90,6 +90,9 @@ export function GardenPage() {
         <Link to="/bilan" className="mt-2 inline-block text-sm font-medium text-green-700">
           Voir le bilan de saison →
         </Link>
+        <Link to="/calendrier" className="mt-2 block text-sm font-medium text-green-700">
+          Voir le calendrier du mois →
+        </Link>
       </section>
 
       <section>
