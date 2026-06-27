@@ -9,6 +9,7 @@ const mockOnAuthChange = vi.fn()
 vi.mock('../services/authService', () => ({
   onAuthChange: (cb: (user: User | null) => void) => mockOnAuthChange(cb),
   signInWithGoogle: vi.fn(),
+  consumeRedirectResult: vi.fn().mockResolvedValue(undefined),
 }))
 
 vi.mock('../data/syncHooks', () => ({ setSyncUid: vi.fn() }))

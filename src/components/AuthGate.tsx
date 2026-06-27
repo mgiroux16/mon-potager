@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { User } from 'firebase/auth'
-import { onAuthChange } from '../services/authService'
+import { onAuthChange, consumeRedirectResult } from '../services/authService'
 import { setSyncUid } from '../data/syncHooks'
 import { runInitialSync, startRealtimeSync, stopRealtimeSync, purgeOldTombstones } from '../services/syncService'
 import { LoginPage } from '../pages/LoginPage'
@@ -10,6 +10,9 @@ export function AuthGate({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null | undefined>(undefined)
 
   useEffect(() => onAuthChange(setUser), [])
+  useEffect(() => {
+    void consumeRedirectResult()
+  }, [])
 
   useEffect(() => {
     if (user == null) {
