@@ -1,5 +1,6 @@
 import { db } from '../data/db'
 import type { TableName } from '../data/syncHooks'
+import { withMaintenanceMode } from '../data/syncHooks'
 import { fetchAllRecords, pushRecord, watchTable } from '../data/firestoreClient'
 import { resolveMerge } from './syncMerge'
 
@@ -87,4 +88,20 @@ export function stopRealtimeSync(): void {
   while (unsubscribers.length > 0) {
     unsubscribers.pop()?.()
   }
+}
+
+const TOMBSTONE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000
+
+export async function purgeOldTombstones(): Promise<void> {
+  const cutoff = Date.now() - TOMBSTONE_MAX_AGE_MS
+  await withMaintenanceMode(async () => {
+    for (const table of TABLE_NAMES) {
+      const rows = (await db.table(table).toArray()) as Record<string, unknown>[]
+      for (const row of rows) {
+        if (typeof row.deletedAt === 'number' && row.deletedAt < cutoff) {
+          await db.table(table).delete(row.id as string)
+        }
+      }
+    }
+  })
 }

@@ -3,7 +3,7 @@ import type { ReactNode } from 'react'
 import type { User } from 'firebase/auth'
 import { onAuthChange } from '../services/authService'
 import { setSyncUid } from '../data/syncHooks'
-import { runInitialSync, startRealtimeSync, stopRealtimeSync } from '../services/syncService'
+import { runInitialSync, startRealtimeSync, stopRealtimeSync, purgeOldTombstones } from '../services/syncService'
 import { LoginPage } from '../pages/LoginPage'
 
 export function AuthGate({ children }: { children: ReactNode }) {
@@ -18,7 +18,9 @@ export function AuthGate({ children }: { children: ReactNode }) {
       return
     }
     setSyncUid(user.uid)
-    void runInitialSync(user.uid).then(() => startRealtimeSync(user.uid))
+    void purgeOldTombstones()
+      .then(() => runInitialSync(user.uid))
+      .then(() => startRealtimeSync(user.uid))
     return () => stopRealtimeSync()
   }, [user])
 

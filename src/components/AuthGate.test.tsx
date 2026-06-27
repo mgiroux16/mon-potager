@@ -3,7 +3,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import type { User } from 'firebase/auth'
 import { AuthGate } from './AuthGate'
 import { setSyncUid } from '../data/syncHooks'
-import { runInitialSync, startRealtimeSync, stopRealtimeSync } from '../services/syncService'
+import { runInitialSync, startRealtimeSync, stopRealtimeSync, purgeOldTombstones } from '../services/syncService'
 
 const mockOnAuthChange = vi.fn()
 vi.mock('../services/authService', () => ({
@@ -16,6 +16,7 @@ vi.mock('../services/syncService', () => ({
   runInitialSync: vi.fn().mockResolvedValue(undefined),
   startRealtimeSync: vi.fn(),
   stopRealtimeSync: vi.fn(),
+  purgeOldTombstones: vi.fn().mockResolvedValue(undefined),
 }))
 
 beforeEach(() => {
@@ -71,6 +72,7 @@ describe('AuthGate', () => {
       </AuthGate>,
     )
     expect(setSyncUid).toHaveBeenCalledWith('abc')
+    expect(purgeOldTombstones).toHaveBeenCalled()
     await waitFor(() => expect(runInitialSync).toHaveBeenCalledWith('abc'))
     await waitFor(() => expect(startRealtimeSync).toHaveBeenCalledWith('abc'))
   })

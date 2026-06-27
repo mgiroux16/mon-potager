@@ -20,9 +20,19 @@ export type TableName = (typeof TABLE_NAMES)[number]
 
 let installed = false
 let activeUid: string | null = null
+let maintenanceMode = false
 
 export function setSyncUid(uid: string | null): void {
   activeUid = uid
+}
+
+// Permet a une operation de maintenance (ex: purge des tombstones) de voir les lignes
+// avec deletedAt, que le hook 'reading' filtre normalement de toute lecture applicative.
+export function withMaintenanceMode<T>(fn: () => Promise<T>): Promise<T> {
+  maintenanceMode = true
+  return fn().finally(() => {
+    maintenanceMode = false
+  })
 }
 
 export function installSyncHooks(): void {
@@ -47,6 +57,7 @@ export function installSyncHooks(): void {
     })
 
     table.hook('reading', (obj) => {
+      if (maintenanceMode) return obj
       if (obj === undefined) return obj
       const row = obj as Record<string, unknown>
       return typeof row.deletedAt === 'number' ? undefined : obj

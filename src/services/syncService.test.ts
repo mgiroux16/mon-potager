@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import Dexie from 'dexie'
 import { db, newId } from '../data/db'
-import { runInitialSync, getSyncStatus } from './syncService'
+import { runInitialSync, getSyncStatus, purgeOldTombstones } from './syncService'
 import * as firestoreClient from '../data/firestoreClient'
 
 const DB_NAME = 'mon-potager'
@@ -87,5 +87,30 @@ describe('getSyncStatus', () => {
     await expect(runInitialSync('uid-test')).rejects.toThrow('reseau coupe')
 
     expect(getSyncStatus()).toBe('error')
+  })
+})
+
+describe('purgeOldTombstones', () => {
+  it('supprime physiquement les lignes locales avec deletedAt vieux de plus de 30 jours', async () => {
+    const id = newId()
+    const old = Date.now() - 31 * 24 * 60 * 60 * 1000
+    await db.table('parcels').add({ id, name: 'Vieux tombstone', deletedAt: old, updatedAt: old })
+
+    await purgeOldTombstones()
+
+    // .get()/.toArray() filtrent deja les lignes deletedAt (hook reading) : on verifie la
+    // disparition physique via count(), qui ne passe pas par ce hook.
+    expect(await db.table('parcels').count()).toBe(0)
+  })
+
+  it('garde les tombstones recents', async () => {
+    const id = newId()
+    const recent = Date.now() - 5 * 24 * 60 * 60 * 1000
+    await db.table('parcels').add({ id, name: 'Tombstone recent', deletedAt: recent, updatedAt: recent })
+
+    await purgeOldTombstones()
+
+    expect(await db.table('parcels').count()).toBe(1)
+    void id
   })
 })
