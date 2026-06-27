@@ -3,6 +3,8 @@ import type { FormEvent } from 'react'
 import type { AppSettings } from '../data/model'
 import { getSettings, saveSettings } from '../services/settingsService'
 import { testGeminiConnection } from '../services/geminiService'
+import { signOutUser } from '../services/authService'
+import { auth } from '../data/firebase'
 import { ExportButton } from '../components/ExportButton'
 
 type TestState =
@@ -180,6 +182,20 @@ export function SettingsPage() {
       <section className="flex flex-col gap-2">
         <h2 className="text-sm font-semibold text-green-900">Sauvegarde</h2>
         <ExportButton />
+      </section>
+
+      <section className="flex flex-col gap-2">
+        <h2 className="text-sm font-semibold text-green-900">Compte</h2>
+        {auth.currentUser && (
+          <p className="text-sm text-green-700">{auth.currentUser.email}</p>
+        )}
+        <button
+          type="button"
+          onClick={() => signOutUser()}
+          className="rounded-lg border border-red-200 px-4 py-2 text-sm font-medium text-red-600"
+        >
+          Se déconnecter
+        </button>
       </section>
     </form>
   )
