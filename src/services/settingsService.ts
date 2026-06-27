@@ -12,7 +12,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   significantRainMm: 5,
   heatThresholdC: 30,
   defaultWateringFlowLh: 100,
-  totalTankCapacityLiters: 2500,
+  totalTankCapacityLiters: 5000,
   aiLevel: 'photo_assistant',
   seasonStartMonth: 3,
   seasonEndMonth: 11,

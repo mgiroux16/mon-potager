@@ -19,6 +19,8 @@ export function ParcelCard({ parcel }: ParcelCardProps) {
   const [editingPhoto, setEditingPhoto] = useState(false)
   const [drawing, setDrawing] = useState(false)
   const [pendingPhotoUrl, setPendingPhotoUrl] = useState<string | null>(null)
+  const [editingArea, setEditingArea] = useState(false)
+  const [area, setArea] = useState(parcel.areaM2 != null ? String(parcel.areaM2) : '')
 
   const hasZone = !!parcel.photoUrl && (parcel.polygon?.length ?? 0) >= 3
 
@@ -29,6 +31,22 @@ export function ParcelCard({ parcel }: ParcelCardProps) {
       await db.parcels.update(parcel.id, { name: trimmed })
     } else {
       setName(parcel.name)
+    }
+  }
+
+  async function saveArea() {
+    setEditingArea(false)
+    const trimmed = area.trim()
+    if (parcel.id == null) return
+    if (trimmed === '') {
+      await db.parcels.update(parcel.id, { areaM2: undefined })
+      return
+    }
+    const parsed = Number(trimmed.replace(',', '.'))
+    if (!Number.isNaN(parsed) && parsed >= 0) {
+      await db.parcels.update(parcel.id, { areaM2: parsed })
+    } else {
+      setArea(parcel.areaM2 != null ? String(parcel.areaM2) : '')
     }
   }
 
@@ -122,9 +140,29 @@ export function ParcelCard({ parcel }: ParcelCardProps) {
               {parcel.name}
             </span>
           ))}
-        {parcel.areaM2 && !hasZone ? (
-          <span className="text-sm text-gray-500">· {parcel.areaM2} m²</span>
-        ) : null}
+        {!hasZone &&
+          (editingArea ? (
+            <input
+              aria-label="Surface en m²"
+              type="number"
+              step="0.1"
+              autoFocus
+              value={area}
+              onChange={(e) => setArea(e.target.value)}
+              onBlur={saveArea}
+              onKeyDown={(e) => e.key === 'Enter' && saveArea()}
+              className="w-16 rounded border border-green-300 px-1 text-sm"
+            />
+          ) : (
+            <button
+              type="button"
+              aria-label="Modifier la surface"
+              onClick={() => setEditingArea(true)}
+              className="text-sm text-gray-500"
+            >
+              · {parcel.areaM2 != null ? `${parcel.areaM2} m²` : 'm²'}
+            </button>
+          ))}
 
         <div className="ml-auto flex items-center gap-2">
           <button

@@ -18,11 +18,11 @@ export const seedParcels: Parcel[] = [
 ]
 
 export const seedTanks: WaterTank[] = [
-  { id: 1, name: 'Cuve 1', capacityLiters: 500, estimatedLiters: 300 },
-  { id: 2, name: 'Cuve 2', capacityLiters: 500, estimatedLiters: 300 },
-  { id: 3, name: 'Cuve 3', capacityLiters: 500, estimatedLiters: 250 },
-  { id: 4, name: 'Cuve 4', capacityLiters: 500, estimatedLiters: 200 },
-  { id: 5, name: 'Cuve 5', capacityLiters: 500, estimatedLiters: 200 },
+  { id: 1, name: 'Cuve 1', capacityLiters: 1000, estimatedLiters: 300 },
+  { id: 2, name: 'Cuve 2', capacityLiters: 1000, estimatedLiters: 300 },
+  { id: 3, name: 'Cuve 3', capacityLiters: 1000, estimatedLiters: 250 },
+  { id: 4, name: 'Cuve 4', capacityLiters: 1000, estimatedLiters: 200 },
+  { id: 5, name: 'Cuve 5', capacityLiters: 1000, estimatedLiters: 200 },
 ]
 
 export const seedCatalog: CatalogItem[] = [
