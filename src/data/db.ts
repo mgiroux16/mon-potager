@@ -30,18 +30,18 @@ const TABLE_NAMES = [
 ] as const
 
 const FINAL_STORES: Record<string, string> = {
-  log: 'id, type, date, parcelId, cropId, oyaId, treeId, varietyId',
-  parcels: 'id, name',
-  crops: 'id, name, parcelId, catalogId, status, varietyId',
-  oyas: 'id, name, parcelId',
-  trees: 'id, name, parcelId',
-  tanks: 'id, name',
-  catalog: 'id, vegetable, family',
-  expenses: 'id, date, amortization, parcelId, cropId',
-  soil: 'id, date, parcelId',
-  settings: 'id',
-  varieties: 'id, name, vegetable, catalogId',
-  seasonNotes: 'id, year, cropId, parcelId',
+  log: 'id, type, date, parcelId, cropId, oyaId, treeId, varietyId, updatedAt',
+  parcels: 'id, name, updatedAt',
+  crops: 'id, name, parcelId, catalogId, status, varietyId, updatedAt',
+  oyas: 'id, name, parcelId, updatedAt',
+  trees: 'id, name, parcelId, updatedAt',
+  tanks: 'id, name, updatedAt',
+  catalog: 'id, vegetable, family, updatedAt',
+  expenses: 'id, date, amortization, parcelId, cropId, updatedAt',
+  soil: 'id, date, parcelId, updatedAt',
+  settings: 'id, updatedAt',
+  varieties: 'id, name, vegetable, catalogId, updatedAt',
+  seasonNotes: 'id, year, cropId, parcelId, updatedAt',
 }
 
 const TMP_SUFFIX = '_v4tmp'
@@ -199,6 +199,21 @@ export class PotagerDB extends Dexie {
     this.version(7).stores(
       Object.fromEntries(TABLE_NAMES.map((name) => [`${name}${TMP_SUFFIX}`, null])),
     )
+
+    this.version(8)
+      .stores(Object.fromEntries(TABLE_NAMES.map((name) => [name, FINAL_STORES[name]])))
+      .upgrade(async (tx) => {
+        for (const name of TABLE_NAMES) {
+          const rows = await tx.table(name).toArray()
+          for (const row of rows) {
+            if (typeof row.updatedAt !== 'number') {
+              await tx.table(name).update(row.id, {
+                updatedAt: typeof row.createdAt === 'number' ? row.createdAt : Date.now(),
+              })
+            }
+          }
+        }
+      })
   }
 }
 

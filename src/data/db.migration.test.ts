@@ -128,3 +128,27 @@ describe('migration UUID (v3 -> v4)', () => {
     upgraded.close()
   })
 })
+
+describe('migration v8 (ajout updatedAt/deletedAt)', () => {
+  it("donne un updatedAt aux lignes existantes qui n'en ont pas", async () => {
+    const legacy = new LegacyDB()
+    await legacy.open()
+    const parcelId = await legacy.table('parcels').add({ name: 'Planche tomates', areaM2: 25 })
+    legacy.close()
+
+    const upgraded = new PotagerDB()
+    await upgraded.open()
+    const parcel = await upgraded.parcels.get((await upgraded.parcels.toArray())[0].id as string)
+    expect(parcel?.updatedAt).toBeTypeOf('number')
+    upgraded.close()
+    void parcelId
+  })
+
+  it('peut filtrer/indexer par updatedAt sans erreur', async () => {
+    const upgraded = new PotagerDB()
+    await upgraded.open()
+    const rows = await upgraded.parcels.where('updatedAt').above(0).toArray()
+    expect(rows).toEqual([])
+    upgraded.close()
+  })
+})
