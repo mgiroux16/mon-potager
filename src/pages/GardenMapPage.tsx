@@ -6,17 +6,17 @@ import { db } from '../data/db'
 import type { Parcel } from '../data/model'
 
 const CELL = 32
-const GRID_COLS = 20
-const GRID_ROWS = 16
+const GRID_COLS = 45
+const GRID_ROWS = 36
 const CLICK_THRESHOLD = 5
 
 const ZONE_COLORS = [
-  'rgb(187,247,208)',
-  'rgb(191,219,254)',
-  'rgb(254,240,138)',
-  'rgb(251,207,232)',
-  'rgb(233,213,255)',
-  'rgb(254,202,202)',
+  'rgb(74,222,128)',
+  'rgb(96,165,250)',
+  'rgb(250,204,21)',
+  'rgb(244,114,182)',
+  'rgb(192,132,252)',
+  'rgb(248,113,113)',
 ]
 
 function colorFor(id: number) {
@@ -245,8 +245,9 @@ export function GardenMapPage() {
               width: cell(GRID_COLS),
               height: cell(GRID_ROWS),
               '--cell': `${CELL * zoom}px`,
+              backgroundColor: 'rgb(240,253,244)',
               backgroundImage:
-                'linear-gradient(to right, rgba(34,197,94,0.15) 1px, transparent 1px), linear-gradient(to bottom, rgba(34,197,94,0.15) 1px, transparent 1px)',
+                'linear-gradient(to right, rgba(21,128,61,0.5) 1px, transparent 1px), linear-gradient(to bottom, rgba(21,128,61,0.5) 1px, transparent 1px)',
             } as React.CSSProperties
           }
         >
@@ -264,14 +265,14 @@ export function GardenMapPage() {
                 key={p.id}
                 data-testid={`map-block-${p.id}`}
                 onMouseDown={handleBlockPointerDown(p)}
-                className="absolute flex select-none items-center justify-center rounded-md border-2 text-center text-xs font-medium text-green-900"
+                className="absolute flex select-none items-center justify-center rounded-md border-2 text-center text-xs font-semibold text-gray-900 shadow-sm"
                 style={{
                   left: cell(x),
                   top: cell(y),
                   width: cell(w),
                   height: cell(h),
                   backgroundColor: colorFor(p.id),
-                  borderColor: isSelected ? 'rgb(34 197 94)' : 'transparent',
+                  borderColor: isSelected ? 'rgb(21 128 61)' : 'rgba(21,128,61,0.6)',
                   transform: `rotate(${p.mapRotation ?? 0}deg)`,
                   cursor: 'grab',
                 }}
