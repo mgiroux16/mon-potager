@@ -6,6 +6,7 @@ import { db } from '../data/db'
 import type { Crop, VegetableFamily } from '../data/model'
 import { getInactiveParcels, getHarvestReminders, getRotationReminders } from '../services/reminderService'
 import { ParcelCard } from '../components/ParcelCard'
+import { nextFreeMapSlot, DEFAULT_MAP_SIZE_M } from '../services/mapLayout'
 
 function todayISO(): string {
   return new Date().toISOString().slice(0, 10)
@@ -134,7 +135,17 @@ export function GardenPage() {
             onSubmit={async (e) => {
               e.preventDefault()
               const trimmed = newParcelName.trim()
-              if (trimmed) await db.parcels.add({ name: trimmed })
+              if (trimmed) {
+                const slot = nextFreeMapSlot(parcels)
+                await db.parcels.add({
+                  name: trimmed,
+                  mapX: slot.x,
+                  mapY: slot.y,
+                  mapWidth: DEFAULT_MAP_SIZE_M,
+                  mapHeight: DEFAULT_MAP_SIZE_M,
+                  mapRotation: 0,
+                })
+              }
               setNewParcelName('')
               setCreatingParcel(false)
             }}

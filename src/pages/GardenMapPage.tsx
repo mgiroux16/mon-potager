@@ -4,6 +4,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { useNavigate } from 'react-router-dom'
 import { db } from '../data/db'
 import type { Parcel } from '../data/model'
+import { nextFreeMapSlot } from '../services/mapLayout'
 
 const CELL_PX = 32
 const TOTAL_WIDTH_M = 30
@@ -34,13 +35,6 @@ function colorFor(id: number) {
   return ZONE_COLORS[id % ZONE_COLORS.length]
 }
 
-function nextFreeSlot(parcels: Parcel[]): { x: number; y: number } {
-  const placed = parcels.filter((p) => p.mapWidth != null && p.mapHeight != null)
-  if (placed.length === 0) return { x: 0, y: 0 }
-  const maxBottom = Math.max(...placed.map((p) => (p.mapY ?? 0) + (p.mapHeight ?? 1)))
-  return { x: 0, y: maxBottom }
-}
-
 interface DragState {
   id: number
   pointerStartX: number
@@ -64,6 +58,9 @@ export function GardenMapPage() {
   const [scale, setScale] = useState(1)
   const gridCols = Math.round(TOTAL_WIDTH_M / scale)
   const gridRows = Math.round(TOTAL_HEIGHT_M / scale)
+  // Chaque case fait toujours CELL_PX px a l'ecran ; seule sa valeur en metres change avec le zoom.
+  const gridWidthPx = gridCols * CELL_PX
+  const gridHeightPx = gridRows * CELL_PX
   const pinchRef = useRef<{ startDistance: number; startScale: number } | null>(null)
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [renamingId, setRenamingId] = useState<number | null>(null)
@@ -83,12 +80,12 @@ export function GardenMapPage() {
 
   async function placeParcel(parcel: Parcel) {
     if (parcel.id == null) return
-    const slot = nextFreeSlot(parcels)
+    const slot = nextFreeMapSlot(parcels)
     await db.parcels.update(parcel.id, { mapX: slot.x, mapY: slot.y, mapWidth: 2, mapHeight: 2, mapRotation: 0 })
   }
 
   async function addParcel() {
-    const slot = nextFreeSlot(parcels)
+    const slot = nextFreeMapSlot(parcels)
     await db.parcels.add({ name: 'Nouvelle zone', mapX: slot.x, mapY: slot.y, mapWidth: 2, mapHeight: 2, mapRotation: 0 })
   }
 
@@ -100,7 +97,7 @@ export function GardenMapPage() {
   }
 
   async function duplicateParcel(parcel: Parcel) {
-    const slot = nextFreeSlot(parcels)
+    const slot = nextFreeMapSlot(parcels)
     await db.parcels.add({
       name: `${parcel.name} (copie)`,
       mapX: slot.x,
@@ -290,12 +287,12 @@ export function GardenMapPage() {
       >
         <div className="flex">
           <div style={{ width: 28, flexShrink: 0 }} />
-          <div className="flex shrink-0" style={{ width: cell(gridCols) }}>
+          <div className="flex shrink-0" style={{ width: gridWidthPx }}>
             {Array.from({ length: gridCols + 1 }, (_, i) => (
               <div
                 key={i}
                 className="shrink-0 border-l border-green-200 text-[10px] text-gray-400"
-                style={{ width: i === gridCols ? 0 : cell(scale) }}
+                style={{ width: i === gridCols ? 0 : CELL_PX }}
               >
                 {i % 5 === 0 ? `${(i * scale).toFixed(scale < 1 ? 2 : 0)}m` : ''}
               </div>
@@ -308,7 +305,7 @@ export function GardenMapPage() {
               <div
                 key={i}
                 className="shrink-0 border-t border-green-200 text-[10px] text-gray-400"
-                style={{ height: i === gridRows ? 0 : cell(scale) }}
+                style={{ height: i === gridRows ? 0 : CELL_PX }}
               >
                 {i % 5 === 0 ? `${(i * scale).toFixed(scale < 1 ? 2 : 0)}m` : ''}
               </div>
@@ -321,23 +318,23 @@ export function GardenMapPage() {
             onMouseLeave={handleGridPointerUp}
             className="relative shrink-0"
             style={{
-              width: cell(gridCols),
-              height: cell(gridRows),
+              width: gridWidthPx,
+              height: gridHeightPx,
               backgroundColor: 'rgb(240,253,244)',
             }}
           >
             <svg
               className="pointer-events-none absolute inset-0"
-              width={cell(gridCols)}
-              height={cell(gridRows)}
+              width={gridWidthPx}
+              height={gridHeightPx}
             >
               {Array.from({ length: gridCols + 1 }, (_, i) => (
                 <line
                   key={`v${i}`}
-                  x1={cell(i * scale)}
+                  x1={i * CELL_PX}
                   y1={0}
-                  x2={cell(i * scale)}
-                  y2={cell(gridRows)}
+                  x2={i * CELL_PX}
+                  y2={gridHeightPx}
                   stroke="rgba(21,128,61,0.5)"
                   strokeWidth={1}
                 />
@@ -346,9 +343,9 @@ export function GardenMapPage() {
                 <line
                   key={`h${i}`}
                   x1={0}
-                  y1={cell(i * scale)}
-                  x2={cell(gridCols)}
-                  y2={cell(i * scale)}
+                  y1={i * CELL_PX}
+                  x2={gridWidthPx}
+                  y2={i * CELL_PX}
                   stroke="rgba(21,128,61,0.5)"
                   strokeWidth={1}
                 />

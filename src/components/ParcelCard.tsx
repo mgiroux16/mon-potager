@@ -6,6 +6,7 @@ import { db } from '../data/db'
 import type { Parcel } from '../data/model'
 import { compressImage } from '../services/imageService'
 import { isPointInPolygon } from '../services/geometry'
+import { nextFreeMapSlot } from '../services/mapLayout'
 import { ParcelPolygonEditor } from './ParcelPolygonEditor'
 
 interface ParcelCardProps {
@@ -51,6 +52,8 @@ export function ParcelCard({ parcel }: ParcelCardProps) {
   }
 
   async function duplicateParcel() {
+    const all = await db.parcels.toArray()
+    const slot = nextFreeMapSlot(all)
     await db.parcels.add({
       name: `${parcel.name} (copie)`,
       areaM2: parcel.areaM2,
@@ -60,6 +63,11 @@ export function ParcelCard({ parcel }: ParcelCardProps) {
       notes: parcel.notes,
       photoUrl: parcel.photoUrl,
       polygon: parcel.polygon,
+      mapX: slot.x,
+      mapY: slot.y,
+      mapWidth: parcel.mapWidth ?? 2,
+      mapHeight: parcel.mapHeight ?? 2,
+      mapRotation: parcel.mapRotation ?? 0,
     })
   }
 
