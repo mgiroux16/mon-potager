@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom'
 import { db } from '../data/db'
 import type { Crop, VegetableFamily } from '../data/model'
 import { getInactiveParcels, getHarvestReminders, getRotationReminders } from '../services/reminderService'
+import { ParcelCard } from '../components/ParcelCard'
 
 function todayISO(): string {
   return new Date().toISOString().slice(0, 10)
@@ -73,6 +74,9 @@ export function GardenPage() {
   const log = useLiveQuery(() => db.log.toArray(), [], [])
   const catalog = useLiveQuery(() => db.catalog.toArray(), [], [])
 
+  const [creatingParcel, setCreatingParcel] = useState(false)
+  const [newParcelName, setNewParcelName] = useState('')
+
   const today = todayISO()
   const inactiveParcels = getInactiveParcels(parcels, log, today)
   const harvestReminders = getHarvestReminders(crops, catalog, log, today)
@@ -116,14 +120,42 @@ export function GardenPage() {
         <h2 className="flex items-center gap-2 text-lg font-semibold text-green-700">
           <MapPin size={18} /> Parcelles
         </h2>
-        <ul className="mt-2 space-y-1">
+        <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
           {parcels.map((p) => (
-            <li key={p.id} className="rounded bg-green-50 px-3 py-2">
-              <span className="font-medium">{p.name}</span>
-              {p.areaM2 ? <span className="text-sm text-gray-500"> · {p.areaM2} m²</span> : null}
-            </li>
+            <ParcelCard key={p.id} parcel={p} />
           ))}
-        </ul>
+        </div>
+        {creatingParcel ? (
+          <form
+            className="mt-2 flex gap-2"
+            onSubmit={async (e) => {
+              e.preventDefault()
+              const trimmed = newParcelName.trim()
+              if (trimmed) await db.parcels.add({ name: trimmed })
+              setNewParcelName('')
+              setCreatingParcel(false)
+            }}
+          >
+            <input
+              autoFocus
+              aria-label="Nom de la nouvelle parcelle"
+              value={newParcelName}
+              onChange={(e) => setNewParcelName(e.target.value)}
+              className="rounded border border-green-300 px-2 py-1 text-sm"
+            />
+            <button type="submit" className="rounded bg-green-600 px-3 py-1 text-sm text-white">
+              Créer
+            </button>
+          </form>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setCreatingParcel(true)}
+            className="mt-2 text-sm font-medium text-green-700"
+          >
+            + Nouvelle parcelle
+          </button>
+        )}
       </section>
 
       <section>

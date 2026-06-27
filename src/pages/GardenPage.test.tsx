@@ -75,4 +75,18 @@ describe('GardenPage', () => {
     })
     expect(screen.queryByRole('heading', { name: 'Rappels' })).not.toBeInTheDocument()
   })
+
+  it('permet de creer une nouvelle parcelle par son nom', async () => {
+    render(<GardenPage />, { wrapper: MemoryRouter })
+    await waitFor(() => {
+      expect(screen.getAllByText('Planche tomates').length).toBeGreaterThan(0)
+    })
+    fireEvent.click(screen.getByRole('button', { name: '+ Nouvelle parcelle' }))
+    const input = screen.getByLabelText('Nom de la nouvelle parcelle')
+    fireEvent.change(input, { target: { value: 'Carré nouvelle parcelle' } })
+    fireEvent.submit(input.closest('form')!)
+    await waitFor(() => {
+      expect(screen.getByText('Carré nouvelle parcelle')).toBeInTheDocument()
+    })
+  })
 })
