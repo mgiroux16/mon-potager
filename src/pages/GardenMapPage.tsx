@@ -5,9 +5,10 @@ import { useNavigate } from 'react-router-dom'
 import { db } from '../data/db'
 import type { Parcel } from '../data/model'
 
-const CELL = 32
-const GRID_COLS = 45
-const GRID_ROWS = 36
+const CELL_PX = 32
+const TOTAL_WIDTH_M = 10
+const TOTAL_HEIGHT_M = 30
+const SCALE_STEPS = [0.25, 0.5, 1, 2]
 const CLICK_THRESHOLD = 5
 
 const ZONE_COLORS = [
@@ -50,7 +51,9 @@ interface ResizeState {
 export function GardenMapPage() {
   const navigate = useNavigate()
   const parcels = useLiveQuery(() => db.parcels.toArray(), [], [])
-  const [zoom, setZoom] = useState(1)
+  const [scale, setScale] = useState(1)
+  const gridCols = Math.round(TOTAL_WIDTH_M / scale)
+  const gridRows = Math.round(TOTAL_HEIGHT_M / scale)
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [renamingId, setRenamingId] = useState<number | null>(null)
   const [renameValue, setRenameValue] = useState('')
@@ -62,8 +65,9 @@ export function GardenMapPage() {
   const placed = parcels.filter((p) => p.mapWidth != null && p.mapHeight != null && p.id != null)
   const unplaced = parcels.filter((p) => p.mapWidth == null || p.mapHeight == null)
 
+  // n est en metres reels ; chaque case de la grille represente `scale` metres
   function cell(n: number) {
-    return n * CELL * zoom
+    return (n / scale) * CELL_PX
   }
 
   async function placeParcel(parcel: Parcel) {
@@ -144,15 +148,15 @@ export function GardenMapPage() {
       const dx = e.clientX - d.pointerStartX
       const dy = e.clientY - d.pointerStartY
       if (Math.abs(dx) > CLICK_THRESHOLD || Math.abs(dy) > CLICK_THRESHOLD) d.moved = true
-      const newX = d.originMapX + dx / (CELL * zoom)
-      const newY = d.originMapY + dy / (CELL * zoom)
+      const newX = d.originMapX + (dx / CELL_PX) * scale
+      const newY = d.originMapY + (dy / CELL_PX) * scale
       setLivePositions((prev) => ({ ...prev, [d.id]: { x: newX, y: newY } }))
     } else if (resizeRef.current) {
       const r = resizeRef.current
       const dx = e.clientX - r.pointerStartX
       const dy = e.clientY - r.pointerStartY
-      const newW = Math.max(1, r.originWidth + dx / (CELL * zoom))
-      const newH = Math.max(1, r.originHeight + dy / (CELL * zoom))
+      const newW = Math.max(scale, r.originWidth + (dx / CELL_PX) * scale)
+      const newH = Math.max(scale, r.originHeight + (dy / CELL_PX) * scale)
       setLiveSizes((prev) => ({ ...prev, [r.id]: { w: newW, h: newH } }))
     }
   }
@@ -163,8 +167,8 @@ export function GardenMapPage() {
       dragRef.current = null
       const live = livePositions[d.id]
       if (live) {
-        const snappedX = Math.max(0, Math.round(live.x))
-        const snappedY = Math.max(0, Math.round(live.y))
+        const snappedX = Math.max(0, Math.round(live.x / scale) * scale)
+        const snappedY = Math.max(0, Math.round(live.y / scale) * scale)
         await db.parcels.update(d.id, { mapX: snappedX, mapY: snappedY })
         setLivePositions((prev) => {
           const next = { ...prev }
@@ -179,8 +183,8 @@ export function GardenMapPage() {
       resizeRef.current = null
       const live = liveSizes[r.id]
       if (live) {
-        const snappedW = Math.max(1, Math.round(live.w))
-        const snappedH = Math.max(1, Math.round(live.h))
+        const snappedW = Math.max(scale, Math.round(live.w / scale) * scale)
+        const snappedH = Math.max(scale, Math.round(live.h / scale) * scale)
         await db.parcels.update(r.id, { mapWidth: snappedW, mapHeight: snappedH })
         setLiveSizes((prev) => {
           const next = { ...prev }
@@ -214,44 +218,69 @@ export function GardenMapPage() {
       </p>
 
       <div className="flex items-center gap-2">
-        <button
-          type="button"
-          aria-label="Zoomer moins"
-          onClick={() => setZoom((z) => Math.max(0.5, z - 0.25))}
-          className="rounded border border-green-300 px-2 py-1 text-sm text-green-700"
-        >
-          −
-        </button>
-        <span className="text-sm text-gray-500">x{zoom.toFixed(2)}</span>
-        <button
-          type="button"
-          aria-label="Zoomer plus"
-          onClick={() => setZoom((z) => Math.min(2, z + 0.25))}
-          className="rounded border border-green-300 px-2 py-1 text-sm text-green-700"
-        >
-          +
-        </button>
+        <span className="text-sm text-gray-500">Échelle : 1 case =</span>
+        {SCALE_STEPS.map((s) => (
+          <button
+            key={s}
+            type="button"
+            aria-label={`Échelle ${s}m par case`}
+            onClick={() => setScale(s)}
+            className={`rounded border px-2 py-1 text-sm ${
+              scale === s
+                ? 'border-green-600 bg-green-600 text-white'
+                : 'border-green-300 text-green-700'
+            }`}
+          >
+            {s}m
+          </button>
+        ))}
       </div>
 
       <div className="overflow-auto rounded-lg border border-green-200">
-        <div
-          data-testid="garden-map-grid"
-          onMouseMove={handleGridPointerMove}
-          onMouseUp={handleGridPointerUp}
-          onMouseLeave={handleGridPointerUp}
-          className="relative bg-[length:var(--cell)_var(--cell)]"
-          style={
-            {
-              width: cell(GRID_COLS),
-              height: cell(GRID_ROWS),
-              '--cell': `${CELL * zoom}px`,
-              backgroundColor: 'rgb(240,253,244)',
-              backgroundImage:
-                'linear-gradient(to right, rgba(21,128,61,0.5) 1px, transparent 1px), linear-gradient(to bottom, rgba(21,128,61,0.5) 1px, transparent 1px)',
-            } as React.CSSProperties
-          }
-        >
-          {placed.map((p) => {
+        <div className="flex">
+          <div style={{ width: 28, flexShrink: 0 }} />
+          <div className="flex" style={{ width: cell(gridCols) }}>
+            {Array.from({ length: gridCols + 1 }, (_, i) => (
+              <div
+                key={i}
+                className="shrink-0 border-l border-green-200 text-[10px] text-gray-400"
+                style={{ width: i === gridCols ? 0 : cell(scale) }}
+              >
+                {i % 5 === 0 ? `${(i * scale).toFixed(scale < 1 ? 2 : 0)}m` : ''}
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="flex">
+          <div className="flex flex-col" style={{ width: 28, flexShrink: 0 }}>
+            {Array.from({ length: gridRows + 1 }, (_, i) => (
+              <div
+                key={i}
+                className="shrink-0 border-t border-green-200 text-[10px] text-gray-400"
+                style={{ height: i === gridRows ? 0 : cell(scale) }}
+              >
+                {i % 5 === 0 ? `${(i * scale).toFixed(scale < 1 ? 2 : 0)}m` : ''}
+              </div>
+            ))}
+          </div>
+          <div
+            data-testid="garden-map-grid"
+            onMouseMove={handleGridPointerMove}
+            onMouseUp={handleGridPointerUp}
+            onMouseLeave={handleGridPointerUp}
+            className="relative bg-[length:var(--cell)_var(--cell)]"
+            style={
+              {
+                width: cell(gridCols),
+                height: cell(gridRows),
+                '--cell': `${cell(scale)}px`,
+                backgroundColor: 'rgb(240,253,244)',
+                backgroundImage:
+                  'linear-gradient(to right, rgba(21,128,61,0.5) 1px, transparent 1px), linear-gradient(to bottom, rgba(21,128,61,0.5) 1px, transparent 1px)',
+              } as React.CSSProperties
+            }
+          >
+            {placed.map((p) => {
             if (p.id == null) return null
             const live = livePositions[p.id]
             const liveSize = liveSizes[p.id]
@@ -265,7 +294,7 @@ export function GardenMapPage() {
                 key={p.id}
                 data-testid={`map-block-${p.id}`}
                 onMouseDown={handleBlockPointerDown(p)}
-                className="absolute flex select-none items-center justify-center rounded-md border-2 text-center text-xs font-semibold text-gray-900 shadow-sm"
+                className="absolute flex select-none flex-col items-center justify-center rounded-md border-2 text-center text-xs font-semibold text-gray-900 shadow-sm"
                 style={{
                   left: cell(x),
                   top: cell(y),
@@ -291,6 +320,9 @@ export function GardenMapPage() {
                 ) : (
                   <span className="px-1">{p.name}</span>
                 )}
+                <span className="px-1 text-[10px] font-normal text-gray-700">
+                  {w.toFixed(w < 1 ? 2 : 1)}m × {h.toFixed(h < 1 ? 2 : 1)}m
+                </span>
 
                 {isSelected && (
                   <div
@@ -302,6 +334,7 @@ export function GardenMapPage() {
               </div>
             )
           })}
+          </div>
         </div>
       </div>
 
