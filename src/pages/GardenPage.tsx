@@ -86,11 +86,11 @@ export function GardenPage() {
     inactiveParcels.length > 0 || harvestReminders.length > 0 || rotationReminders.length > 0
 
   return (
-    <div className="p-4 space-y-6">
-      <h1 className="text-xl font-bold text-green-800">Mon jardin</h1>
+    <div className="space-y-6 p-4 lg:grid lg:grid-cols-3 lg:gap-6 lg:space-y-0 lg:p-0">
+      <h1 className="text-xl font-bold text-green-800 lg:col-span-3">Mon jardin</h1>
 
       {hasReminders ? (
-        <section>
+        <section className="lg:col-span-3">
           <h2 className="flex items-center gap-2 text-lg font-semibold text-green-700">
             <Bell size={18} /> Rappels
           </h2>
@@ -117,14 +117,14 @@ export function GardenPage() {
         </section>
       ) : null}
 
-      <section>
+      <section className="lg:col-span-2">
         <h2 className="flex items-center gap-2 text-lg font-semibold text-green-700">
           <MapPin size={18} /> Parcelles
         </h2>
         <Link to="/jardin/carte" className="mt-1 inline-block text-sm font-medium text-green-700">
           Voir la carte du jardin →
         </Link>
-        <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {parcels.map((p) => (
             <ParcelCard key={p.id} parcel={p} />
           ))}

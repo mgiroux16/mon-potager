@@ -71,8 +71,8 @@ export function WaterPage() {
   const comparisonRows = compareWateringToRain(rows, parcels, rainMm7, rainMm14, rainMm30)
 
   return (
-    <div className="p-4 space-y-6">
-      <h1 className="text-xl font-bold text-green-800">Réserve d'eau</h1>
+    <div className="space-y-6 p-4 lg:grid lg:grid-cols-2 lg:gap-6 lg:space-y-0 lg:p-0">
+      <h1 className="text-xl font-bold text-green-800 lg:col-span-2">Réserve d'eau</h1>
 
       {rows.length === 0 ? (
         <p className="text-sm text-gray-500">Pas encore d'arrosage enregistré</p>

@@ -28,11 +28,16 @@ const NAV_ITEMS: NavItem[] = [
 
 export function Layout() {
   return (
-    <div className="mx-auto flex min-h-screen max-w-md flex-col bg-green-50">
-      <header className="sticky top-0 z-10 flex items-center justify-between border-b border-green-100 bg-green-50/90 px-4 py-3 backdrop-blur">
+    <div className="mx-auto flex min-h-screen max-w-md flex-col bg-green-50 lg:max-w-6xl">
+      <header className="sticky top-0 z-10 flex items-center justify-between border-b border-green-100 bg-green-50/90 px-4 py-3 backdrop-blur lg:px-8 lg:py-4">
         <div className="flex items-center gap-2">
-          <Sprout className="size-5 text-green-700" />
-          <span className="font-semibold text-green-900">Mon Potager</span>
+          <Sprout className="size-5 text-green-700 lg:size-6" />
+          <div className="flex items-baseline gap-2">
+            <span className="font-semibold text-green-900 lg:text-lg">Mon Potager</span>
+            <span className="hidden text-sm text-green-700/60 lg:inline">
+              le potager au quotidien
+            </span>
+          </div>
         </div>
         <NavLink
           to="/reglages"
@@ -43,12 +48,12 @@ export function Layout() {
         </NavLink>
       </header>
 
-      <main className="flex-1 px-4 py-5 pb-24">
+      <main className="flex-1 px-4 py-5 pb-24 lg:px-8 lg:py-8">
         <Outlet />
       </main>
 
-      <nav className="fixed inset-x-0 bottom-0 z-10 mx-auto max-w-md border-t border-green-100 bg-white/95 backdrop-blur">
-        <ul className="flex items-end justify-around px-2 py-1.5">
+      <nav className="fixed inset-x-0 bottom-0 z-10 mx-auto max-w-md border-t border-green-100 bg-white/95 backdrop-blur lg:max-w-6xl">
+        <ul className="flex items-end justify-around px-2 py-1.5 lg:justify-center lg:gap-12">
           {NAV_ITEMS.map(({ to, label, icon: Icon, primary }) => (
             <li key={to}>
               <NavLink
