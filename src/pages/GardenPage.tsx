@@ -3,8 +3,8 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { Sprout, Trees, MapPin, Pencil, Bell } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { db } from '../data/db'
-import type { Crop } from '../data/model'
-import { getInactiveParcels, getHarvestReminders } from '../services/reminderService'
+import type { Crop, VegetableFamily } from '../data/model'
+import { getInactiveParcels, getHarvestReminders, getRotationReminders } from '../services/reminderService'
 
 function todayISO(): string {
   return new Date().toISOString().slice(0, 10)
@@ -12,6 +12,18 @@ function todayISO(): string {
 
 function formatPrice(price: number): string {
   return `${price.toLocaleString('fr-FR')} €/kg`
+}
+
+const FAMILY_LABELS: Record<VegetableFamily, string> = {
+  solanacees: 'solanacées',
+  cucurbitacees: 'cucurbitacées',
+  fabacees: 'fabacées',
+  brassicacees: 'brassicacées',
+  alliacees: 'alliacées',
+  apiacees: 'apiacées',
+  asteracees: 'astéracées',
+  chenopodiacees: 'chénopodiacées',
+  autres: 'autres',
 }
 
 function CropPrice({ crop }: { crop: Crop }) {
@@ -64,7 +76,9 @@ export function GardenPage() {
   const today = todayISO()
   const inactiveParcels = getInactiveParcels(parcels, log, today)
   const harvestReminders = getHarvestReminders(crops, catalog, log, today)
-  const hasReminders = inactiveParcels.length > 0 || harvestReminders.length > 0
+  const rotationReminders = getRotationReminders(parcels, crops, catalog, today)
+  const hasReminders =
+    inactiveParcels.length > 0 || harvestReminders.length > 0 || rotationReminders.length > 0
 
   return (
     <div className="p-4 space-y-6">
@@ -86,6 +100,12 @@ export function GardenPage() {
               <li key={`harvest-${r.crop.id}`} className="rounded bg-amber-50 px-3 py-2 text-sm">
                 {r.vegetable} : {r.referenceKind === 'semis' ? 'semé(e)' : 'planté(e)'} il y a{' '}
                 {r.daysSinceReference} j, récolte possible
+              </li>
+            ))}
+            {rotationReminders.map((r) => (
+              <li key={`rotation-${r.crop.id}`} className="rounded bg-amber-50 px-3 py-2 text-sm">
+                {r.parcel.name} : {FAMILY_LABELS[r.family]} déjà cultivées ici l'an dernier, attention à
+                la rotation
               </li>
             ))}
           </ul>
