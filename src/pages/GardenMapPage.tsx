@@ -290,7 +290,7 @@ export function GardenMapPage() {
       >
         <div className="flex">
           <div style={{ width: 28, flexShrink: 0 }} />
-          <div className="flex" style={{ width: cell(gridCols) }}>
+          <div className="flex shrink-0" style={{ width: cell(gridCols) }}>
             {Array.from({ length: gridCols + 1 }, (_, i) => (
               <div
                 key={i}
@@ -303,7 +303,7 @@ export function GardenMapPage() {
           </div>
         </div>
         <div className="flex">
-          <div className="flex flex-col" style={{ width: 28, flexShrink: 0 }}>
+          <div className="flex shrink-0 flex-col" style={{ width: 28, flexShrink: 0 }}>
             {Array.from({ length: gridRows + 1 }, (_, i) => (
               <div
                 key={i}
@@ -319,7 +319,7 @@ export function GardenMapPage() {
             onMouseMove={handleGridPointerMove}
             onMouseUp={handleGridPointerUp}
             onMouseLeave={handleGridPointerUp}
-            className="relative bg-[length:var(--cell)_var(--cell)]"
+            className="relative shrink-0 bg-[length:var(--cell)_var(--cell)]"
             style={
               {
                 width: cell(gridCols),
