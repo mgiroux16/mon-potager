@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import type { MouseEvent as ReactMouseEvent } from 'react'
+import type { MouseEvent as ReactMouseEvent, WheelEvent as ReactWheelEvent, TouchEvent as ReactTouchEvent } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useNavigate } from 'react-router-dom'
 import { db } from '../data/db'
@@ -9,7 +9,17 @@ const CELL_PX = 32
 const TOTAL_WIDTH_M = 10
 const TOTAL_HEIGHT_M = 30
 const SCALE_STEPS = [0.25, 0.5, 1, 2]
+const SCALE_MIN = 0.1
+const SCALE_MAX = 4
 const CLICK_THRESHOLD = 5
+
+function clampScale(s: number) {
+  return Math.min(SCALE_MAX, Math.max(SCALE_MIN, s))
+}
+
+function touchDistance(t0: { clientX: number; clientY: number }, t1: { clientX: number; clientY: number }) {
+  return Math.hypot(t1.clientX - t0.clientX, t1.clientY - t0.clientY)
+}
 
 const ZONE_COLORS = [
   'rgb(74,222,128)',
@@ -54,6 +64,7 @@ export function GardenMapPage() {
   const [scale, setScale] = useState(1)
   const gridCols = Math.round(TOTAL_WIDTH_M / scale)
   const gridRows = Math.round(TOTAL_HEIGHT_M / scale)
+  const pinchRef = useRef<{ startDistance: number; startScale: number } | null>(null)
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [renamingId, setRenamingId] = useState<number | null>(null)
   const [renameValue, setRenameValue] = useState('')
@@ -195,6 +206,36 @@ export function GardenMapPage() {
     }
   }
 
+  function handleWheelZoom(e: ReactWheelEvent<HTMLDivElement>) {
+    // Pinch trackpad (Chrome/Safari/Firefox envoient deltaY + ctrlKey) ou Ctrl/Cmd + molette.
+    if (!e.ctrlKey && !e.metaKey) return
+    e.preventDefault()
+    const factor = Math.exp(e.deltaY * 0.01)
+    setScale((s) => clampScale(s * factor))
+  }
+
+  function handleTouchStartZoom(e: ReactTouchEvent<HTMLDivElement>) {
+    if (e.touches.length === 2) {
+      pinchRef.current = {
+        startDistance: touchDistance(e.touches[0], e.touches[1]),
+        startScale: scale,
+      }
+    }
+  }
+
+  function handleTouchMoveZoom(e: ReactTouchEvent<HTMLDivElement>) {
+    if (e.touches.length === 2 && pinchRef.current) {
+      e.preventDefault()
+      const distance = touchDistance(e.touches[0], e.touches[1])
+      const ratio = distance / pinchRef.current.startDistance
+      setScale(clampScale(pinchRef.current.startScale / ratio))
+    }
+  }
+
+  function handleTouchEndZoom(e: ReactTouchEvent<HTMLDivElement>) {
+    if (e.touches.length < 2) pinchRef.current = null
+  }
+
   function handleResizePointerDown(parcel: Parcel) {
     return (e: ReactMouseEvent<HTMLDivElement>) => {
       if (parcel.id == null) return
@@ -218,7 +259,7 @@ export function GardenMapPage() {
       </p>
 
       <div className="flex items-center gap-2">
-        <span className="text-sm text-gray-500">Échelle : 1 case =</span>
+        <span className="text-sm text-gray-500">Échelle : 1 case = {scale.toFixed(2)}m</span>
         {SCALE_STEPS.map((s) => (
           <button
             key={s}
@@ -226,7 +267,7 @@ export function GardenMapPage() {
             aria-label={`Échelle ${s}m par case`}
             onClick={() => setScale(s)}
             className={`rounded border px-2 py-1 text-sm ${
-              scale === s
+              Math.abs(scale - s) < 0.001
                 ? 'border-green-600 bg-green-600 text-white'
                 : 'border-green-300 text-green-700'
             }`}
@@ -236,7 +277,17 @@ export function GardenMapPage() {
         ))}
       </div>
 
-      <div className="overflow-auto rounded-lg border border-green-200">
+      <p className="text-xs text-gray-400">
+        Pince à deux doigts pour zoomer/dézoomer · Ctrl/Cmd + molette (trackpad) sur ordinateur
+      </p>
+
+      <div
+        className="overflow-auto rounded-lg border border-green-200"
+        onWheel={handleWheelZoom}
+        onTouchStart={handleTouchStartZoom}
+        onTouchMove={handleTouchMoveZoom}
+        onTouchEnd={handleTouchEndZoom}
+      >
         <div className="flex">
           <div style={{ width: 28, flexShrink: 0 }} />
           <div className="flex" style={{ width: cell(gridCols) }}>
