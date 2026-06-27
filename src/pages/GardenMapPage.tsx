@@ -319,18 +319,41 @@ export function GardenMapPage() {
             onMouseMove={handleGridPointerMove}
             onMouseUp={handleGridPointerUp}
             onMouseLeave={handleGridPointerUp}
-            className="relative shrink-0 bg-[length:var(--cell)_var(--cell)]"
-            style={
-              {
-                width: cell(gridCols),
-                height: cell(gridRows),
-                '--cell': `${cell(scale)}px`,
-                backgroundColor: 'rgb(240,253,244)',
-                backgroundImage:
-                  'linear-gradient(to right, rgba(21,128,61,0.5) 1px, transparent 1px), linear-gradient(to bottom, rgba(21,128,61,0.5) 1px, transparent 1px)',
-              } as React.CSSProperties
-            }
+            className="relative shrink-0"
+            style={{
+              width: cell(gridCols),
+              height: cell(gridRows),
+              backgroundColor: 'rgb(240,253,244)',
+            }}
           >
+            <svg
+              className="pointer-events-none absolute inset-0"
+              width={cell(gridCols)}
+              height={cell(gridRows)}
+            >
+              {Array.from({ length: gridCols + 1 }, (_, i) => (
+                <line
+                  key={`v${i}`}
+                  x1={cell(i * scale)}
+                  y1={0}
+                  x2={cell(i * scale)}
+                  y2={cell(gridRows)}
+                  stroke="rgba(21,128,61,0.5)"
+                  strokeWidth={1}
+                />
+              ))}
+              {Array.from({ length: gridRows + 1 }, (_, i) => (
+                <line
+                  key={`h${i}`}
+                  x1={0}
+                  y1={cell(i * scale)}
+                  x2={cell(gridCols)}
+                  y2={cell(i * scale)}
+                  stroke="rgba(21,128,61,0.5)"
+                  strokeWidth={1}
+                />
+              ))}
+            </svg>
             {placed.map((p) => {
             if (p.id == null) return null
             const live = livePositions[p.id]
