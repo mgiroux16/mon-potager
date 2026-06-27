@@ -98,6 +98,33 @@ export function stopRealtimeSync(): void {
 
 const TOMBSTONE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000
 
+/**
+ * Fusionne les cuves cre&eacute;es en double sur plusieurs appareils avant que la
+ * synchro ne fonctionne (m&ecirc;me nom, id differents) : on garde la plus
+ * recemment modifiee et on tombstone les autres pour que la suppression se
+ * propage via la synchro normale.
+ */
+export async function dedupeTanksByName(): Promise<void> {
+  const tanks = (await db.table('tanks').toArray()) as Record<string, unknown>[]
+  const active = tanks.filter((t) => t.deletedAt == null)
+  const byName = new Map<string, Record<string, unknown>[]>()
+  for (const tank of active) {
+    const name = tank.name as string
+    const group = byName.get(name) ?? []
+    group.push(tank)
+    byName.set(name, group)
+  }
+
+  for (const group of byName.values()) {
+    if (group.length < 2) continue
+    const sorted = [...group].sort((a, b) => ((b.updatedAt as number) ?? 0) - ((a.updatedAt as number) ?? 0))
+    const [, ...duplicates] = sorted
+    for (const duplicate of duplicates) {
+      await db.table('tanks').put({ ...duplicate, deletedAt: Date.now(), updatedAt: Date.now() })
+    }
+  }
+}
+
 export async function purgeOldTombstones(): Promise<void> {
   const cutoff = Date.now() - TOMBSTONE_MAX_AGE_MS
   await withMaintenanceMode(async () => {
