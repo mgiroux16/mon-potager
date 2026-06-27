@@ -146,6 +146,7 @@ export interface CatalogItem {
   sowingMonths?: number[] // 1-12
   plantingMonths?: number[]
   harvestMonths?: number[]
+  daysToHarvest?: number // jours depuis semis (si sowingMonths) ou plantation, jusqu'a recolte possible
   companions?: string[]
   antagonists?: string[]
   notes?: string

@@ -41,4 +41,12 @@ describe('seedDatabase', () => {
     expect(all.some((v) => v.name === 'Agata')).toBe(true)
     expect(seedVarieties.length).toBeGreaterThan(0)
   })
+
+  it('renseigne daysToHarvest pour tous les legumes du catalogue de base', async () => {
+    await seedDatabase(db)
+    const catalog = await db.catalog.toArray()
+    for (const item of catalog) {
+      expect(item.daysToHarvest).toBeTypeOf('number')
+    }
+  })
 })

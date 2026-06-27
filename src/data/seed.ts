@@ -26,16 +26,16 @@ export const seedTanks: WaterTank[] = [
 ]
 
 export const seedCatalog: CatalogItem[] = [
-  { id: 1, vegetable: 'Tomate', family: 'solanacees', sowingMonths: [3, 4], plantingMonths: [5], harvestMonths: [7, 8, 9, 10], companions: ['Basilic', 'Oeillet d\'Inde', 'Carotte'], antagonists: ['Pomme de terre', 'Fenouil'] },
-  { id: 2, vegetable: 'Pomme de terre', family: 'solanacees', plantingMonths: [3, 4], harvestMonths: [7, 8], companions: ['Haricot', 'Chou'], antagonists: ['Tomate', 'Courge'] },
-  { id: 3, vegetable: 'Courgette', family: 'cucurbitacees', sowingMonths: [4, 5], plantingMonths: [5, 6], harvestMonths: [6, 7, 8, 9], companions: ['Haricot', 'Mais'], antagonists: ['Pomme de terre'] },
-  { id: 4, vegetable: 'Courge', family: 'cucurbitacees', sowingMonths: [4, 5], plantingMonths: [5, 6], harvestMonths: [9, 10], companions: ['Mais', 'Haricot'], antagonists: ['Pomme de terre'] },
-  { id: 5, vegetable: 'Patisson', family: 'cucurbitacees', sowingMonths: [4, 5], plantingMonths: [5, 6], harvestMonths: [8, 9, 10], companions: ['Mais', 'Haricot'], antagonists: ['Pomme de terre'] },
-  { id: 6, vegetable: 'Haricot à rames', family: 'fabacees', sowingMonths: [5, 6], harvestMonths: [7, 8, 9], companions: ['Mais', 'Courgette'], antagonists: ['Ail', 'Oignon'] },
-  { id: 7, vegetable: 'Oignon', family: 'alliacees', plantingMonths: [3, 4], harvestMonths: [7, 8], companions: ['Carotte', 'Betterave'], antagonists: ['Haricot', 'Pois'] },
-  { id: 8, vegetable: 'Ail', family: 'alliacees', plantingMonths: [10, 11], harvestMonths: [6, 7], companions: ['Tomate', 'Carotte'], antagonists: ['Haricot', 'Pois'] },
-  { id: 9, vegetable: 'Échalote', family: 'alliacees', plantingMonths: [2, 3], harvestMonths: [6, 7], companions: ['Carotte'], antagonists: ['Haricot', 'Pois'] },
-  { id: 10, vegetable: 'Patate douce', family: 'autres', plantingMonths: [5, 6], harvestMonths: [10], companions: [], antagonists: [] },
+  { id: 1, vegetable: 'Tomate', family: 'solanacees', sowingMonths: [3, 4], plantingMonths: [5], harvestMonths: [7, 8, 9, 10], daysToHarvest: 70, companions: ['Basilic', 'Oeillet d\'Inde', 'Carotte'], antagonists: ['Pomme de terre', 'Fenouil'] },
+  { id: 2, vegetable: 'Pomme de terre', family: 'solanacees', plantingMonths: [3, 4], harvestMonths: [7, 8], daysToHarvest: 100, companions: ['Haricot', 'Chou'], antagonists: ['Tomate', 'Courge'] },
+  { id: 3, vegetable: 'Courgette', family: 'cucurbitacees', sowingMonths: [4, 5], plantingMonths: [5, 6], harvestMonths: [6, 7, 8, 9], daysToHarvest: 50, companions: ['Haricot', 'Mais'], antagonists: ['Pomme de terre'] },
+  { id: 4, vegetable: 'Courge', family: 'cucurbitacees', sowingMonths: [4, 5], plantingMonths: [5, 6], harvestMonths: [9, 10], daysToHarvest: 100, companions: ['Mais', 'Haricot'], antagonists: ['Pomme de terre'] },
+  { id: 5, vegetable: 'Patisson', family: 'cucurbitacees', sowingMonths: [4, 5], plantingMonths: [5, 6], harvestMonths: [8, 9, 10], daysToHarvest: 70, companions: ['Mais', 'Haricot'], antagonists: ['Pomme de terre'] },
+  { id: 6, vegetable: 'Haricot à rames', family: 'fabacees', sowingMonths: [5, 6], harvestMonths: [7, 8, 9], daysToHarvest: 70, companions: ['Mais', 'Courgette'], antagonists: ['Ail', 'Oignon'] },
+  { id: 7, vegetable: 'Oignon', family: 'alliacees', plantingMonths: [3, 4], harvestMonths: [7, 8], daysToHarvest: 120, companions: ['Carotte', 'Betterave'], antagonists: ['Haricot', 'Pois'] },
+  { id: 8, vegetable: 'Ail', family: 'alliacees', plantingMonths: [10, 11], harvestMonths: [6, 7], daysToHarvest: 240, companions: ['Tomate', 'Carotte'], antagonists: ['Haricot', 'Pois'] },
+  { id: 9, vegetable: 'Échalote', family: 'alliacees', plantingMonths: [2, 3], harvestMonths: [6, 7], daysToHarvest: 130, companions: ['Carotte'], antagonists: ['Haricot', 'Pois'] },
+  { id: 10, vegetable: 'Patate douce', family: 'autres', plantingMonths: [5, 6], harvestMonths: [10], daysToHarvest: 120, companions: [], antagonists: [] },
 ]
 
 export const seedCrops: Crop[] = [
