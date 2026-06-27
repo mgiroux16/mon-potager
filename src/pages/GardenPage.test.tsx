@@ -14,7 +14,7 @@ describe('GardenPage', () => {
   it('affiche les parcelles chargées', async () => {
     render(<GardenPage />, { wrapper: MemoryRouter })
     await waitFor(() => {
-      expect(screen.getByText('Planche tomates')).toBeInTheDocument()
+      expect(screen.getAllByText('Planche tomates').length).toBeGreaterThan(0)
     })
   })
 
@@ -49,5 +49,30 @@ describe('GardenPage', () => {
     await waitFor(() => {
       expect(screen.getByRole('link', { name: /Voir le bilan de saison/ })).toBeInTheDocument()
     })
+  })
+
+  it('affiche une section Rappels pour les parcelles jamais touchees du jardin seede', async () => {
+    render(<GardenPage />, { wrapper: MemoryRouter })
+    await waitFor(() => {
+      expect(screen.getByRole('heading', { name: 'Rappels' })).toBeInTheDocument()
+    })
+    expect(screen.getAllByText('Planche tomates').length).toBeGreaterThan(0)
+  })
+
+  it('n affiche pas la section Rappels quand toutes les parcelles ont une activite recente et aucune culture n est mure', async () => {
+    await db.parcels.clear()
+    await db.crops.clear()
+    const parcelId = await db.parcels.add({ name: 'Carré test' })
+    await db.log.add({
+      type: 'observation',
+      date: new Date().toISOString().slice(0, 10),
+      parcelId,
+      createdAt: Date.now(),
+    })
+    render(<GardenPage />, { wrapper: MemoryRouter })
+    await waitFor(() => {
+      expect(screen.getByText('Carré test')).toBeInTheDocument()
+    })
+    expect(screen.queryByRole('heading', { name: 'Rappels' })).not.toBeInTheDocument()
   })
 })

@@ -1,9 +1,14 @@
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Sprout, Trees, MapPin, Pencil } from 'lucide-react'
+import { Sprout, Trees, MapPin, Pencil, Bell } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { db } from '../data/db'
 import type { Crop } from '../data/model'
+import { getInactiveParcels, getHarvestReminders } from '../services/reminderService'
+
+function todayISO(): string {
+  return new Date().toISOString().slice(0, 10)
+}
 
 function formatPrice(price: number): string {
   return `${price.toLocaleString('fr-FR')} €/kg`
@@ -53,10 +58,39 @@ export function GardenPage() {
   const parcels = useLiveQuery(() => db.parcels.toArray(), [], [])
   const crops = useLiveQuery(() => db.crops.toArray(), [], [])
   const trees = useLiveQuery(() => db.trees.toArray(), [], [])
+  const log = useLiveQuery(() => db.log.toArray(), [], [])
+  const catalog = useLiveQuery(() => db.catalog.toArray(), [], [])
+
+  const today = todayISO()
+  const inactiveParcels = getInactiveParcels(parcels, log, today)
+  const harvestReminders = getHarvestReminders(crops, catalog, log, today)
+  const hasReminders = inactiveParcels.length > 0 || harvestReminders.length > 0
 
   return (
     <div className="p-4 space-y-6">
       <h1 className="text-xl font-bold text-green-800">Mon jardin</h1>
+
+      {hasReminders ? (
+        <section>
+          <h2 className="flex items-center gap-2 text-lg font-semibold text-green-700">
+            <Bell size={18} /> Rappels
+          </h2>
+          <ul className="mt-2 space-y-1">
+            {inactiveParcels.map((r) => (
+              <li key={`parcel-${r.parcel.id}`} className="rounded bg-amber-50 px-3 py-2 text-sm">
+                {r.parcel.name} : rien noté depuis{' '}
+                {r.daysSinceLastEntry == null ? 'jamais' : `${r.daysSinceLastEntry} j`}
+              </li>
+            ))}
+            {harvestReminders.map((r) => (
+              <li key={`harvest-${r.crop.id}`} className="rounded bg-amber-50 px-3 py-2 text-sm">
+                {r.vegetable} : {r.referenceKind === 'semis' ? 'semé(e)' : 'planté(e)'} il y a{' '}
+                {r.daysSinceReference} j, récolte possible
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       <section>
         <h2 className="flex items-center gap-2 text-lg font-semibold text-green-700">
