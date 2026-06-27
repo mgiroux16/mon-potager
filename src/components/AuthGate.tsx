@@ -8,7 +8,7 @@ import {
   startRealtimeSync,
   stopRealtimeSync,
   purgeOldTombstones,
-  dedupeTanksByName,
+  dedupeReferenceTables,
 } from '../services/syncService'
 import { LoginPage } from '../pages/LoginPage'
 
@@ -29,7 +29,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
     setSyncUid(user.uid)
     void purgeOldTombstones()
       .then(() => runInitialSync(user.uid))
-      .then(() => dedupeTanksByName())
+      .then(() => dedupeReferenceTables())
       .then(() => runInitialSync(user.uid))
       .then(() => startRealtimeSync(user.uid))
     return () => stopRealtimeSync()

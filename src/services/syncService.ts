@@ -99,28 +99,44 @@ export function stopRealtimeSync(): void {
 const TOMBSTONE_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000
 
 /**
- * Fusionne les cuves cre&eacute;es en double sur plusieurs appareils avant que la
- * synchro ne fonctionne (m&ecirc;me nom, id differents) : on garde la plus
- * recemment modifiee et on tombstone les autres pour que la suppression se
- * propage via la synchro normale.
+ * Tables de reference dont les lignes ont ete creees independamment sur
+ * plusieurs appareils avant que la synchro ne fonctionne (meme cle metier,
+ * id differents). La fonction de cle identifie les doublons a fusionner.
  */
-export async function dedupeTanksByName(): Promise<void> {
-  const tanks = (await db.table('tanks').toArray()) as Record<string, unknown>[]
-  const active = tanks.filter((t) => t.deletedAt == null)
-  const byName = new Map<string, Record<string, unknown>[]>()
-  for (const tank of active) {
-    const name = tank.name as string
-    const group = byName.get(name) ?? []
-    group.push(tank)
-    byName.set(name, group)
-  }
+const DEDUPE_KEYS: Record<string, (row: Record<string, unknown>) => string> = {
+  tanks: (row) => row.name as string,
+  parcels: (row) => row.name as string,
+  trees: (row) => row.name as string,
+  catalog: (row) => row.vegetable as string,
+  varieties: (row) => `${row.vegetable as string}::${row.name as string}`,
+}
 
-  for (const group of byName.values()) {
-    if (group.length < 2) continue
-    const sorted = [...group].sort((a, b) => ((b.updatedAt as number) ?? 0) - ((a.updatedAt as number) ?? 0))
-    const [, ...duplicates] = sorted
-    for (const duplicate of duplicates) {
-      await db.table('tanks').put({ ...duplicate, deletedAt: Date.now(), updatedAt: Date.now() })
+/**
+ * Fusionne les doublons des tables de reference : on garde la ligne la plus
+ * recemment modifiee par cle et on tombstone les autres pour que la
+ * suppression se propage via la synchro normale.
+ */
+export async function dedupeReferenceTables(): Promise<void> {
+  for (const [table, keyOf] of Object.entries(DEDUPE_KEYS)) {
+    const rows = (await db.table(table).toArray()) as Record<string, unknown>[]
+    const active = rows.filter((r) => r.deletedAt == null)
+    const byKey = new Map<string, Record<string, unknown>[]>()
+    for (const row of active) {
+      const key = keyOf(row)
+      const group = byKey.get(key) ?? []
+      group.push(row)
+      byKey.set(key, group)
+    }
+
+    for (const group of byKey.values()) {
+      if (group.length < 2) continue
+      const sorted = [...group].sort(
+        (a, b) => ((b.updatedAt as number) ?? 0) - ((a.updatedAt as number) ?? 0),
+      )
+      const [, ...duplicates] = sorted
+      for (const duplicate of duplicates) {
+        await db.table(table).put({ ...duplicate, deletedAt: Date.now(), updatedAt: Date.now() })
+      }
     }
   }
 }

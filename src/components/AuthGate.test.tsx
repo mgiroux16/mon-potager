@@ -8,7 +8,7 @@ import {
   startRealtimeSync,
   stopRealtimeSync,
   purgeOldTombstones,
-  dedupeTanksByName,
+  dedupeReferenceTables,
 } from '../services/syncService'
 
 const mockOnAuthChange = vi.fn()
@@ -24,7 +24,7 @@ vi.mock('../services/syncService', () => ({
   startRealtimeSync: vi.fn(),
   stopRealtimeSync: vi.fn(),
   purgeOldTombstones: vi.fn().mockResolvedValue(undefined),
-  dedupeTanksByName: vi.fn().mockResolvedValue(undefined),
+  dedupeReferenceTables: vi.fn().mockResolvedValue(undefined),
 }))
 
 beforeEach(() => {
@@ -82,7 +82,7 @@ describe('AuthGate', () => {
     expect(setSyncUid).toHaveBeenCalledWith('abc')
     expect(purgeOldTombstones).toHaveBeenCalled()
     await waitFor(() => expect(runInitialSync).toHaveBeenCalledWith('abc'))
-    await waitFor(() => expect(dedupeTanksByName).toHaveBeenCalled())
+    await waitFor(() => expect(dedupeReferenceTables).toHaveBeenCalled())
     await waitFor(() => expect(startRealtimeSync).toHaveBeenCalledWith('abc'))
   })
 
