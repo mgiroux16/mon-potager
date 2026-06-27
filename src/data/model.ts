@@ -73,7 +73,12 @@ export interface Parcel {
   notes?: string
   photoUrl?: string
   polygon?: { x: number; y: number }[] // coordonnees relatives 0-1 sur photoUrl, vide/absent = pas de zone tracee
-  mapPolygon?: { x: number; y: number }[] // coordonnees relatives 0-1 sur TERRAIN_OUTLINE (carte d'ensemble)
+  // Carte d'ensemble en grille (style Potabook) : position/taille en cellules, absent = pas encore placee
+  mapX?: number
+  mapY?: number
+  mapWidth?: number
+  mapHeight?: number
+  mapRotation?: 0 | 90 | 180 | 270
 }
 
 export type CropStatus = 'prevu' | 'en_place' | 'en_recolte' | 'termine'

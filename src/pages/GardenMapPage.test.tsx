@@ -16,66 +16,112 @@ beforeEach(async () => {
 })
 
 describe('GardenMapPage', () => {
-  it('affiche le contour du terrain', async () => {
+  it('affiche la grille', async () => {
     render(<GardenMapPage />, { wrapper: MemoryRouter })
-    expect(await screen.findByTestId('garden-map-surface')).toBeInTheDocument()
+    expect(await screen.findByTestId('garden-map-grid')).toBeInTheDocument()
   })
 
-  it('affiche les zones des parcelles ayant un mapPolygon', async () => {
+  it('affiche un bloc pour chaque parcelle placee sur la carte', async () => {
     const id = await db.parcels.add({
       name: 'Planche tomates',
-      mapPolygon: [{ x: 0.4, y: 0.3 }, { x: 0.6, y: 0.3 }, { x: 0.6, y: 0.5 }, { x: 0.4, y: 0.5 }],
+      mapX: 0,
+      mapY: 0,
+      mapWidth: 2,
+      mapHeight: 2,
+      mapRotation: 0,
     })
     render(<GardenMapPage />, { wrapper: MemoryRouter })
-    await waitFor(() => {
-      expect(screen.getByTestId(`map-zone-${id}`)).toBeInTheDocument()
-      expect(screen.getByText('Planche tomates')).toBeInTheDocument()
+    expect(await screen.findByTestId(`map-block-${id}`)).toHaveTextContent('Planche tomates')
+  })
+
+  it('liste les parcelles non placees a part, avec un bouton pour les placer', async () => {
+    const id = await db.parcels.add({ name: 'Rang pommes de terre' })
+    render(<GardenMapPage />, { wrapper: MemoryRouter })
+    expect(await screen.findByText('Rang pommes de terre')).toBeInTheDocument()
+    fireEvent.click(screen.getByText('Placer sur la carte'))
+    await waitFor(async () => {
+      const parcel = await db.parcels.get(id)
+      expect(parcel?.mapWidth).toBe(2)
+      expect(parcel?.mapHeight).toBe(2)
     })
   })
 
-  it('tap sur une zone navigue vers le formulaire d arrosage preremplit', async () => {
-    const id = await db.parcels.add({
-      name: 'Planche tomates',
-      mapPolygon: [{ x: 0.4, y: 0.3 }, { x: 0.6, y: 0.3 }, { x: 0.6, y: 0.5 }, { x: 0.4, y: 0.5 }],
-    })
+  it('un clic simple (sans deplacement) selectionne le bloc et affiche les actions', async () => {
+    const id = await db.parcels.add({ name: 'Planche tomates', mapX: 0, mapY: 0, mapWidth: 2, mapHeight: 2 })
     render(<GardenMapPage />, { wrapper: MemoryRouter })
-    const zone = await screen.findByTestId(`map-zone-${id}`)
-    fireEvent.click(zone)
+    const block = await screen.findByTestId(`map-block-${id}`)
+    fireEvent.mouseDown(block, { clientX: 10, clientY: 10 })
+    fireEvent.mouseUp(screen.getByTestId('garden-map-grid'), { clientX: 10, clientY: 10 })
+    expect(screen.getByText('Rotation')).toBeInTheDocument()
+    expect(screen.getByText('Arroser')).toBeInTheDocument()
+  })
+
+  it('le bouton Arroser navigue vers le formulaire d arrosage preremplit', async () => {
+    const id = await db.parcels.add({ name: 'Planche tomates', mapX: 0, mapY: 0, mapWidth: 2, mapHeight: 2 })
+    render(<GardenMapPage />, { wrapper: MemoryRouter })
+    const block = await screen.findByTestId(`map-block-${id}`)
+    fireEvent.mouseDown(block, { clientX: 10, clientY: 10 })
+    fireEvent.mouseUp(screen.getByTestId('garden-map-grid'), { clientX: 10, clientY: 10 })
+    fireEvent.click(screen.getByText('Arroser'))
     expect(mockNavigate).toHaveBeenCalledWith('/ajouter', {
       state: { voiceDraft: { type: 'arrosage', parcelId: id } },
     })
   })
 
-  it('permet de tracer une nouvelle zone et de l associer a une parcelle existante', async () => {
-    const id = await db.parcels.add({ name: 'Rang pommes de terre' })
+  it('Rotation fait avancer la rotation de 90 degres', async () => {
+    const id = await db.parcels.add({
+      name: 'Planche tomates',
+      mapX: 0,
+      mapY: 0,
+      mapWidth: 2,
+      mapHeight: 2,
+      mapRotation: 0,
+    })
     render(<GardenMapPage />, { wrapper: MemoryRouter })
-    fireEvent.click(await screen.findByText('+ Nouvelle zone'))
-    fireEvent.click(screen.getByText('Rectangle'))
-    fireEvent.click(screen.getByText('Valider la forme'))
-
-    const select = await screen.findByLabelText('Parcelle existante')
-    fireEvent.change(select, { target: { value: String(id) } })
-    fireEvent.click(screen.getByText('Enregistrer'))
-
+    const block = await screen.findByTestId(`map-block-${id}`)
+    fireEvent.mouseDown(block, { clientX: 10, clientY: 10 })
+    fireEvent.mouseUp(screen.getByTestId('garden-map-grid'), { clientX: 10, clientY: 10 })
+    fireEvent.click(screen.getByText('Rotation'))
     await waitFor(async () => {
       const parcel = await db.parcels.get(id)
-      expect(parcel?.mapPolygon?.length).toBe(4)
+      expect(parcel?.mapRotation).toBe(90)
     })
   })
 
-  it('permet de creer une nouvelle parcelle directement depuis la carte', async () => {
+  it('Dupliquer cree une copie avec un nom suffixe', async () => {
+    const id = await db.parcels.add({ name: 'Planche tomates', mapX: 0, mapY: 0, mapWidth: 2, mapHeight: 2 })
     render(<GardenMapPage />, { wrapper: MemoryRouter })
-    fireEvent.click(await screen.findByText('+ Nouvelle zone'))
-    fireEvent.click(screen.getByText('Triangle'))
-    fireEvent.click(screen.getByText('Valider la forme'))
-
-    const input = await screen.findByLabelText('Nouvelle parcelle')
-    fireEvent.change(input, { target: { value: 'Zone fraisiers' } })
-    fireEvent.click(screen.getByText('Enregistrer'))
-
+    const block = await screen.findByTestId(`map-block-${id}`)
+    fireEvent.mouseDown(block, { clientX: 10, clientY: 10 })
+    fireEvent.mouseUp(screen.getByTestId('garden-map-grid'), { clientX: 10, clientY: 10 })
+    fireEvent.click(screen.getByText('Dupliquer'))
     await waitFor(async () => {
       const all = await db.parcels.toArray()
-      expect(all.some((p) => p.name === 'Zone fraisiers' && p.mapPolygon?.length === 3)).toBe(true)
+      expect(all.some((p) => p.name === 'Planche tomates (copie)')).toBe(true)
+    })
+  })
+
+  it('un glisser-deposer met a jour la position de la parcelle', async () => {
+    const id = await db.parcels.add({ name: 'Planche tomates', mapX: 0, mapY: 0, mapWidth: 2, mapHeight: 2 })
+    render(<GardenMapPage />, { wrapper: MemoryRouter })
+    const block = await screen.findByTestId(`map-block-${id}`)
+    const grid = screen.getByTestId('garden-map-grid')
+    fireEvent.mouseDown(block, { clientX: 0, clientY: 0 })
+    fireEvent.mouseMove(grid, { clientX: 64, clientY: 32 })
+    fireEvent.mouseUp(grid, { clientX: 64, clientY: 32 })
+    await waitFor(async () => {
+      const parcel = await db.parcels.get(id)
+      expect(parcel?.mapX).toBe(2)
+      expect(parcel?.mapY).toBe(1)
+    })
+  })
+
+  it('+ Nouvelle parcelle ajoute un bloc 2x2 directement place', async () => {
+    render(<GardenMapPage />, { wrapper: MemoryRouter })
+    fireEvent.click(await screen.findByText('+ Nouvelle parcelle'))
+    await waitFor(async () => {
+      const all = await db.parcels.toArray()
+      expect(all.some((p) => p.name === 'Nouvelle zone' && p.mapWidth === 2)).toBe(true)
     })
   })
 })
