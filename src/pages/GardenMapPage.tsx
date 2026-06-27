@@ -3,6 +3,7 @@ import type { MouseEvent as ReactMouseEvent, WheelEvent as ReactWheelEvent, Touc
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useNavigate } from 'react-router-dom'
 import { db, newId } from '../data/db'
+import { softDelete } from '../data/syncHooks'
 import type { Parcel } from '../data/model'
 import { nextFreeMapSlot } from '../services/mapLayout'
 
@@ -115,7 +116,7 @@ export function GardenMapPage() {
   async function deleteParcel(parcel: Parcel) {
     if (parcel.id == null) return
     if (window.confirm(`Supprimer la parcelle "${parcel.name}" ?`)) {
-      await db.parcels.delete(parcel.id)
+      await softDelete('parcels', parcel.id)
       setSelectedId(null)
     }
   }

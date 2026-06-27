@@ -1,4 +1,5 @@
 import { db, newId } from '../data/db'
+import { softDelete } from '../data/syncHooks'
 import type { SeasonNote } from '../data/model'
 
 export function getCropNote(notes: SeasonNote[], cropId: string, year: number): string {
@@ -20,7 +21,7 @@ async function upsertNote(
 
   if (existing) {
     if (trimmed === '') {
-      await db.seasonNotes.delete(existing.id as string)
+      await softDelete('seasonNotes', existing.id as string)
     } else {
       await db.seasonNotes.update(existing.id as string, { text: trimmed })
     }

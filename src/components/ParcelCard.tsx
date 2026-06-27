@@ -3,6 +3,7 @@ import type { MouseEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Camera, Copy, Pencil, Trash2 } from 'lucide-react'
 import { db, newId } from '../data/db'
+import { softDelete } from '../data/syncHooks'
 import type { Parcel } from '../data/model'
 import { compressImage } from '../services/imageService'
 import { isPointInPolygon } from '../services/geometry'
@@ -75,7 +76,7 @@ export function ParcelCard({ parcel }: ParcelCardProps) {
   async function removeParcel() {
     if (parcel.id == null) return
     if (window.confirm(`Supprimer la parcelle "${parcel.name}" ?`)) {
-      await db.parcels.delete(parcel.id)
+      await softDelete('parcels', parcel.id)
     }
   }
 
