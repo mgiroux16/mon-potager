@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { MouseEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Camera, Pencil, Trash2 } from 'lucide-react'
+import { Camera, Copy, Pencil, Trash2 } from 'lucide-react'
 import { db } from '../data/db'
 import type { Parcel } from '../data/model'
 import { compressImage } from '../services/imageService'
@@ -48,6 +48,19 @@ export function ParcelCard({ parcel }: ParcelCardProps) {
     } else {
       setArea(parcel.areaM2 != null ? String(parcel.areaM2) : '')
     }
+  }
+
+  async function duplicateParcel() {
+    await db.parcels.add({
+      name: `${parcel.name} (copie)`,
+      areaM2: parcel.areaM2,
+      exposure: parcel.exposure,
+      soil: parcel.soil,
+      mulch: parcel.mulch,
+      notes: parcel.notes,
+      photoUrl: parcel.photoUrl,
+      polygon: parcel.polygon,
+    })
   }
 
   async function removeParcel() {
@@ -183,6 +196,14 @@ export function ParcelCard({ parcel }: ParcelCardProps) {
               <Pencil size={16} />
             </button>
           )}
+          <button
+            type="button"
+            aria-label="Dupliquer la parcelle"
+            onClick={duplicateParcel}
+            className="text-green-700"
+          >
+            <Copy size={16} />
+          </button>
           <button type="button" aria-label="Supprimer la parcelle" onClick={removeParcel} className="text-red-600">
             <Trash2 size={16} />
           </button>
