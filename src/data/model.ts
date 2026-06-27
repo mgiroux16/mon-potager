@@ -72,6 +72,7 @@ export interface Parcel {
   mulch?: string
   notes?: string
   photoUrl?: string
+  polygon?: { x: number; y: number }[] // coordonnees relatives 0-1 sur photoUrl, vide/absent = pas de zone tracee
 }
 
 export type CropStatus = 'prevu' | 'en_place' | 'en_recolte' | 'termine'
