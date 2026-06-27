@@ -41,11 +41,17 @@ async function syncTable(uid: string, table: TableName): Promise<void> {
     const winner = resolveMerge(local, remote)
     if (winner === undefined) continue
 
-    if (winner === remote && winner !== local) {
-      await db.table(table).put(winner)
-    }
-    if (winner === local && winner !== remote) {
-      await pushRecord(uid, table, id, winner)
+    try {
+      if (winner === remote && winner !== local) {
+        await db.table(table).put(winner)
+      }
+      if (winner === local && winner !== remote) {
+        await pushRecord(uid, table, id, winner)
+      }
+    } catch (err) {
+      // Un enregistrement isole (ex: photo > 1 Mo, limite Firestore) ne doit pas
+      // faire echouer toute la synchro : on le journalise et on continue.
+      console.error(`[sync] enregistrement ignore ${table}/${id}`, err)
     }
   }
 }

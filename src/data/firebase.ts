@@ -16,4 +16,8 @@ export const auth = getAuth(firebaseApp)
 export const googleProvider = new GoogleAuthProvider()
 export const firestore = initializeFirestore(firebaseApp, {
   localCache: persistentLocalCache(),
+  // Le modele est plein de champs optionnels (photoUrl?, areaM2?, notes?...). Sans
+  // cette option, le moindre champ a `undefined` fait lever "Unsupported field value:
+  // undefined" au premier setDoc, ce qui faisait planter toute la synchro.
+  ignoreUndefinedProperties: true,
 })
