@@ -5,9 +5,9 @@ const SETTINGS_ID = 'settings'
 
 export const DEFAULT_SETTINGS: AppSettings = {
   id: SETTINGS_ID,
-  locationName: 'Champniers (16430)',
-  latitude: 45.72,
-  longitude: 0.19,
+  locationName: "278 rue de l'Arbalétrier, Champniers (16430)",
+  latitude: 45.7006,
+  longitude: 0.1957,
   frostThresholdC: 0,
   significantRainMm: 5,
   heatThresholdC: 30,

@@ -214,6 +214,20 @@ export class PotagerDB extends Dexie {
           }
         }
       })
+
+    // Les coordonnees par defaut (centre de Champniers) etaient a ~2,2 km de
+    // l'adresse reelle, assez pour rater une pluie locale dans le modele
+    // meteo. On ne corrige que si Mathieu n'a jamais touche le reglage.
+    this.version(9).stores({}).upgrade(async (tx) => {
+      const settings = await tx.table('settings').get('settings')
+      if (settings && settings.latitude === 45.72 && settings.longitude === 0.19) {
+        await tx.table('settings').update('settings', {
+          locationName: "278 rue de l'Arbalétrier, Champniers (16430)",
+          latitude: 45.7006,
+          longitude: 0.1957,
+        })
+      }
+    })
   }
 }
 

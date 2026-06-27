@@ -24,14 +24,14 @@ describe('SettingsPage', () => {
   it('charge et affiche les valeurs par défaut', async () => {
     render(<SettingsPage />)
     await waitFor(() =>
-      expect(screen.getByLabelText('Nom du lieu')).toHaveValue('Champniers (16430)'),
+      expect(screen.getByLabelText('Nom du lieu')).toHaveValue("278 rue de l'Arbalétrier, Champniers (16430)"),
     )
   })
 
   it('enregistre une modification de localisation', async () => {
     render(<SettingsPage />)
     await waitFor(() =>
-      expect(screen.getByLabelText('Nom du lieu')).toHaveValue('Champniers (16430)'),
+      expect(screen.getByLabelText('Nom du lieu')).toHaveValue("278 rue de l'Arbalétrier, Champniers (16430)"),
     )
     const user = userEvent.setup()
     const champ = screen.getByLabelText('Nom du lieu')
