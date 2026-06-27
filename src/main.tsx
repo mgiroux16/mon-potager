@@ -3,6 +3,14 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
 import { seedDatabase } from './data/seed'
+import { installSyncHooks } from './data/syncHooks'
+
+// Installe les hooks Dexie (updatedAt/deletedAt/push) ici plutot que dans db.ts :
+// db.ts et syncHooks.ts s'importent mutuellement (syncHooks a besoin de `db`), et
+// appeler installSyncHooks() au chargement de db.ts creait un cycle d'import dont
+// l'ordre d'evaluation n'est pas garanti par le bundler de production (TABLE_NAMES
+// pouvait ne pas encore exister au moment de l'appel, plantant toute l'app au demarrage).
+installSyncHooks()
 
 // En dev, purger tout service worker laissé par une session précédente :
 // un SW de dev peut servir une coquille vide et provoquer une page blanche.

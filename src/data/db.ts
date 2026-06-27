@@ -1,5 +1,4 @@
 import Dexie, { type Table } from 'dexie'
-import { installSyncHooks } from './syncHooks'
 import type {
   GardenLogEntry,
   Parcel,
@@ -219,7 +218,5 @@ export class PotagerDB extends Dexie {
 }
 
 export const db = new PotagerDB()
-
-installSyncHooks()
 
 export const newId = (): string => crypto.randomUUID()
