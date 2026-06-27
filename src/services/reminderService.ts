@@ -1,4 +1,4 @@
-import type { Parcel, GardenLogEntry, Crop, CatalogItem } from '../data/model'
+import type { Parcel, GardenLogEntry, Crop, CatalogItem, VegetableFamily } from '../data/model'
 
 export interface InactiveParcelReminder {
   parcel: Parcel
@@ -79,6 +79,65 @@ export function getHarvestReminders(
         daysSinceReference,
         referenceKind: referenceType,
       })
+    }
+  }
+
+  return result
+}
+
+export interface RotationReminder {
+  parcel: Parcel
+  family: VegetableFamily
+  crop: Crop
+}
+
+function cropYear(crop: Crop): number | null {
+  const date = crop.sowingDate ?? crop.plantingDate
+  if (!date) return null
+  return new Date(date).getFullYear()
+}
+
+export function getRotationReminders(
+  parcels: Parcel[],
+  crops: Crop[],
+  catalog: CatalogItem[],
+  today: string,
+): RotationReminder[] {
+  const currentYear = new Date(today).getFullYear()
+  const previousYear = currentYear - 1
+
+  const familiesByParcelYear = new Map<string, Set<VegetableFamily>>()
+
+  for (const crop of crops) {
+    if (crop.parcelId == null || crop.catalogId == null) continue
+    const year = cropYear(crop)
+    if (year == null) continue
+
+    const catalogItem = catalog.find((c) => c.id === crop.catalogId)
+    if (catalogItem == null || catalogItem.family === 'autres') continue
+
+    const key = `${crop.parcelId}-${year}`
+    const set = familiesByParcelYear.get(key) ?? new Set<VegetableFamily>()
+    set.add(catalogItem.family)
+    familiesByParcelYear.set(key, set)
+  }
+
+  const result: RotationReminder[] = []
+
+  for (const crop of crops) {
+    if (crop.parcelId == null || crop.catalogId == null) continue
+    const year = cropYear(crop)
+    if (year !== currentYear) continue
+
+    const catalogItem = catalog.find((c) => c.id === crop.catalogId)
+    if (catalogItem == null || catalogItem.family === 'autres') continue
+
+    const previousFamilies = familiesByParcelYear.get(`${crop.parcelId}-${previousYear}`)
+    if (previousFamilies?.has(catalogItem.family)) {
+      const parcel = parcels.find((p) => p.id === crop.parcelId)
+      if (parcel) {
+        result.push({ parcel, family: catalogItem.family, crop })
+      }
     }
   }
 

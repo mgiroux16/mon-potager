@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { getInactiveParcels, getHarvestReminders } from './reminderService'
+import { getInactiveParcels, getHarvestReminders, getRotationReminders } from './reminderService'
 import type { Parcel, GardenLogEntry, Crop, CatalogItem } from '../data/model'
 
 function entry(over: Partial<GardenLogEntry>): GardenLogEntry {
@@ -96,5 +96,83 @@ describe('getHarvestReminders', () => {
     const crops: Crop[] = [{ id: 10, name: 'Radis', status: 'en_place', catalogId: 1 }]
     const result = getHarvestReminders(crops, catalog, [], '2026-06-01')
     expect(result).toHaveLength(0)
+  })
+})
+
+describe('getRotationReminders', () => {
+  const catalog: CatalogItem[] = [
+    { id: 1, vegetable: 'Tomate', family: 'solanacees' },
+    { id: 2, vegetable: 'Poivron', family: 'solanacees' },
+    { id: 3, vegetable: 'Courgette', family: 'cucurbitacees' },
+    { id: 4, vegetable: 'Radis', family: 'autres' },
+  ]
+  const parcels: Parcel[] = [
+    { id: 1, name: 'Carré nord' },
+    { id: 2, name: 'Carré sud' },
+  ]
+
+  it('alerte quand la meme famille revient sur la meme parcelle deux annees de suite', () => {
+    const crops: Crop[] = [
+      { id: 10, name: 'Tomate 2025', status: 'termine', parcelId: 1, catalogId: 1, plantingDate: '2025-04-01' },
+      { id: 11, name: 'Poivron 2026', status: 'prevu', parcelId: 1, catalogId: 2, plantingDate: '2026-04-01' },
+    ]
+    const result = getRotationReminders(parcels, crops, catalog, '2026-06-27')
+    expect(result).toHaveLength(1)
+    expect(result[0]).toMatchObject({ family: 'solanacees', crop: crops[1] })
+    expect(result[0].parcel.id).toBe(1)
+  })
+
+  it('pas d alerte quand les familles different', () => {
+    const crops: Crop[] = [
+      { id: 10, name: 'Tomate 2025', status: 'termine', parcelId: 1, catalogId: 1, plantingDate: '2025-04-01' },
+      { id: 11, name: 'Courgette 2026', status: 'prevu', parcelId: 1, catalogId: 3, plantingDate: '2026-04-01' },
+    ]
+    const result = getRotationReminders(parcels, crops, catalog, '2026-06-27')
+    expect(result).toHaveLength(0)
+  })
+
+  it('exclut la famille autres meme si elle revient deux annees de suite', () => {
+    const crops: Crop[] = [
+      { id: 10, name: 'Radis 2025', status: 'termine', parcelId: 1, catalogId: 4, plantingDate: '2025-04-01' },
+      { id: 11, name: 'Radis 2026', status: 'prevu', parcelId: 1, catalogId: 4, plantingDate: '2026-04-01' },
+    ]
+    const result = getRotationReminders(parcels, crops, catalog, '2026-06-27')
+    expect(result).toHaveLength(0)
+  })
+
+  it('ignore un crop sans sowingDate ni plantingDate', () => {
+    const crops: Crop[] = [
+      { id: 10, name: 'Tomate 2025', status: 'termine', parcelId: 1, catalogId: 1, plantingDate: '2025-04-01' },
+      { id: 11, name: 'Poivron sans date', status: 'prevu', parcelId: 1, catalogId: 2 },
+    ]
+    const result = getRotationReminders(parcels, crops, catalog, '2026-06-27')
+    expect(result).toHaveLength(0)
+  })
+
+  it('ignore un crop sans catalogId', () => {
+    const crops: Crop[] = [
+      { id: 10, name: 'Tomate 2025', status: 'termine', parcelId: 1, catalogId: 1, plantingDate: '2025-04-01' },
+      { id: 11, name: 'Sans catalogue', status: 'prevu', parcelId: 1, plantingDate: '2026-04-01' },
+    ]
+    const result = getRotationReminders(parcels, crops, catalog, '2026-06-27')
+    expect(result).toHaveLength(0)
+  })
+
+  it('pas d alerte si la meme famille est sur des parcelles differentes', () => {
+    const crops: Crop[] = [
+      { id: 10, name: 'Tomate 2025', status: 'termine', parcelId: 1, catalogId: 1, plantingDate: '2025-04-01' },
+      { id: 11, name: 'Poivron 2026', status: 'prevu', parcelId: 2, catalogId: 2, plantingDate: '2026-04-01' },
+    ]
+    const result = getRotationReminders(parcels, crops, catalog, '2026-06-27')
+    expect(result).toHaveLength(0)
+  })
+
+  it('alerte meme si le crop de cette annee est seulement prevu', () => {
+    const crops: Crop[] = [
+      { id: 10, name: 'Tomate 2025', status: 'termine', parcelId: 1, catalogId: 1, plantingDate: '2025-04-01' },
+      { id: 11, name: 'Poivron 2026', status: 'prevu', parcelId: 1, catalogId: 2, sowingDate: '2026-03-01' },
+    ]
+    const result = getRotationReminders(parcels, crops, catalog, '2026-06-27')
+    expect(result).toHaveLength(1)
   })
 })
