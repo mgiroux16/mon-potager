@@ -120,6 +120,9 @@ export function GardenPage() {
         <h2 className="flex items-center gap-2 text-lg font-semibold text-green-700">
           <MapPin size={18} /> Parcelles
         </h2>
+        <Link to="/jardin/carte" className="mt-1 inline-block text-sm font-medium text-green-700">
+          Voir la carte du jardin →
+        </Link>
         <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
           {parcels.map((p) => (
             <ParcelCard key={p.id} parcel={p} />

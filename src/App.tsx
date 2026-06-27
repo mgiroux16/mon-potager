@@ -5,6 +5,7 @@ import { JournalPage } from './pages/JournalPage'
 import { QuickAddPage } from './pages/QuickAddPage'
 import { VoiceReviewPage } from './pages/VoiceReviewPage'
 import { GardenPage } from './pages/GardenPage'
+import { GardenMapPage } from './pages/GardenMapPage'
 import { HarvestPage } from './pages/HarvestPage'
 import { WaterPage } from './pages/WaterPage'
 import { SeasonSummaryPage } from './pages/SeasonSummaryPage'
@@ -21,6 +22,7 @@ function App() {
           <Route path="ajouter" element={<QuickAddPage />} />
           <Route path="revue-vocale" element={<VoiceReviewPage />} />
           <Route path="jardin" element={<GardenPage />} />
+          <Route path="jardin/carte" element={<GardenMapPage />} />
           <Route path="recoltes" element={<HarvestPage />} />
           <Route path="eau" element={<WaterPage />} />
           <Route path="bilan" element={<SeasonSummaryPage />} />
