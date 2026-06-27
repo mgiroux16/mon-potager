@@ -6,7 +6,7 @@ import { db } from '../data/db'
 import type { Parcel } from '../data/model'
 
 const CELL_PX = 32
-const TOTAL_WIDTH_M = 10
+const TOTAL_WIDTH_M = 30
 const TOTAL_HEIGHT_M = 30
 const SCALE_STEPS = [0.25, 0.5, 1, 2]
 const SCALE_MIN = 0.1
