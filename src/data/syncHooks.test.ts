@@ -1,7 +1,8 @@
 import Dexie from 'dexie'
-import { describe, it, expect, afterEach, beforeEach } from 'vitest'
+import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest'
 import { db, newId } from './db'
-import { softDelete } from './syncHooks'
+import { softDelete, setSyncUid } from './syncHooks'
+import * as firestoreClient from './firestoreClient'
 
 const DB_NAME = 'mon-potager'
 
@@ -50,5 +51,38 @@ describe('hooks Dexie de synchro', () => {
     expect(rows).toHaveLength(0)
     const rawCount = await db.table('parcels').count()
     expect(rawCount).toBe(1)
+  })
+})
+
+describe('push automatique apres ecriture', () => {
+  afterEach(() => {
+    setSyncUid(null)
+  })
+
+  it('pousse vers Firestore apres un add, si un uid est actif', async () => {
+    const pushSpy = vi.spyOn(firestoreClient, 'pushRecord').mockResolvedValue()
+    setSyncUid('uid-test')
+
+    const id = newId()
+    await db.parcels.add({ id, name: 'A pousser' })
+    await new Promise((r) => setTimeout(r, 0))
+
+    expect(pushSpy).toHaveBeenCalledWith(
+      'uid-test',
+      'parcels',
+      id,
+      expect.objectContaining({ name: 'A pousser' }),
+    )
+  })
+
+  it('ne pousse rien si aucun uid actif (utilisateur deconnecte)', async () => {
+    const pushSpy = vi.spyOn(firestoreClient, 'pushRecord').mockResolvedValue()
+    setSyncUid(null)
+
+    const id = newId()
+    await db.parcels.add({ id, name: 'Hors ligne sans compte' })
+    await new Promise((r) => setTimeout(r, 0))
+
+    expect(pushSpy).not.toHaveBeenCalled()
   })
 })

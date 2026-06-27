@@ -1,4 +1,5 @@
 import { db } from './db'
+import { pushRecord } from './firestoreClient'
 
 const TABLE_NAMES = [
   'log',
@@ -18,6 +19,11 @@ const TABLE_NAMES = [
 export type TableName = (typeof TABLE_NAMES)[number]
 
 let installed = false
+let activeUid: string | null = null
+
+export function setSyncUid(uid: string | null): void {
+  activeUid = uid
+}
 
 export function installSyncHooks(): void {
   if (installed) return
@@ -44,6 +50,34 @@ export function installSyncHooks(): void {
       if (obj === undefined) return obj
       const row = obj as Record<string, unknown>
       return typeof row.deletedAt === 'number' ? undefined : obj
+    })
+
+    // On pousse les donnees deja en main dans le hook (obj cree, ou obj original +
+    // modifications) plutot que de relire via table.get() : ce dernier passe par le
+    // hook 'reading', qui filtrerait une ligne venant d'etre marquee deletedAt (softDelete)
+    // et empecherait la propagation du tombstone vers Firestore.
+    table.hook('creating').subscribe(function (
+      this: { onsuccess?: (id: unknown) => void },
+      _primKey: unknown,
+      obj: unknown,
+    ) {
+      this.onsuccess = (id: unknown) => {
+        if (activeUid === null) return
+        void pushRecord(activeUid, name, id as string, obj as Record<string, unknown>)
+      }
+    })
+
+    table.hook('updating').subscribe(function (
+      this: { onsuccess?: (id: unknown) => void },
+      modifications: unknown,
+      primKey: unknown,
+      obj: unknown,
+    ) {
+      this.onsuccess = () => {
+        if (activeUid === null) return
+        const merged = { ...(obj as Record<string, unknown>), ...(modifications as Record<string, unknown>) }
+        void pushRecord(activeUid, name, primKey as string, merged)
+      }
     })
   }
 
