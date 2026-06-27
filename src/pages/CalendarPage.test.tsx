@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { render, screen, waitFor, fireEvent } from '@testing-library/react'
-import { db } from '../data/db'
+import { db, newId } from '../data/db'
 import { CalendarPage } from './CalendarPage'
 
 const MOIS_FR = [
@@ -30,7 +30,7 @@ describe('CalendarPage', () => {
 
   it('affiche les legumes du catalogue dans la bonne section', async () => {
     await db.catalog.add({
-      vegetable: 'Tomate',
+      id: newId(), vegetable: 'Tomate',
       family: 'solanacees',
       sowingMonths: [3, 4],
       plantingMonths: [5],

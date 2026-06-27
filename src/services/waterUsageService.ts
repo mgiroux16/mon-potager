@@ -1,7 +1,7 @@
 import type { GardenLogEntry, Parcel } from '../data/model'
 
 export interface WaterUsageRow {
-  parcelId: number
+  parcelId: string
   parcelName: string
   liters7: number
   liters14: number
@@ -24,7 +24,7 @@ export function summarizeWaterUsage(
   parcels: Parcel[],
   refDate: string,
 ): WaterUsageRow[] {
-  const byParcel = new Map<number, WaterUsageRow>()
+  const byParcel = new Map<string, WaterUsageRow>()
   const refYear = yearOf(refDate)
 
   for (const e of entries) {

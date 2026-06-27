@@ -35,7 +35,7 @@ export function resolveRainMm(
 }
 
 export interface ParcelWateringComparison {
-  parcelId: number
+  parcelId: string
   parcelName: string
   liters7: number
   liters14: number

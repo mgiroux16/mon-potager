@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
-import { db } from '../data/db'
+import { db, newId } from '../data/db'
 import { seedDatabase } from '../data/seed'
 import { GardenPage } from './GardenPage'
 
@@ -62,9 +62,9 @@ describe('GardenPage', () => {
   it('n affiche pas la section Rappels quand toutes les parcelles ont une activite recente et aucune culture n est mure', async () => {
     await db.parcels.clear()
     await db.crops.clear()
-    const parcelId = await db.parcels.add({ name: 'Carré test' })
+    const parcelId = await db.parcels.add({ id: newId(), name: 'Carré test' })
     await db.log.add({
-      type: 'observation',
+      id: newId(), type: 'observation',
       date: new Date().toISOString().slice(0, 10),
       parcelId,
       createdAt: Date.now(),

@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { db } from './db'
+import { db, newId } from './db'
 
 beforeEach(async () => {
   await Promise.all(db.tables.map((t) => t.clear()))
@@ -27,7 +27,9 @@ describe('PotagerDB', () => {
   })
 
   it('écrit et relit une entrée de journal', async () => {
-    const id = await db.log.add({
+    const id = newId()
+    await db.log.add({
+      id,
       type: 'arrosage',
       date: '2026-06-24',
       volumeLiters: 30,
@@ -41,15 +43,26 @@ describe('PotagerDB', () => {
 
 describe('migration version 2', () => {
   it('expose le store varieties', async () => {
-    const id = await db.varieties.add({ name: 'Saint-Pierre', vegetable: 'Tomate' })
+    const id = newId()
+    await db.varieties.add({ id, name: 'Saint-Pierre', vegetable: 'Tomate' })
     const stored = await db.varieties.get(id)
     expect(stored?.name).toBe('Saint-Pierre')
   })
 
   it('permet de filtrer le journal par varietyId', async () => {
-    await db.log.add({ type: 'recolte', date: '2026-06-25', varietyId: 7, createdAt: 1 })
-    await db.log.add({ type: 'recolte', date: '2026-06-25', varietyId: 9, createdAt: 2 })
-    const found = await db.log.where('varietyId').equals(7).toArray()
+    await db.log.add({ id: newId(), type: 'recolte', date: '2026-06-25', varietyId: 'variety-7', createdAt: 1 })
+    await db.log.add({ id: newId(), type: 'recolte', date: '2026-06-25', varietyId: 'variety-9', createdAt: 2 })
+    const found = await db.log.where('varietyId').equals('variety-7').toArray()
     expect(found).toHaveLength(1)
+  })
+})
+
+describe('migration version 4 (UUID)', () => {
+  it('utilise des ids string non auto-incrementes', async () => {
+    const id = newId()
+    await db.parcels.add({ id, name: 'Test' })
+    const stored = await db.parcels.get(id)
+    expect(stored?.id).toBe(id)
+    expect(typeof stored?.id).toBe('string')
   })
 })

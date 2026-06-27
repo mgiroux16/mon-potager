@@ -24,11 +24,11 @@ function inWindow(date: string, bounds: SeasonBounds): boolean {
 }
 
 export interface CropSeasonRow {
-  cropId: number
+  cropId: string
   cropName: string
-  varietyId?: number
+  varietyId?: string
   varietyName?: string
-  parcelId?: number
+  parcelId?: string
   parcelName?: string
   year: number
   firstHarvestDate?: string
@@ -53,7 +53,7 @@ export function summarizeCropSeason(
   const bounds = seasonBounds(year, settings)
   const byKey = new Map<string, CropSeasonRow>()
 
-  function rowFor(cropId: number, varietyId: number | undefined): CropSeasonRow {
+  function rowFor(cropId: string, varietyId: string | undefined): CropSeasonRow {
     const key = `${cropId}-${varietyId ?? 'none'}`
     const existing = byKey.get(key)
     if (existing) return existing
@@ -112,7 +112,7 @@ export function summarizeCropSeason(
 }
 
 export interface ParcelSeasonRow {
-  parcelId: number
+  parcelId: string
   parcelName: string
   year: number
   totalKg: number
@@ -133,9 +133,9 @@ export function summarizeParcelSeason(
   settings: AppSettings,
 ): ParcelSeasonRow[] {
   const bounds = seasonBounds(year, settings)
-  const byParcel = new Map<number, ParcelSeasonRow>()
+  const byParcel = new Map<string, ParcelSeasonRow>()
 
-  function rowFor(parcelId: number): ParcelSeasonRow {
+  function rowFor(parcelId: string): ParcelSeasonRow {
     const existing = byParcel.get(parcelId)
     if (existing) return existing
     const parcel = parcels.find((p) => p.id === parcelId)

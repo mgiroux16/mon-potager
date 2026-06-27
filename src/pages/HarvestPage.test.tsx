@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
-import { db } from '../data/db'
+import { db, newId } from '../data/db'
 import { HarvestPage } from './HarvestPage'
 
 beforeEach(async () => {
@@ -16,9 +16,9 @@ describe('HarvestPage', () => {
   })
 
   it('affiche le bilan groupé par légume avec le total en kg et en euros', async () => {
-    const cropId = await db.crops.add({ name: 'Tomates', status: 'en_recolte', pricePerKg: 3 })
+    const cropId = await db.crops.add({ id: newId(), name: 'Tomates', status: 'en_recolte', pricePerKg: 3 })
     await db.log.add({
-      type: 'recolte',
+      id: newId(), type: 'recolte',
       date: '2026-06-01',
       cropId,
       quantityKg: 4,

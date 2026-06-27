@@ -68,10 +68,10 @@ export function JournalPage() {
   }
 
   const refs: LogRefs = {
-    parcels: new Map(parcels.map((p) => [p.id!, p] as [number, typeof p])),
-    crops: new Map(crops.map((c) => [c.id!, c] as [number, typeof c])),
-    oyas: new Map(oyas.map((o) => [o.id!, o] as [number, typeof o])),
-    trees: new Map(trees.map((t) => [t.id!, t] as [number, typeof t])),
+    parcels: new Map(parcels.map((p) => [p.id!, p] as [string, typeof p])),
+    crops: new Map(crops.map((c) => [c.id!, c] as [string, typeof c])),
+    oyas: new Map(oyas.map((o) => [o.id!, o] as [string, typeof o])),
+    trees: new Map(trees.map((t) => [t.id!, t] as [string, typeof t])),
   }
 
   if (entries.length === 0) {

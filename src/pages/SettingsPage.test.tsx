@@ -75,7 +75,7 @@ describe('SettingsPage', () => {
     await user.click(screen.getByRole('button', { name: 'Enregistrer' }))
 
     await waitFor(async () => {
-      const saved = await db.settings.get(1)
+      const saved = await db.settings.get('settings')
       expect(saved?.seasonStartMonth).toBe(4)
       expect(saved?.seasonEndMonth).toBe(10)
     })

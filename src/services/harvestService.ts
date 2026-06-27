@@ -1,7 +1,7 @@
 import type { GardenLogEntry, Crop } from '../data/model'
 
 export interface HarvestRow {
-  cropId: number
+  cropId: string
   cropName: string
   year: number
   totalKg: number

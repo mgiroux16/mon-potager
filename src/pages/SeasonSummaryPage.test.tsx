@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { render, screen, waitFor, fireEvent } from '@testing-library/react'
-import { db } from '../data/db'
+import { db, newId } from '../data/db'
 import { SeasonSummaryPage } from './SeasonSummaryPage'
 
 beforeEach(async () => {
@@ -16,16 +16,16 @@ describe('SeasonSummaryPage', () => {
   })
 
   it('affiche le bilan par culture et par parcelle', async () => {
-    const parcelId = await db.parcels.add({ name: 'Carré nord', areaM2: 8 })
+    const parcelId = await db.parcels.add({ id: newId(), name: 'Carré nord', areaM2: 8 })
     const cropId = await db.crops.add({
-      name: 'Tomates',
+      id: newId(), name: 'Tomates',
       status: 'en_recolte',
       parcelId,
       pricePerKg: 3,
     })
     const year = new Date().getFullYear()
     await db.log.add({
-      type: 'recolte',
+      id: newId(), type: 'recolte',
       date: `${year}-06-01`,
       cropId,
       parcelId,
@@ -42,16 +42,16 @@ describe('SeasonSummaryPage', () => {
   })
 
   it('permet de saisir une note de culture et une note de parcelle, et les persiste', async () => {
-    const parcelId = await db.parcels.add({ name: 'Carré nord', areaM2: 8 })
+    const parcelId = await db.parcels.add({ id: newId(), name: 'Carré nord', areaM2: 8 })
     const cropId = await db.crops.add({
-      name: 'Tomates',
+      id: newId(), name: 'Tomates',
       status: 'en_recolte',
       parcelId,
       pricePerKg: 3,
     })
     const year = new Date().getFullYear()
     await db.log.add({
-      type: 'recolte',
+      id: newId(), type: 'recolte',
       date: `${year}-06-01`,
       cropId,
       parcelId,

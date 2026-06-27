@@ -1,7 +1,7 @@
 import { db } from '../data/db'
 import type { AppSettings } from '../data/model'
 
-const SETTINGS_ID = 1
+const SETTINGS_ID = 'settings'
 
 export const DEFAULT_SETTINGS: AppSettings = {
   id: SETTINGS_ID,

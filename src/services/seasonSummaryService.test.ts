@@ -32,25 +32,25 @@ describe('summarizeCropSeason', () => {
 
   it('agrege le total kg, le rendement par plant et par m2, et la valeur brute', () => {
     const crops: Crop[] = [
-      { id: 1, name: 'Tomates', status: 'en_recolte', plantCount: 4, parcelId: 10, pricePerKg: 3 },
+      { id: '1', name: 'Tomates', status: 'en_recolte', plantCount: 4, parcelId: '10', pricePerKg: 3 },
     ]
-    const parcels: Parcel[] = [{ id: 10, name: 'Carre nord', areaM2: 8 }]
+    const parcels: Parcel[] = [{ id: '10', name: 'Carre nord', areaM2: 8 }]
     const varieties: Variety[] = []
     const expenses: Expense[] = []
     const entries = [
-      entry({ cropId: 1, date: '2026-06-01', quantityKg: 2 }),
-      entry({ cropId: 1, date: '2026-07-01', quantityKg: 2 }),
+      entry({ cropId: '1', date: '2026-06-01', quantityKg: 2 }),
+      entry({ cropId: '1', date: '2026-07-01', quantityKg: 2 }),
     ]
 
     const rows = summarizeCropSeason(entries, crops, varieties, parcels, expenses, 2026, settings)
 
     expect(rows).toHaveLength(1)
     expect(rows[0]).toMatchObject({
-      cropId: 1,
+      cropId: '1',
       cropName: 'Tomates',
       varietyId: undefined,
       varietyName: 'non précisée',
-      parcelId: 10,
+      parcelId: '10',
       parcelName: 'Carre nord',
       totalKg: 4,
       yieldPerPlantKg: 1,
@@ -64,39 +64,39 @@ describe('summarizeCropSeason', () => {
   })
 
   it('ignore les recoltes hors de la fenetre de saison', () => {
-    const crops: Crop[] = [{ id: 1, name: 'Tomates', status: 'en_recolte' }]
+    const crops: Crop[] = [{ id: '1', name: 'Tomates', status: 'en_recolte' }]
     const entries = [
-      entry({ cropId: 1, date: '2026-01-15', quantityKg: 1 }),
-      entry({ cropId: 1, date: '2026-06-01', quantityKg: 2 }),
+      entry({ cropId: '1', date: '2026-01-15', quantityKg: 1 }),
+      entry({ cropId: '1', date: '2026-06-01', quantityKg: 2 }),
     ]
     const rows = summarizeCropSeason(entries, crops, [], [], [], 2026, settings)
     expect(rows[0].totalKg).toBe(2)
   })
 
   it('ne calcule pas yieldPerPlantKg si plantCount est absent', () => {
-    const crops: Crop[] = [{ id: 1, name: 'Tomates', status: 'en_recolte' }]
-    const entries = [entry({ cropId: 1, quantityKg: 2 })]
+    const crops: Crop[] = [{ id: '1', name: 'Tomates', status: 'en_recolte' }]
+    const entries = [entry({ cropId: '1', quantityKg: 2 })]
     const rows = summarizeCropSeason(entries, crops, [], [], [], 2026, settings)
     expect(rows[0].yieldPerPlantKg).toBeUndefined()
   })
 
   it('ne calcule pas yieldPerM2Kg si la parcelle n a pas de areaM2', () => {
-    const crops: Crop[] = [{ id: 1, name: 'Tomates', status: 'en_recolte', parcelId: 10 }]
-    const parcels: Parcel[] = [{ id: 10, name: 'Carre nord' }]
-    const entries = [entry({ cropId: 1, quantityKg: 2 })]
+    const crops: Crop[] = [{ id: '1', name: 'Tomates', status: 'en_recolte', parcelId: '10' }]
+    const parcels: Parcel[] = [{ id: '10', name: 'Carre nord' }]
+    const entries = [entry({ cropId: '1', quantityKg: 2 })]
     const rows = summarizeCropSeason(entries, crops, [], parcels, [], 2026, settings)
     expect(rows[0].yieldPerM2Kg).toBeUndefined()
   })
 
   it('separe deux varietes de la meme culture en deux lignes', () => {
-    const crops: Crop[] = [{ id: 1, name: 'Tomates', status: 'en_recolte' }]
+    const crops: Crop[] = [{ id: '1', name: 'Tomates', status: 'en_recolte' }]
     const varieties: Variety[] = [
-      { id: 100, name: 'Saint-Pierre', vegetable: 'Tomate' },
-      { id: 101, name: 'Coeur de boeuf', vegetable: 'Tomate' },
+      { id: '100', name: 'Saint-Pierre', vegetable: 'Tomate' },
+      { id: '101', name: 'Coeur de boeuf', vegetable: 'Tomate' },
     ]
     const entries = [
-      entry({ cropId: 1, varietyId: 100, quantityKg: 2 }),
-      entry({ cropId: 1, varietyId: 101, quantityKg: 3 }),
+      entry({ cropId: '1', varietyId: '100', quantityKg: 2 }),
+      entry({ cropId: '1', varietyId: '101', quantityKg: 3 }),
     ]
     const rows = summarizeCropSeason(entries, crops, varieties, [], [], 2026, settings)
     expect(rows).toHaveLength(2)
@@ -104,22 +104,22 @@ describe('summarizeCropSeason', () => {
   })
 
   it('soustrait les depenses liees au cropId et dans la fenetre de saison', () => {
-    const crops: Crop[] = [{ id: 1, name: 'Tomates', status: 'en_recolte', pricePerKg: 3 }]
+    const crops: Crop[] = [{ id: '1', name: 'Tomates', status: 'en_recolte', pricePerKg: 3 }]
     const expenses: Expense[] = [
-      { id: 1, label: 'Terreau', amountEuros: 5, date: '2026-04-01', amortization: 'consommable', cropId: 1 },
-      { id: 2, label: 'Hors saison', amountEuros: 99, date: '2026-01-01', amortization: 'consommable', cropId: 1 },
-      { id: 3, label: 'Autre culture', amountEuros: 50, date: '2026-04-01', amortization: 'consommable', cropId: 2 },
+      { id: '1', label: 'Terreau', amountEuros: 5, date: '2026-04-01', amortization: 'consommable', cropId: '1' },
+      { id: '2', label: 'Hors saison', amountEuros: 99, date: '2026-01-01', amortization: 'consommable', cropId: '1' },
+      { id: '3', label: 'Autre culture', amountEuros: 50, date: '2026-04-01', amortization: 'consommable', cropId: '2' },
     ]
-    const entries = [entry({ cropId: 1, quantityKg: 2 })]
+    const entries = [entry({ cropId: '1', quantityKg: 2 })]
     const rows = summarizeCropSeason(entries, crops, [], [], expenses, 2026, settings)
     expect(rows[0].expensesEuros).toBe(5)
     expect(rows[0].netEuros).toBe(1)
   })
 
   it('cree une ligne depense seule si une culture a des depenses mais aucune recolte', () => {
-    const crops: Crop[] = [{ id: 1, name: 'Tomates', status: 'en_place' }]
+    const crops: Crop[] = [{ id: '1', name: 'Tomates', status: 'en_place' }]
     const expenses: Expense[] = [
-      { id: 1, label: 'Terreau', amountEuros: 5, date: '2026-04-01', amortization: 'consommable', cropId: 1 },
+      { id: '1', label: 'Terreau', amountEuros: 5, date: '2026-04-01', amortization: 'consommable', cropId: '1' },
     ]
     const rows = summarizeCropSeason([], crops, [], [], expenses, 2026, settings)
     expect(rows).toHaveLength(1)
@@ -140,19 +140,19 @@ describe('summarizeParcelSeason', () => {
   }
 
   it('agrege le total kg toutes cultures confondues sur une parcelle', () => {
-    const parcels: Parcel[] = [{ id: 10, name: 'Carre nord', areaM2: 8 }]
+    const parcels: Parcel[] = [{ id: '10', name: 'Carre nord', areaM2: 8 }]
     const crops: Crop[] = [
-      { id: 1, name: 'Tomates', status: 'en_recolte', parcelId: 10, pricePerKg: 3 },
-      { id: 2, name: 'Courgettes', status: 'en_recolte', parcelId: 10, pricePerKg: 1 },
+      { id: '1', name: 'Tomates', status: 'en_recolte', parcelId: '10', pricePerKg: 3 },
+      { id: '2', name: 'Courgettes', status: 'en_recolte', parcelId: '10', pricePerKg: 1 },
     ]
     const entries = [
-      entry({ cropId: 1, parcelId: 10, quantityKg: 2 }),
-      entry({ cropId: 2, parcelId: 10, quantityKg: 4 }),
+      entry({ cropId: '1', parcelId: '10', quantityKg: 2 }),
+      entry({ cropId: '2', parcelId: '10', quantityKg: 4 }),
     ]
     const rows = summarizeParcelSeason(entries, parcels, crops, [], 2026, settings)
     expect(rows).toHaveLength(1)
     expect(rows[0]).toMatchObject({
-      parcelId: 10,
+      parcelId: '10',
       parcelName: 'Carre nord',
       totalKg: 6,
       yieldPerM2Kg: 0.75,
@@ -161,38 +161,38 @@ describe('summarizeParcelSeason', () => {
   })
 
   it('additionne les litres arroses dans la fenetre de saison', () => {
-    const parcels: Parcel[] = [{ id: 10, name: 'Carre nord' }]
+    const parcels: Parcel[] = [{ id: '10', name: 'Carre nord' }]
     const entries = [
-      entry({ type: 'arrosage', parcelId: 10, date: '2026-04-01', volumeLiters: 20 }),
-      entry({ type: 'arrosage', parcelId: 10, date: '2026-12-15', volumeLiters: 99 }),
+      entry({ type: 'arrosage', parcelId: '10', date: '2026-04-01', volumeLiters: 20 }),
+      entry({ type: 'arrosage', parcelId: '10', date: '2026-12-15', volumeLiters: 99 }),
     ]
     const rows = summarizeParcelSeason(entries, parcels, [], [], 2026, settings)
     expect(rows[0].totalWaterLiters).toBe(20)
   })
 
   it('additionne la pluie a partir des releves manuels convertis en litres via areaM2', () => {
-    const parcels: Parcel[] = [{ id: 10, name: 'Carre nord', areaM2: 10 }]
+    const parcels: Parcel[] = [{ id: '10', name: 'Carre nord', areaM2: 10 }]
     const entries = [
-      entry({ type: 'releve_pluie', parcelId: 10, date: '2026-05-01', rainMm: 4 }),
-      entry({ type: 'releve_pluie', parcelId: 10, date: '2026-05-02', rainMm: 2 }),
+      entry({ type: 'releve_pluie', parcelId: '10', date: '2026-05-01', rainMm: 4 }),
+      entry({ type: 'releve_pluie', parcelId: '10', date: '2026-05-02', rainMm: 2 }),
     ]
     const rows = summarizeParcelSeason(entries, parcels, [], [], 2026, settings)
     expect(rows[0].totalRainLiters).toBe(60)
   })
 
   it('renvoie aucune ligne sans aucune entree', () => {
-    const parcels: Parcel[] = [{ id: 10, name: 'Carre nord', areaM2: 10 }]
+    const parcels: Parcel[] = [{ id: '10', name: 'Carre nord', areaM2: 10 }]
     const rows = summarizeParcelSeason([], parcels, [], [], 2026, settings)
     expect(rows).toHaveLength(0)
   })
 
   it('soustrait les depenses liees au parcelId dans la fenetre de saison', () => {
-    const parcels: Parcel[] = [{ id: 10, name: 'Carre nord' }]
-    const crops: Crop[] = [{ id: 1, name: 'Tomates', status: 'en_recolte', parcelId: 10, pricePerKg: 3 }]
+    const parcels: Parcel[] = [{ id: '10', name: 'Carre nord' }]
+    const crops: Crop[] = [{ id: '1', name: 'Tomates', status: 'en_recolte', parcelId: '10', pricePerKg: 3 }]
     const expenses: Expense[] = [
-      { id: 1, label: 'Paillage', amountEuros: 7, date: '2026-04-01', amortization: 'consommable', parcelId: 10 },
+      { id: '1', label: 'Paillage', amountEuros: 7, date: '2026-04-01', amortization: 'consommable', parcelId: '10' },
     ]
-    const entries = [entry({ cropId: 1, parcelId: 10, quantityKg: 2 })]
+    const entries = [entry({ cropId: '1', parcelId: '10', quantityKg: 2 })]
     const rows = summarizeParcelSeason(entries, parcels, crops, expenses, 2026, settings)
     expect(rows[0].expensesEuros).toBe(7)
     expect(rows[0].netEuros).toBe(-1)

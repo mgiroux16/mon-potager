@@ -9,10 +9,10 @@ import type {
 } from '../data/model'
 
 export interface LogRefs {
-  parcels: Map<number, Parcel>
-  crops: Map<number, Crop>
-  oyas: Map<number, Oya>
-  trees: Map<number, FruitTree>
+  parcels: Map<string, Parcel>
+  crops: Map<string, Crop>
+  oyas: Map<string, Oya>
+  trees: Map<string, FruitTree>
 }
 
 export interface LogEntryView {

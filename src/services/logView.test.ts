@@ -9,10 +9,10 @@ import {
 } from './logView'
 
 const refs: LogRefs = {
-  parcels: new Map([[1, { id: 1, name: 'Planche tomates' }]]),
-  crops: new Map([[2, { id: 2, name: 'Tomate', status: 'en_place' }]]),
-  oyas: new Map([[3, { id: 3, name: 'Oya nord', capacityLiters: 10 }]]),
-  trees: new Map([[4, { id: 4, name: 'Pommier' }]]),
+  parcels: new Map([['1', { id: '1', name: 'Planche tomates' }]]),
+  crops: new Map([['2', { id: '2', name: 'Tomate', status: 'en_place' }]]),
+  oyas: new Map([['3', { id: '3', name: 'Oya nord', capacityLiters: 10 }]]),
+  trees: new Map([['4', { id: '4', name: 'Pommier' }]]),
 }
 
 function entry(partial: Partial<GardenLogEntry>): GardenLogEntry {
@@ -22,25 +22,25 @@ function entry(partial: Partial<GardenLogEntry>): GardenLogEntry {
 describe('describeLogEntry', () => {
   it('arrosage : libellé, parcelle cible, volume en détail', () => {
     const view = describeLogEntry(
-      entry({ type: 'arrosage', parcelId: 1, volumeLiters: 30 }),
+      entry({ type: 'arrosage', parcelId: '1', volumeLiters: 30 }),
       refs,
     )
     expect(view).toEqual({ typeLabel: 'Arrosage', target: 'Planche tomates', detail: '30 L' })
   })
 
   it('récolte : culture cible, quantité en détail', () => {
-    const view = describeLogEntry(entry({ type: 'recolte', cropId: 2, quantityKg: 2 }), refs)
+    const view = describeLogEntry(entry({ type: 'recolte', cropId: '2', quantityKg: 2 }), refs)
     expect(view).toEqual({ typeLabel: 'Récolte', target: 'Tomate', detail: '2 kg' })
   })
 
   it("remplissage d'oya : oya cible, volume en détail", () => {
-    const view = describeLogEntry(entry({ type: 'remplissage_oya', oyaId: 3, volumeLiters: 8 }), refs)
+    const view = describeLogEntry(entry({ type: 'remplissage_oya', oyaId: '3', volumeLiters: 8 }), refs)
     expect(view).toEqual({ typeLabel: "Remplissage d'oya", target: 'Oya nord', detail: '8 L' })
   })
 
   it('observation : description en détail', () => {
     const view = describeLogEntry(
-      entry({ type: 'observation', parcelId: 1, description: 'feuilles jaunes' }),
+      entry({ type: 'observation', parcelId: '1', description: 'feuilles jaunes' }),
       refs,
     )
     expect(view).toEqual({
@@ -56,7 +56,7 @@ describe('describeLogEntry', () => {
   })
 
   it('référence manquante : ne plante pas, target indéfini', () => {
-    const view = describeLogEntry(entry({ type: 'recolte', cropId: 999, quantityKg: 1 }), refs)
+    const view = describeLogEntry(entry({ type: 'recolte', cropId: '999', quantityKg: 1 }), refs)
     expect(view.target).toBeUndefined()
     expect(view.detail).toBe('1 kg')
   })

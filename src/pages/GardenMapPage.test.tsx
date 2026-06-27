@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
-import { db } from '../data/db'
+import { db, newId } from '../data/db'
 import { GardenMapPage } from './GardenMapPage'
 
 const mockNavigate = vi.fn()
@@ -23,7 +23,7 @@ describe('GardenMapPage', () => {
 
   it('affiche un bloc pour chaque parcelle placee sur la carte', async () => {
     const id = await db.parcels.add({
-      name: 'Planche tomates',
+      id: newId(), name: 'Planche tomates',
       mapX: 0,
       mapY: 0,
       mapWidth: 2,
@@ -35,7 +35,7 @@ describe('GardenMapPage', () => {
   })
 
   it('liste les parcelles non placees a part, avec un bouton pour les placer', async () => {
-    const id = await db.parcels.add({ name: 'Rang pommes de terre' })
+    const id = await db.parcels.add({ id: newId(), name: 'Rang pommes de terre' })
     render(<GardenMapPage />, { wrapper: MemoryRouter })
     expect(await screen.findByText('Rang pommes de terre')).toBeInTheDocument()
     fireEvent.click(screen.getByText('Placer sur la carte'))
@@ -47,7 +47,7 @@ describe('GardenMapPage', () => {
   })
 
   it('un clic simple (sans deplacement) selectionne le bloc et affiche les actions', async () => {
-    const id = await db.parcels.add({ name: 'Planche tomates', mapX: 0, mapY: 0, mapWidth: 2, mapHeight: 2 })
+    const id = await db.parcels.add({ id: newId(), name: 'Planche tomates', mapX: 0, mapY: 0, mapWidth: 2, mapHeight: 2 })
     render(<GardenMapPage />, { wrapper: MemoryRouter })
     const block = await screen.findByTestId(`map-block-${id}`)
     fireEvent.mouseDown(block, { clientX: 10, clientY: 10 })
@@ -57,7 +57,7 @@ describe('GardenMapPage', () => {
   })
 
   it('le bouton Arroser navigue vers le formulaire d arrosage preremplit', async () => {
-    const id = await db.parcels.add({ name: 'Planche tomates', mapX: 0, mapY: 0, mapWidth: 2, mapHeight: 2 })
+    const id = await db.parcels.add({ id: newId(), name: 'Planche tomates', mapX: 0, mapY: 0, mapWidth: 2, mapHeight: 2 })
     render(<GardenMapPage />, { wrapper: MemoryRouter })
     const block = await screen.findByTestId(`map-block-${id}`)
     fireEvent.mouseDown(block, { clientX: 10, clientY: 10 })
@@ -70,7 +70,7 @@ describe('GardenMapPage', () => {
 
   it('Rotation fait avancer la rotation de 90 degres', async () => {
     const id = await db.parcels.add({
-      name: 'Planche tomates',
+      id: newId(), name: 'Planche tomates',
       mapX: 0,
       mapY: 0,
       mapWidth: 2,
@@ -89,7 +89,7 @@ describe('GardenMapPage', () => {
   })
 
   it('Dupliquer cree une copie avec un nom suffixe', async () => {
-    const id = await db.parcels.add({ name: 'Planche tomates', mapX: 0, mapY: 0, mapWidth: 2, mapHeight: 2 })
+    const id = await db.parcels.add({ id: newId(), name: 'Planche tomates', mapX: 0, mapY: 0, mapWidth: 2, mapHeight: 2 })
     render(<GardenMapPage />, { wrapper: MemoryRouter })
     const block = await screen.findByTestId(`map-block-${id}`)
     fireEvent.mouseDown(block, { clientX: 10, clientY: 10 })
@@ -102,7 +102,7 @@ describe('GardenMapPage', () => {
   })
 
   it('un glisser-deposer met a jour la position de la parcelle', async () => {
-    const id = await db.parcels.add({ name: 'Planche tomates', mapX: 0, mapY: 0, mapWidth: 2, mapHeight: 2 })
+    const id = await db.parcels.add({ id: newId(), name: 'Planche tomates', mapX: 0, mapY: 0, mapWidth: 2, mapHeight: 2 })
     render(<GardenMapPage />, { wrapper: MemoryRouter })
     const block = await screen.findByTestId(`map-block-${id}`)
     const grid = screen.getByTestId('garden-map-grid')

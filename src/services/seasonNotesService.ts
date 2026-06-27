@@ -1,17 +1,17 @@
-import { db } from '../data/db'
+import { db, newId } from '../data/db'
 import type { SeasonNote } from '../data/model'
 
-export function getCropNote(notes: SeasonNote[], cropId: number, year: number): string {
+export function getCropNote(notes: SeasonNote[], cropId: string, year: number): string {
   return notes.find((n) => n.cropId === cropId && n.year === year)?.text ?? ''
 }
 
-export function getParcelNote(notes: SeasonNote[], parcelId: number, year: number): string {
+export function getParcelNote(notes: SeasonNote[], parcelId: string, year: number): string {
   return notes.find((n) => n.parcelId === parcelId && n.year === year)?.text ?? ''
 }
 
 async function upsertNote(
   match: (n: SeasonNote) => boolean,
-  build: () => SeasonNote,
+  build: () => Omit<SeasonNote, 'id'>,
   text: string,
 ): Promise<void> {
   const all = await db.seasonNotes.toArray()
@@ -20,19 +20,19 @@ async function upsertNote(
 
   if (existing) {
     if (trimmed === '') {
-      await db.seasonNotes.delete(existing.id as number)
+      await db.seasonNotes.delete(existing.id as string)
     } else {
-      await db.seasonNotes.update(existing.id as number, { text: trimmed })
+      await db.seasonNotes.update(existing.id as string, { text: trimmed })
     }
     return
   }
 
   if (trimmed !== '') {
-    await db.seasonNotes.add(build())
+    await db.seasonNotes.add({ ...build(), id: newId() })
   }
 }
 
-export async function setCropNote(cropId: number, year: number, text: string): Promise<void> {
+export async function setCropNote(cropId: string, year: number, text: string): Promise<void> {
   await upsertNote(
     (n) => n.cropId === cropId && n.year === year,
     () => ({ cropId, year, text: text.trim() }),
@@ -40,7 +40,7 @@ export async function setCropNote(cropId: number, year: number, text: string): P
   )
 }
 
-export async function setParcelNote(parcelId: number, year: number, text: string): Promise<void> {
+export async function setParcelNote(parcelId: string, year: number, text: string): Promise<void> {
   await upsertNote(
     (n) => n.parcelId === parcelId && n.year === year,
     () => ({ parcelId, year, text: text.trim() }),

@@ -2,7 +2,7 @@ import { useRef, useState } from 'react'
 import type { MouseEvent as ReactMouseEvent, WheelEvent as ReactWheelEvent, TouchEvent as ReactTouchEvent } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useNavigate } from 'react-router-dom'
-import { db } from '../data/db'
+import { db, newId } from '../data/db'
 import type { Parcel } from '../data/model'
 import { nextFreeMapSlot } from '../services/mapLayout'
 
@@ -31,12 +31,14 @@ const ZONE_COLORS = [
   'rgb(248,113,113)',
 ]
 
-function colorFor(id: number) {
-  return ZONE_COLORS[id % ZONE_COLORS.length]
+function colorFor(id: string) {
+  let hash = 0
+  for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) | 0
+  return ZONE_COLORS[Math.abs(hash) % ZONE_COLORS.length]
 }
 
 interface DragState {
-  id: number
+  id: string
   pointerStartX: number
   pointerStartY: number
   originMapX: number
@@ -45,7 +47,7 @@ interface DragState {
 }
 
 interface ResizeState {
-  id: number
+  id: string
   pointerStartX: number
   pointerStartY: number
   originWidth: number
@@ -62,13 +64,13 @@ export function GardenMapPage() {
   const gridWidthPx = gridCols * CELL_PX
   const gridHeightPx = gridRows * CELL_PX
   const pinchRef = useRef<{ startDistance: number; startScale: number } | null>(null)
-  const [selectedId, setSelectedId] = useState<number | null>(null)
-  const [renamingId, setRenamingId] = useState<number | null>(null)
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [renamingId, setRenamingId] = useState<string | null>(null)
   const [renameValue, setRenameValue] = useState('')
   const dragRef = useRef<DragState | null>(null)
   const resizeRef = useRef<ResizeState | null>(null)
-  const [livePositions, setLivePositions] = useState<Record<number, { x: number; y: number }>>({})
-  const [liveSizes, setLiveSizes] = useState<Record<number, { w: number; h: number }>>({})
+  const [livePositions, setLivePositions] = useState<Record<string, { x: number; y: number }>>({})
+  const [liveSizes, setLiveSizes] = useState<Record<string, { w: number; h: number }>>({})
 
   const placed = parcels.filter((p) => p.mapWidth != null && p.mapHeight != null && p.id != null)
   const unplaced = parcels.filter((p) => p.mapWidth == null || p.mapHeight == null)
@@ -86,7 +88,7 @@ export function GardenMapPage() {
 
   async function addParcel() {
     const slot = nextFreeMapSlot(parcels)
-    await db.parcels.add({ name: 'Nouvelle zone', mapX: slot.x, mapY: slot.y, mapWidth: 2, mapHeight: 2, mapRotation: 0 })
+    await db.parcels.add({ id: newId(), name: 'Nouvelle zone', mapX: slot.x, mapY: slot.y, mapWidth: 2, mapHeight: 2, mapRotation: 0 })
   }
 
   async function rotateParcel(parcel: Parcel) {
@@ -99,6 +101,7 @@ export function GardenMapPage() {
   async function duplicateParcel(parcel: Parcel) {
     const slot = nextFreeMapSlot(parcels)
     await db.parcels.add({
+      id: newId(),
       name: `${parcel.name} (copie)`,
       mapX: slot.x,
       mapY: slot.y,

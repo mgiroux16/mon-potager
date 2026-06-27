@@ -9,7 +9,7 @@ beforeEach(async () => {
 describe('varietyService', () => {
   it('ajoute une variété et renvoie son id', async () => {
     const id = await addVariety({ name: 'Saint-Pierre', vegetable: 'Tomate' })
-    expect(typeof id).toBe('number')
+    expect(typeof id).toBe('string')
     const all = await listVarieties()
     expect(all).toHaveLength(1)
     expect(all[0].name).toBe('Saint-Pierre')

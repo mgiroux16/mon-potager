@@ -44,8 +44,8 @@ async function loadCatalog(): Promise<GardenCatalog> {
     db.oyas.toArray(),
     db.trees.toArray(),
   ])
-  const pick = <T extends { id?: number; name: string }>(rows: T[]) =>
-    rows.filter((r) => r.id != null).map((r) => ({ id: r.id as number, name: r.name }))
+  const pick = <T extends { id?: string; name: string }>(rows: T[]) =>
+    rows.filter((r) => r.id != null).map((r) => ({ id: r.id as string, name: r.name }))
   return {
     parcels: pick(parcels),
     crops: pick(crops),

@@ -38,17 +38,17 @@ export const LOG_ENTRY_TYPES = [
 export type LogEntryType = (typeof LOG_ENTRY_TYPES)[number]
 
 export interface GardenLogEntry {
-  id?: number
+  id?: string
   type: LogEntryType
   date: ISODate
   time?: ISOTime
   title?: string
   description?: string
-  parcelId?: number
-  cropId?: number
-  oyaId?: number
-  treeId?: number
-  varietyId?: number
+  parcelId?: string
+  cropId?: string
+  oyaId?: string
+  treeId?: string
+  varietyId?: string
   status?: EntryStatus
   sourcePhrase?: string // la phrase naturelle d'origine, si saisie vocale/IA
   weather?: WeatherSnapshot // snapshot figé, rempli au palier 4b
@@ -56,7 +56,7 @@ export interface GardenLogEntry {
   rainMm?: number
   quantityKg?: number
   durationMinutes?: number // durée d'arrosage en minutes, informatif, jamais utilisé pour un calcul
-  expenseId?: number
+  expenseId?: string
   photoUrls?: string[]
   createdAt: number // epoch ms, pour trier de façon stable
 }
@@ -64,7 +64,7 @@ export interface GardenLogEntry {
 export type Exposure = 'plein_soleil' | 'mi_ombre' | 'ombre'
 
 export interface Parcel {
-  id?: number
+  id?: string
   name: string
   areaM2?: number
   exposure?: Exposure
@@ -84,12 +84,12 @@ export interface Parcel {
 export type CropStatus = 'prevu' | 'en_place' | 'en_recolte' | 'termine'
 
 export interface Crop {
-  id?: number
+  id?: string
   name: string
   variety?: string
-  parcelId?: number
-  catalogId?: number
-  varietyId?: number
+  parcelId?: string
+  catalogId?: string
+  varietyId?: string
   plantCount?: number
   sowingDate?: ISODate
   plantingDate?: ISODate
@@ -101,35 +101,35 @@ export interface Crop {
 }
 
 export interface Variety {
-  id?: number
+  id?: string
   name: string // ex : 'Saint-Pierre'
   vegetable: string // ex : 'Tomate' (lien logique vers le catalogue)
-  catalogId?: number // lien dur vers CatalogItem si présent
+  catalogId?: string // lien dur vers CatalogItem si présent
   source?: string // semencier, échange, ferme...
   notes?: string
 }
 
 export interface Oya {
-  id?: number
+  id?: string
   name: string
-  parcelId?: number
+  parcelId?: string
   capacityLiters: number
   currentLiters?: number
-  cropIds?: number[]
+  cropIds?: string[]
 }
 
 export interface FruitTree {
-  id?: number
+  id?: string
   name: string
   variety?: string
-  parcelId?: number
+  parcelId?: string
   shadeImpact?: string
   waterNeed?: WaterNeed
   notes?: string
 }
 
 export interface WaterTank {
-  id?: number
+  id?: string
   name: string
   capacityLiters: number
   estimatedLiters?: number
@@ -147,7 +147,7 @@ export type VegetableFamily =
   | 'autres'
 
 export interface CatalogItem {
-  id?: number
+  id?: string
   vegetable: string
   family: VegetableFamily
   sowingMonths?: number[] // 1-12
@@ -162,7 +162,7 @@ export interface CatalogItem {
 export type ExpenseAmortization = 'consommable' | 'etale' | 'durable'
 
 export interface Expense {
-  id?: number
+  id?: string
   label: string
   amountEuros: number
   date: ISODate
@@ -170,20 +170,20 @@ export interface Expense {
   lifespanYears?: number // pour 'durable'
   usagePeriodMonths?: number // pour 'etale'
   category?: string
-  parcelId?: number
-  cropId?: number
+  parcelId?: string
+  cropId?: string
 }
 
 export interface SoilNote {
-  id?: number
+  id?: string
   date: ISODate
-  parcelId?: number
+  parcelId?: string
   kind: 'apport' | 'brf' | 'paillage' | 'compost' | 'observation'
   description?: string
 }
 
 export interface AppSettings {
-  id?: number // singleton, toujours id = 1
+  id?: string // singleton, toujours id = 'settings'
   locationName: string
   latitude: number
   longitude: number
@@ -199,9 +199,9 @@ export interface AppSettings {
 }
 
 export interface SeasonNote {
-  id?: number
+  id?: string
   year: number
-  cropId?: number
-  parcelId?: number
+  cropId?: string
+  parcelId?: string
   text: string
 }

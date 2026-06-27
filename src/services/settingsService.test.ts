@@ -11,7 +11,7 @@ describe('settingsService', () => {
   it('renvoie les réglages par défaut si la base est vide', async () => {
     const s = await getSettings()
     expect(s.locationName).toBe(DEFAULT_SETTINGS.locationName)
-    expect(s.id).toBe(1)
+    expect(s.id).toBe('settings')
   })
 
   it('persiste et relit les réglages (singleton id=1)', async () => {
@@ -58,7 +58,7 @@ describe('settingsService', () => {
 
   it('complete les champs manquants par defaut sur un enregistrement existant ancien', async () => {
     const legacyRecord = {
-      id: 1,
+      id: '1',
       locationName: 'Champniers (16430)',
       latitude: 45.72,
       longitude: 0.19,

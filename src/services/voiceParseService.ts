@@ -5,7 +5,7 @@ import { LOG_ENTRY_TYPES, type LogEntryType } from '../data/model'
 import type { NewLogEntry } from './logService'
 
 export interface CatalogEntry {
-  id: number
+  id: string
   name: string
 }
 
@@ -110,8 +110,8 @@ function parseOneDraft(raw: Record<string, unknown>, catalog: GardenCatalog): Vo
   }
 
   for (const { field, list } of ID_FIELDS) {
-    const value = asNumber(raw[field])
-    if (value !== undefined && catalog[list].some((e) => e.id === value)) {
+    const value = raw[field]
+    if (typeof value === 'string' && catalog[list].some((e) => e.id === value)) {
       ;(draft as Record<string, unknown>)[field] = value
     }
   }

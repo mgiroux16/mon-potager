@@ -2,7 +2,7 @@ import { useState } from 'react'
 import type { MouseEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Camera, Copy, Pencil, Trash2 } from 'lucide-react'
-import { db } from '../data/db'
+import { db, newId } from '../data/db'
 import type { Parcel } from '../data/model'
 import { compressImage } from '../services/imageService'
 import { isPointInPolygon } from '../services/geometry'
@@ -55,6 +55,7 @@ export function ParcelCard({ parcel }: ParcelCardProps) {
     const all = await db.parcels.toArray()
     const slot = nextFreeMapSlot(all)
     await db.parcels.add({
+      id: newId(),
       name: `${parcel.name} (copie)`,
       areaM2: parcel.areaM2,
       exposure: parcel.exposure,

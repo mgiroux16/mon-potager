@@ -6,12 +6,15 @@ export type NewLogEntry = Omit<GardenLogEntry, 'id' | 'createdAt'> & {
   createdAt?: number
 }
 
-export async function addLogEntry(entry: NewLogEntry): Promise<number> {
-  return db.log.add({
+export async function addLogEntry(entry: NewLogEntry): Promise<string> {
+  const id = crypto.randomUUID()
+  await db.log.add({
     ...entry,
+    id,
     status: entry.status ?? 'valide',
     createdAt: entry.createdAt ?? Date.now(),
   })
+  return id
 }
 
 // Journal complet, du plus récent au plus ancien (date puis createdAt).

@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
-import { db } from '../data/db'
+import { db, newId } from '../data/db'
 import { listLog } from '../services/logService'
 import { findOrCreateVariety } from '../services/varietyService'
 import { QuickAddPage } from './QuickAddPage'
@@ -23,7 +23,7 @@ beforeEach(async () => {
 
 describe('QuickAddPage', () => {
   it('ajoute un arrosage via la tuile dédiée', async () => {
-    await db.parcels.add({ name: 'Planche test' })
+    await db.parcels.add({ id: newId(), name: 'Planche test' })
     render(
       <MemoryRouter>
         <QuickAddPage />
@@ -49,7 +49,7 @@ describe('QuickAddPage', () => {
   })
 
   it('enregistre durationMinutes independamment du volume sur une entree arrosage', async () => {
-    await db.parcels.add({ name: 'Planche test' })
+    await db.parcels.add({ id: newId(), name: 'Planche test' })
     render(
       <MemoryRouter>
         <QuickAddPage />
@@ -75,7 +75,7 @@ describe('QuickAddPage', () => {
   })
 
   it('permet de saisir la duree seule, sans volume', async () => {
-    await db.parcels.add({ name: 'Planche test' })
+    await db.parcels.add({ id: newId(), name: 'Planche test' })
     render(
       <MemoryRouter>
         <QuickAddPage />
@@ -146,8 +146,8 @@ describe('QuickAddPage', () => {
 
 describe('QuickAddPage avec brouillon vocal', () => {
   async function seedVoice() {
-    await db.parcels.add({ id: 1, name: 'Parcelle A' })
-    await db.crops.add({ id: 10, name: 'Tomates', status: 'en_place' })
+    await db.parcels.add({ id: '1', name: 'Parcelle A' })
+    await db.crops.add({ id: '10', name: 'Tomates', status: 'en_place' })
   }
 
   it('ouvre EntryForm prerempli (type + volume) depuis le router state', async () => {
@@ -157,7 +157,7 @@ describe('QuickAddPage avec brouillon vocal', () => {
         initialEntries={[
           {
             pathname: '/ajouter',
-            state: { voiceDraft: { type: 'arrosage', volumeLiters: 10, parcelId: 1, cropId: 10 } },
+            state: { voiceDraft: { type: 'arrosage', volumeLiters: 10, parcelId: '1', cropId: '10' } },
           },
         ]}
       >
@@ -179,7 +179,7 @@ describe('QuickAddPage avec brouillon vocal', () => {
         initialEntries={[
           {
             pathname: '/ajouter',
-            state: { voiceDraft: { type: 'arrosage', volumeLiters: 10, parcelId: 1, cropId: 10 } },
+            state: { voiceDraft: { type: 'arrosage', volumeLiters: 10, parcelId: '1', cropId: '10' } },
           },
         ]}
       >
@@ -192,8 +192,8 @@ describe('QuickAddPage avec brouillon vocal', () => {
     await waitFor(async () => {
       const entries = await listLog()
       expect(entries).toHaveLength(1)
-      expect(entries[0].parcelId).toBe(1)
-      expect(entries[0].cropId).toBe(10)
+      expect(entries[0].parcelId).toBe('1')
+      expect(entries[0].cropId).toBe('10')
       expect(entries[0].volumeLiters).toBe(10)
     })
   })
@@ -210,9 +210,9 @@ describe('QuickAddPage avec brouillon vocal', () => {
 
 describe('QuickAddPage avec selecteur de variete', () => {
   it('enregistre la varietyId choisie sur une récolte', async () => {
-    await db.catalog.add({ id: 3, vegetable: 'Courgette', family: 'cucurbitacees' })
-    await db.crops.add({ id: 1, name: 'Courgettes', catalogId: 3, status: 'en_place' })
-    await db.parcels.add({ id: 1, name: 'Buttes' })
+    await db.catalog.add({ id: '3', vegetable: 'Courgette', family: 'cucurbitacees' })
+    await db.crops.add({ id: '1', name: 'Courgettes', catalogId: '3', status: 'en_place' })
+    await db.parcels.add({ id: '1', name: 'Buttes' })
     await findOrCreateVariety('Ronde de Nice', 'Courgette')
 
     render(

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { render, screen, waitFor, fireEvent } from '@testing-library/react'
-import { db } from '../data/db'
+import { db, newId } from '../data/db'
 import { WaterPage } from './WaterPage'
 
 beforeEach(async () => {
@@ -16,9 +16,9 @@ describe('WaterPage', () => {
   })
 
   it('affiche le cumul par parcelle pour les fenetres glissantes et l annee', async () => {
-    const parcelId = await db.parcels.add({ name: 'Carrés du fond' })
+    const parcelId = await db.parcels.add({ id: newId(), name: 'Carrés du fond' })
     await db.log.add({
-      type: 'arrosage',
+      id: newId(), type: 'arrosage',
       date: new Date().toISOString().slice(0, 10),
       parcelId,
       volumeLiters: 5,
@@ -35,10 +35,10 @@ describe('WaterPage', () => {
 
   it('affiche plusieurs parcelles', async () => {
     const today = new Date().toISOString().slice(0, 10)
-    const p1 = await db.parcels.add({ name: 'Carrés du fond' })
-    const p2 = await db.parcels.add({ name: 'Allée' })
-    await db.log.add({ type: 'arrosage', date: today, parcelId: p1, volumeLiters: 5, createdAt: Date.now() })
-    await db.log.add({ type: 'arrosage', date: today, parcelId: p2, volumeLiters: 8, createdAt: Date.now() })
+    const p1 = await db.parcels.add({ id: newId(), name: 'Carrés du fond' })
+    const p2 = await db.parcels.add({ id: newId(), name: 'Allée' })
+    await db.log.add({ id: newId(), type: 'arrosage', date: today, parcelId: p1, volumeLiters: 5, createdAt: Date.now() })
+    await db.log.add({ id: newId(), type: 'arrosage', date: today, parcelId: p2, volumeLiters: 8, createdAt: Date.now() })
 
     render(<WaterPage />)
     await waitFor(() => {
@@ -49,12 +49,12 @@ describe('WaterPage', () => {
 
   it('affiche la reserve totale et l autonomie en jours', async () => {
     await db.tanks.bulkAdd([
-      { name: 'Cuve 1', capacityLiters: 500, estimatedLiters: 300 },
-      { name: 'Cuve 2', capacityLiters: 500, estimatedLiters: 200 },
+      { id: newId(), name: 'Cuve 1', capacityLiters: 500, estimatedLiters: 300 },
+      { id: newId(), name: 'Cuve 2', capacityLiters: 500, estimatedLiters: 200 },
     ])
-    const parcelId = await db.parcels.add({ name: 'Carrés du fond' })
+    const parcelId = await db.parcels.add({ id: newId(), name: 'Carrés du fond' })
     const today = new Date().toISOString().slice(0, 10)
-    await db.log.add({ type: 'arrosage', date: today, parcelId, volumeLiters: 35, createdAt: Date.now() })
+    await db.log.add({ id: newId(), type: 'arrosage', date: today, parcelId, volumeLiters: 35, createdAt: Date.now() })
 
     render(<WaterPage />)
     await waitFor(() => {
@@ -64,7 +64,7 @@ describe('WaterPage', () => {
   })
 
   it('affiche autonomie illimitee sans consommation recente', async () => {
-    await db.tanks.bulkAdd([{ name: 'Cuve 1', capacityLiters: 500, estimatedLiters: 300 }])
+    await db.tanks.bulkAdd([{ id: newId(), name: 'Cuve 1', capacityLiters: 500, estimatedLiters: 300 }])
 
     render(<WaterPage />)
     await waitFor(() => {
@@ -73,7 +73,7 @@ describe('WaterPage', () => {
   })
 
   it('permet d editer le niveau d une cuve et persiste la valeur', async () => {
-    const tankId = await db.tanks.add({ name: 'Cuve 1', capacityLiters: 500, estimatedLiters: 300 })
+    const tankId = await db.tanks.add({ id: newId(), name: 'Cuve 1', capacityLiters: 500, estimatedLiters: 300 })
 
     render(<WaterPage />)
     const input = await screen.findByLabelText('Niveau de Cuve 1 en litres')

@@ -56,7 +56,7 @@ describe('resolveRainMm', () => {
 
 function usageRow(over: Partial<WaterUsageRow>): WaterUsageRow {
   return {
-    parcelId: 1,
+    parcelId: '1',
     parcelName: 'Carrés du fond',
     liters7: 0,
     liters14: 0,
@@ -72,11 +72,11 @@ function parcel(over: Partial<Parcel>): Parcel {
 
 describe('compareWateringToRain', () => {
   it('convertit la pluie en litres via la surface de la parcelle', () => {
-    const usage = [usageRow({ parcelId: 1, liters7: 10, liters14: 20, liters30: 30 })]
-    const parcels = [parcel({ id: 1, areaM2: 5 })]
+    const usage = [usageRow({ parcelId: '1', liters7: 10, liters14: 20, liters30: 30 })]
+    const parcels = [parcel({ id: '1', areaM2: 5 })]
     const result = compareWateringToRain(usage, parcels, 2, 4, 6)
     expect(result[0]).toMatchObject({
-      parcelId: 1,
+      parcelId: '1',
       liters7: 10,
       rainLiters7: 10, // 2mm * 5m2
       totalLiters7: 20,
@@ -90,8 +90,8 @@ describe('compareWateringToRain', () => {
   })
 
   it('renvoie rainLiters null et total = litersGiven si areaM2 absent', () => {
-    const usage = [usageRow({ parcelId: 1, liters7: 10 })]
-    const parcels = [parcel({ id: 1, areaM2: undefined })]
+    const usage = [usageRow({ parcelId: '1', liters7: 10 })]
+    const parcels = [parcel({ id: '1', areaM2: undefined })]
     const result = compareWateringToRain(usage, parcels, 2, 4, 6)
     expect(result[0].rainLiters7).toBeNull()
     expect(result[0].totalLiters7).toBe(10)
@@ -99,20 +99,20 @@ describe('compareWateringToRain', () => {
 
   it('combine plusieurs parcelles avec la meme pluie ponderee par surface', () => {
     const usage = [
-      usageRow({ parcelId: 1, parcelName: 'Carrés du fond', liters7: 10 }),
-      usageRow({ parcelId: 2, parcelName: 'Allée', liters7: 5 }),
+      usageRow({ parcelId: '1', parcelName: 'Carrés du fond', liters7: 10 }),
+      usageRow({ parcelId: '2', parcelName: 'Allée', liters7: 5 }),
     ]
     const parcels = [
-      parcel({ id: 1, name: 'Carrés du fond', areaM2: 2 }),
-      parcel({ id: 2, name: 'Allée', areaM2: 4 }),
+      parcel({ id: '1', name: 'Carrés du fond', areaM2: 2 }),
+      parcel({ id: '2', name: 'Allée', areaM2: 4 }),
     ]
     const result = compareWateringToRain(usage, parcels, 3, 0, 0)
-    expect(result.find((r) => r.parcelId === 1)?.rainLiters7).toBe(6) // 3mm * 2m2
-    expect(result.find((r) => r.parcelId === 2)?.rainLiters7).toBe(12) // 3mm * 4m2
+    expect(result.find((r) => r.parcelId === '1')?.rainLiters7).toBe(6) // 3mm * 2m2
+    expect(result.find((r) => r.parcelId === '2')?.rainLiters7).toBe(12) // 3mm * 4m2
   })
 
   it('ignore une ligne usage dont la parcelle n existe plus', () => {
-    const usage = [usageRow({ parcelId: 99, liters7: 10 })]
+    const usage = [usageRow({ parcelId: '99', liters7: 10 })]
     const parcels: Parcel[] = []
     const result = compareWateringToRain(usage, parcels, 2, 0, 0)
     expect(result[0].rainLiters7).toBeNull()

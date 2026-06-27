@@ -9,7 +9,7 @@ beforeEach(async () => {
 describe('logService', () => {
   it('ajoute une entrée et renvoie son id', async () => {
     const id = await addLogEntry({ type: 'recolte', date: '2026-06-24', quantityKg: 2 })
-    expect(typeof id).toBe('number')
+    expect(typeof id).toBe('string')
     const all = await listLog()
     expect(all).toHaveLength(1)
     expect(all[0].quantityKg).toBe(2)
@@ -44,12 +44,12 @@ describe('logService', () => {
       type: 'recolte',
       date: '2026-06-25',
       quantityKg: 2.4,
-      varietyId: 1,
+      varietyId: '1',
       sourcePhrase: 'Aujourd hui 2,4 kg de courgettes',
     })
     const [entry] = await listLog()
     expect(entry.status).toBe('valide')
-    expect(entry.varietyId).toBe(1)
+    expect(entry.varietyId).toBe('1')
     expect(entry.sourcePhrase).toBe('Aujourd hui 2,4 kg de courgettes')
   })
 

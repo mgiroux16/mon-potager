@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Sprout, Trees, MapPin, Pencil, Bell } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { db } from '../data/db'
+import { db, newId } from '../data/db'
 import type { Crop, VegetableFamily } from '../data/model'
 import { getInactiveParcels, getHarvestReminders, getRotationReminders } from '../services/reminderService'
 import { ParcelCard } from '../components/ParcelCard'
@@ -138,6 +138,7 @@ export function GardenPage() {
               if (trimmed) {
                 const slot = nextFreeMapSlot(parcels)
                 await db.parcels.add({
+                  id: newId(),
                   name: trimmed,
                   mapX: slot.x,
                   mapY: slot.y,

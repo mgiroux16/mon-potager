@@ -118,7 +118,7 @@ export function EntryForm({ config, initial, onSaved, onCancel }: {
   const useLegacyElement = config.target === 'element' && !hasDraftTarget
   const visible = visibleTargets(config, initial)
 
-  const selectedCrop = crops.find((c) => String(c.id) === cropId)
+  const selectedCrop = crops.find((c) => c.id === cropId)
   const cropCatalog = catalog.find((c) => c.id === selectedCrop?.catalogId)
   const cropVegetable = cropCatalog?.vegetable ?? selectedCrop?.name ?? ''
   const cropVarieties = varieties.filter(
@@ -133,15 +133,15 @@ export function EntryForm({ config, initial, onSaved, onCancel }: {
     if (useLegacyElement) {
       if (elementValue) {
         const [kind, id] = elementValue.split(':')
-        if (kind === 'parcelle') entry.parcelId = Number(id)
-        else if (kind === 'culture') entry.cropId = Number(id)
-        else if (kind === 'arbre') entry.treeId = Number(id)
+        if (kind === 'parcelle') entry.parcelId = id
+        else if (kind === 'culture') entry.cropId = id
+        else if (kind === 'arbre') entry.treeId = id
       }
     } else {
-      if (visible.has('parcelle') && parcelId) entry.parcelId = Number(parcelId)
-      if (visible.has('culture') && cropId) entry.cropId = Number(cropId)
-      if (visible.has('oya') && oyaId) entry.oyaId = Number(oyaId)
-      if (visible.has('arbre') && treeId) entry.treeId = Number(treeId)
+      if (visible.has('parcelle') && parcelId) entry.parcelId = parcelId
+      if (visible.has('culture') && cropId) entry.cropId = cropId
+      if (visible.has('oya') && oyaId) entry.oyaId = oyaId
+      if (visible.has('arbre') && treeId) entry.treeId = treeId
     }
 
     if (config.measure === 'volume' && volume) entry.volumeLiters = Number(volume)
@@ -160,7 +160,7 @@ export function EntryForm({ config, initial, onSaved, onCancel }: {
       if (varietyId === '__new' && newVarietyName.trim()) {
         entry.varietyId = await findOrCreateVariety(newVarietyName, cropVegetable || 'Inconnu')
       } else if (varietyId && varietyId !== '__new') {
-        entry.varietyId = Number(varietyId)
+        entry.varietyId = varietyId
       }
     }
 

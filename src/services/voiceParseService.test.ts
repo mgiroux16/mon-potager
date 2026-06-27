@@ -3,10 +3,10 @@ import { LOG_ENTRY_TYPES } from '../data/model'
 import { buildVoiceAudioPrompt, parseVoiceDrafts, type GardenCatalog } from './voiceParseService'
 
 const catalog: GardenCatalog = {
-  parcels: [{ id: 1, name: 'Parcelle A' }, { id: 2, name: 'Parcelle B' }],
-  crops: [{ id: 10, name: 'Tomates' }],
-  oyas: [{ id: 20, name: 'Oya nord' }],
-  trees: [{ id: 30, name: 'Pommier' }],
+  parcels: [{ id: '1', name: 'Parcelle A' }, { id: '2', name: 'Parcelle B' }],
+  crops: [{ id: '10', name: 'Tomates' }],
+  oyas: [{ id: '20', name: 'Oya nord' }],
+  trees: [{ id: '30', name: 'Pommier' }],
 }
 
 describe('buildVoiceAudioPrompt', () => {
@@ -31,7 +31,7 @@ describe('parseVoiceDrafts', () => {
 
   it('range un JSON propre a un seul element (type, volume, parcelId, cropId)', () => {
     const text = JSON.stringify([
-      { type: 'arrosage', volumeLiters: 10, parcelId: 1, cropId: 10, time: '08:00' },
+      { type: 'arrosage', volumeLiters: 10, parcelId: '1', cropId: '10', time: '08:00' },
     ])
     const drafts = parseVoiceDrafts(text, catalog, transcript)
     expect(drafts).toHaveLength(1)
@@ -39,15 +39,15 @@ describe('parseVoiceDrafts', () => {
     expect(parsed).toBe(true)
     expect(draft.type).toBe('arrosage')
     expect(draft.volumeLiters).toBe(10)
-    expect(draft.parcelId).toBe(1)
-    expect(draft.cropId).toBe(10)
+    expect(draft.parcelId).toBe('1')
+    expect(draft.cropId).toBe('10')
     expect(draft.time).toBe('08:00')
   })
 
   it('separe une phrase en deux actions distinctes', () => {
     const text = JSON.stringify([
-      { type: 'recolte', quantityKg: 3, cropId: 10 },
-      { type: 'arrosage', volumeLiters: 20, cropId: 10 },
+      { type: 'recolte', quantityKg: 3, cropId: '10' },
+      { type: 'arrosage', volumeLiters: 20, cropId: '10' },
     ])
     const drafts = parseVoiceDrafts(text, catalog, transcript)
     expect(drafts).toHaveLength(2)
@@ -68,12 +68,12 @@ describe('parseVoiceDrafts', () => {
 
   it('extrait le tableau JSON meme entoure de texte ou d un bloc markdown', () => {
     const text =
-      'Voici les entrees :\n```json\n[{"type":"recolte","quantityKg":2,"cropId":10}]\n```\nVoila.'
+      'Voici les entrees :\n```json\n[{"type":"recolte","quantityKg":2,"cropId":"10"}]\n```\nVoila.'
     const drafts = parseVoiceDrafts(text, catalog, transcript)
     expect(drafts).toHaveLength(1)
     expect(drafts[0].draft.type).toBe('recolte')
     expect(drafts[0].draft.quantityKg).toBe(2)
-    expect(drafts[0].draft.cropId).toBe(10)
+    expect(drafts[0].draft.cropId).toBe('10')
   })
 
   it('ignore un champ inconnu et retombe sur note si le type est invalide', () => {
@@ -85,7 +85,7 @@ describe('parseVoiceDrafts', () => {
   })
 
   it('rejette un id absent du catalogue mais garde le reste', () => {
-    const text = JSON.stringify([{ type: 'arrosage', volumeLiters: 5, parcelId: 999 }])
+    const text = JSON.stringify([{ type: 'arrosage', volumeLiters: 5, parcelId: '999' }])
     const { draft } = parseVoiceDrafts(text, catalog, transcript)[0]
     expect(draft.parcelId).toBeUndefined()
     expect(draft.volumeLiters).toBe(5)

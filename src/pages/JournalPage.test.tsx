@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
-import { db } from '../data/db'
+import { db, newId } from '../data/db'
 import { addLogEntry } from '../services/logService'
 import { JournalPage } from './JournalPage'
 
@@ -92,7 +92,7 @@ describe('JournalPage', () => {
 
   it('affiche le badge température sur une entrée qui porte un snapshot', async () => {
     await db.log.add({
-      type: 'observation',
+      id: newId(), type: 'observation',
       date: '2026-06-25',
       description: 'feuilles flétries',
       createdAt: 1,
@@ -104,7 +104,7 @@ describe('JournalPage', () => {
 
   it('affiche le bandeau de contexte météo sous une observation', async () => {
     await db.log.add({
-      type: 'observation',
+      id: newId(), type: 'observation',
       date: '2026-06-25',
       description: 'tomates à l arrêt',
       createdAt: 2,
