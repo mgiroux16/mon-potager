@@ -4,8 +4,35 @@ import type { AppSettings } from '../data/model'
 import { getSettings, saveSettings } from '../services/settingsService'
 import { testGeminiConnection } from '../services/geminiService'
 import { signOutUser } from '../services/authService'
+import { getSyncStatus } from '../services/syncService'
+import type { SyncStatus } from '../services/syncService'
 import { auth } from '../data/firebase'
 import { ExportButton } from '../components/ExportButton'
+
+const SYNC_STATUS_LABELS: Record<SyncStatus, string> = {
+  synced: 'Synchronisé',
+  syncing: 'Synchronisation…',
+  offline: 'Hors ligne',
+  error: 'Erreur de synchronisation',
+}
+
+const SYNC_STATUS_COLORS: Record<SyncStatus, string> = {
+  synced: 'text-green-700',
+  syncing: 'text-yellow-700',
+  offline: 'text-gray-500',
+  error: 'text-red-600',
+}
+
+function SyncStatusIndicator() {
+  const [status, setStatus] = useState<SyncStatus>(getSyncStatus())
+
+  useEffect(() => {
+    const interval = setInterval(() => setStatus(getSyncStatus()), 2000)
+    return () => clearInterval(interval)
+  }, [])
+
+  return <p className={`text-sm ${SYNC_STATUS_COLORS[status]}`}>{SYNC_STATUS_LABELS[status]}</p>
+}
 
 type TestState =
   | { status: 'idle' }
@@ -189,6 +216,7 @@ export function SettingsPage() {
         {auth.currentUser && (
           <p className="text-sm text-green-700">{auth.currentUser.email}</p>
         )}
+        <SyncStatusIndicator />
         <button
           type="button"
           onClick={() => signOutUser()}

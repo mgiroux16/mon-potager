@@ -10,6 +10,11 @@ vi.mock('../services/geminiService', () => ({
 }))
 import { testGeminiConnection } from '../services/geminiService'
 
+vi.mock('../services/syncService', () => ({
+  getSyncStatus: vi.fn(() => 'synced'),
+}))
+import { getSyncStatus } from '../services/syncService'
+
 beforeEach(async () => {
   await Promise.all(db.tables.map((t) => t.clear()))
   vi.clearAllMocks()
@@ -79,5 +84,29 @@ describe('SettingsPage', () => {
       expect(saved?.seasonStartMonth).toBe(4)
       expect(saved?.seasonEndMonth).toBe(10)
     })
+  })
+
+  it('affiche "Synchronisé" quand le statut est synced', async () => {
+    vi.mocked(getSyncStatus).mockReturnValue('synced')
+    render(<SettingsPage />)
+    await waitFor(() => expect(screen.getByText('Synchronisé')).toBeInTheDocument())
+  })
+
+  it('affiche "Synchronisation…" quand le statut est syncing', async () => {
+    vi.mocked(getSyncStatus).mockReturnValue('syncing')
+    render(<SettingsPage />)
+    await waitFor(() => expect(screen.getByText('Synchronisation…')).toBeInTheDocument())
+  })
+
+  it('affiche "Hors ligne" quand le statut est offline', async () => {
+    vi.mocked(getSyncStatus).mockReturnValue('offline')
+    render(<SettingsPage />)
+    await waitFor(() => expect(screen.getByText('Hors ligne')).toBeInTheDocument())
+  })
+
+  it('affiche "Erreur de synchronisation" quand le statut est error', async () => {
+    vi.mocked(getSyncStatus).mockReturnValue('error')
+    render(<SettingsPage />)
+    await waitFor(() => expect(screen.getByText('Erreur de synchronisation')).toBeInTheDocument())
   })
 })
