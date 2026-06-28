@@ -11,6 +11,7 @@ import { HarvestPage } from './pages/HarvestPage'
 import { WaterPage } from './pages/WaterPage'
 import { SeasonSummaryPage } from './pages/SeasonSummaryPage'
 import { CalendarPage } from './pages/CalendarPage'
+import { DiagnosticsPage } from './pages/DiagnosticsPage'
 import { SettingsPage } from './pages/SettingsPage'
 
 function App() {
@@ -29,6 +30,7 @@ function App() {
             <Route path="eau" element={<WaterPage />} />
             <Route path="bilan" element={<SeasonSummaryPage />} />
             <Route path="calendrier" element={<CalendarPage />} />
+            <Route path="diagnostics" element={<DiagnosticsPage />} />
             <Route path="reglages" element={<SettingsPage />} />
           </Route>
         </Routes>
