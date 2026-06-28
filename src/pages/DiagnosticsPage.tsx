@@ -81,6 +81,12 @@ function DiagnosticCard({ diagnostic, problem }: { diagnostic: Diagnostic; probl
               </span>
             </div>
             <p className="mt-0.5 text-xs text-green-700/80">{h.indices}</p>
+            {h.suggestedTreatment && (
+              <p className="mt-1 text-xs text-green-900">
+                <span className="font-medium">Traitement suggéré : </span>
+                {h.suggestedTreatment}
+              </p>
+            )}
           </li>
         ))}
       </ul>

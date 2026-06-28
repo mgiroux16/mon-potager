@@ -48,4 +48,33 @@ describe('DiagnosticsPage', () => {
       expect(rows[0].status).toBe('clos')
     })
   })
+
+  it('affiche la piste de traitement suggeree quand elle est presente', async () => {
+    await db.log.add({ id: 'p1', type: 'probleme', date: '2026-06-20', description: 'taches', createdAt: 1 })
+    await db.diagnostics.add({
+      id: 'd1',
+      problemEntryId: 'p1',
+      createdAt: 1,
+      status: 'ouvert',
+      hypotheses: [
+        { text: 'mildiou', indices: 'taches', confidence: 'moyen', suggestedTreatment: 'bouillie bordelaise' },
+      ],
+    })
+    render(<DiagnosticsPage />)
+    expect(await screen.findByText('bouillie bordelaise')).toBeInTheDocument()
+  })
+
+  it('n affiche rien de plus si suggestedTreatment est absent', async () => {
+    await db.log.add({ id: 'p2', type: 'probleme', date: '2026-06-21', description: 'fletrissement', createdAt: 1 })
+    await db.diagnostics.add({
+      id: 'd2',
+      problemEntryId: 'p2',
+      createdAt: 1,
+      status: 'ouvert',
+      hypotheses: [{ text: 'manque d eau', indices: 'sol sec', confidence: 'faible' }],
+    })
+    render(<DiagnosticsPage />)
+    expect(await screen.findByText('manque d eau')).toBeInTheDocument()
+    expect(screen.queryByText('Traitement suggéré :')).not.toBeInTheDocument()
+  })
 })
