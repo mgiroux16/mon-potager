@@ -229,3 +229,29 @@ export interface SeasonNote {
   updatedAt?: number // epoch ms, mis a jour automatiquement par les hooks Dexie
   deletedAt?: number // epoch ms, presence = supprime logiquement (tombstone)
 }
+
+export type HypothesisConfidence = 'faible' | 'moyen' | 'eleve'
+
+export interface DiagnosticHypothesis {
+  text: string
+  indices: string
+  confidence: HypothesisConfidence
+}
+
+export type DiagnosticStatus = 'ouvert' | 'clos'
+
+export interface Diagnostic {
+  id?: string
+  problemEntryId: string
+  cropId?: string
+  parcelId?: string
+  treeId?: string
+  createdAt: number // epoch ms
+  hypotheses: DiagnosticHypothesis[]
+  chosenAction?: string
+  result?: string
+  conclusion?: string
+  status: DiagnosticStatus
+  updatedAt?: number // epoch ms, mis a jour automatiquement par les hooks Dexie
+  deletedAt?: number // epoch ms, presence = supprime logiquement (tombstone)
+}
