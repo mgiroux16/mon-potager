@@ -2,6 +2,7 @@ import { NavLink, Outlet } from 'react-router-dom'
 import {
   Droplets,
   LayoutDashboard,
+  Menu,
   NotebookPen,
   Plus,
   Settings,
@@ -24,6 +25,7 @@ const NAV_ITEMS: NavItem[] = [
   { to: '/ajouter', label: 'Ajouter', icon: Plus, primary: true },
   { to: '/jardin', label: 'Jardin', icon: Sprout },
   { to: '/eau', label: 'Eau', icon: Droplets },
+  { to: '/plus', label: 'Plus', icon: Menu },
 ]
 
 export function Layout() {
