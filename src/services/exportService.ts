@@ -93,6 +93,18 @@ export async function exportLogCsv(
   return csv
 }
 
+export async function exportHarvestsCsv(season?: number): Promise<string> {
+  let entries = (await db.log.toArray()).filter((e) => e.type === 'recolte')
+  if (season !== undefined) entries = entries.filter((e) => entryYear(e) === season)
+  const csv = toCsv(
+    ['id', 'date', 'title', 'parcelId', 'cropId', 'quantityKg'],
+    entries.map((e) => [e.id, e.date, e.title, e.parcelId, e.cropId, e.quantityKg]),
+  )
+  const label = season !== undefined ? `CSV — Récoltes saison ${season}` : 'CSV — Récoltes (toutes saisons)'
+  await logAudit({ type: 'export-csv', label, recordCount: entries.length })
+  return csv
+}
+
 export async function exportAll(): Promise<PotagerExport> {
   const tables: Record<string, unknown[]> = {}
   for (const table of db.tables) {

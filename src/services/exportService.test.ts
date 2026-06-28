@@ -1,6 +1,13 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { db, newId } from '../data/db'
-import { exportAll, exportCropsCsv, exportLogCsv, exportParcelsCsv, logAudit } from './exportService'
+import {
+  exportAll,
+  exportCropsCsv,
+  exportHarvestsCsv,
+  exportLogCsv,
+  exportParcelsCsv,
+  logAudit,
+} from './exportService'
 
 beforeEach(async () => {
   await Promise.all(db.tables.map((t) => t.clear()))
@@ -76,5 +83,14 @@ describe('exportService', () => {
     await db.log.add({ id: 'l1', type: 'arrosage', date: '2025-06-01', createdAt: 1 })
     const csv = await exportLogCsv()
     expect(csv.split('\n')).toHaveLength(2)
+  })
+
+  it('exportHarvestsCsv ne garde que les entrées de type recolte, filtrées par saison', async () => {
+    await db.log.add({ id: 'l1', type: 'recolte', date: '2025-07-01', quantityKg: 3, createdAt: 1 })
+    await db.log.add({ id: 'l2', type: 'arrosage', date: '2025-07-02', createdAt: 2 })
+    await db.log.add({ id: 'l3', type: 'recolte', date: '2026-07-02', quantityKg: 2, createdAt: 3 })
+    const csv = await exportHarvestsCsv(2025)
+    expect(csv.split('\n')).toHaveLength(2)
+    expect(csv).toContain('l1')
   })
 })
