@@ -114,3 +114,35 @@ export async function exportAll(): Promise<PotagerExport> {
   await logAudit({ type: 'export-json', label: 'Export JSON complet', recordCount: totalRecords })
   return { version: db.verno, exportedAt: Date.now(), tables }
 }
+
+export interface ImportResult {
+  tablesImported: string[]
+  totalRecords: number
+}
+
+function readFileText(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => resolve(String(reader.result))
+    reader.onerror = () => reject(reader.error)
+    reader.readAsText(file)
+  })
+}
+
+export async function importAll(file: File): Promise<ImportResult> {
+  const text = await readFileText(file)
+  const parsed = JSON.parse(text) as PotagerExport
+  const knownTables = new Set(db.tables.map((t) => t.name))
+  const tablesImported: string[] = []
+  let totalRecords = 0
+
+  for (const [name, records] of Object.entries(parsed.tables ?? {})) {
+    if (!knownTables.has(name) || !Array.isArray(records) || records.length === 0) continue
+    await db.table(name).bulkPut(records)
+    tablesImported.push(name)
+    totalRecords += records.length
+  }
+
+  await logAudit({ type: 'import', label: 'Import (fusion)', recordCount: totalRecords })
+  return { tablesImported, totalRecords }
+}

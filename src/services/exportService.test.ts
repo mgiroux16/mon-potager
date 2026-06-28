@@ -6,12 +6,17 @@ import {
   exportHarvestsCsv,
   exportLogCsv,
   exportParcelsCsv,
+  importAll,
   logAudit,
 } from './exportService'
 
 beforeEach(async () => {
   await Promise.all(db.tables.map((t) => t.clear()))
 })
+
+function jsonFile(content: unknown): File {
+  return new File([JSON.stringify(content)], 'export.json', { type: 'application/json' })
+}
 
 describe('exportService', () => {
   it('exporte toutes les tables avec un en-tête de version', async () => {
@@ -92,5 +97,42 @@ describe('exportService', () => {
     const csv = await exportHarvestsCsv(2025)
     expect(csv.split('\n')).toHaveLength(2)
     expect(csv).toContain('l1')
+  })
+
+  it('importAll fusionne par id, le fichier importé gagne toujours', async () => {
+    await db.parcels.add({ id: 'p1', name: 'Ancien nom' })
+    await db.parcels.add({ id: 'p2', name: 'Inchangée' })
+    const result = await importAll(
+      jsonFile({
+        version: 11,
+        exportedAt: Date.now(),
+        tables: { parcels: [{ id: 'p1', name: 'Nouveau nom' }] },
+      }),
+    )
+    const p1 = await db.parcels.get('p1')
+    const p2 = await db.parcels.get('p2')
+    expect(p1?.name).toBe('Nouveau nom')
+    expect(p2?.name).toBe('Inchangée')
+    expect(result).toEqual({ tablesImported: ['parcels'], totalRecords: 1 })
+  })
+
+  it('importAll ignore les tables inconnues du fichier', async () => {
+    const result = await importAll(
+      jsonFile({
+        version: 11,
+        exportedAt: Date.now(),
+        tables: { tableInconnue: [{ id: 'x' }], parcels: [{ id: 'p1', name: 'Test' }] },
+      }),
+    )
+    expect(result.tablesImported).toEqual(['parcels'])
+    expect(result.totalRecords).toBe(1)
+  })
+
+  it('importAll trace une entrée audit de type import', async () => {
+    await importAll(
+      jsonFile({ version: 11, exportedAt: Date.now(), tables: { parcels: [{ id: 'p1', name: 'Test' }] } }),
+    )
+    const entries = await db.auditLog.toArray()
+    expect(entries.some((e) => e.type === 'import')).toBe(true)
   })
 })
