@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { callGemini, callGeminiAudio, testGeminiConnection, GEMINI_MODEL } from './geminiService'
+import { callGemini, callGeminiAudio, callGeminiVision, testGeminiConnection, GEMINI_MODEL } from './geminiService'
 
 function mockFetchOnce(impl: () => Response | Promise<Response>) {
   vi.stubGlobal('fetch', vi.fn(impl))
@@ -71,6 +71,30 @@ describe('callGeminiAudio', () => {
     await expect(
       callGeminiAudio('p', { data: 'QUJD', mimeType: 'audio/webm' }, 'mauvaise'),
     ).rejects.toThrow(/API key not valid/)
+  })
+})
+
+describe('callGeminiVision', () => {
+  it('renvoie le texte extrait de la réponse Gemini', async () => {
+    mockFetchOnce(() => geminiOk('[{"text":"mildiou","indices":"taches","confidence":"moyen"}]'))
+    const out = await callGeminiVision('Analyse cette photo', { data: 'QUJD', mimeType: 'image/jpeg' }, 'AIza-x')
+    expect(out).toContain('mildiou')
+  })
+
+  it('envoie le prompt ET l image (inlineData base64 + mimeType) dans le corps', async () => {
+    const fetchMock = vi.fn((_url: RequestInfo | URL, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body))
+      const parts = body.contents[0].parts
+      expect(parts.some((p: { text?: string }) => p.text === 'p')).toBe(true)
+      const imagePart = parts.find((p: { inlineData?: unknown }) => p.inlineData)
+      expect((imagePart as { inlineData: { data: string; mimeType: string } } | undefined)?.inlineData).toEqual({
+        data: 'QUJD',
+        mimeType: 'image/jpeg',
+      })
+      return geminiOk('OK')
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    await callGeminiVision('p', { data: 'QUJD', mimeType: 'image/jpeg' }, 'AIza-x')
   })
 })
 

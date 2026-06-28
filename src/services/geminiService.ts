@@ -59,6 +59,18 @@ export async function callGeminiAudio(
   return postGemini([{ text: prompt }, { inlineData: audio }], apiKey)
 }
 
+/**
+ * Appelle Gemini avec un prompt texte ET une image (base64 inline) : sert le diagnostic
+ * IA quand une photo a été attachée au problème (analyse visuelle multimodale).
+ */
+export async function callGeminiVision(
+  prompt: string,
+  image: { data: string; mimeType: string },
+  apiKey: string,
+): Promise<string> {
+  return postGemini([{ text: prompt }, { inlineData: image }], apiKey)
+}
+
 export type ConnectionResult = { ok: true } | { ok: false; error: string }
 
 /**
