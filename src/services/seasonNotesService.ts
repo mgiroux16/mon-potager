@@ -10,6 +10,10 @@ export function getParcelNote(notes: SeasonNote[], parcelId: string, year: numbe
   return notes.find((n) => n.parcelId === parcelId && n.year === year)?.text ?? ''
 }
 
+export function getTreeNote(notes: SeasonNote[], treeId: string, year: number): string {
+  return notes.find((n) => n.treeId === treeId && n.year === year)?.text ?? ''
+}
+
 async function upsertNote(
   match: (n: SeasonNote) => boolean,
   build: () => Omit<SeasonNote, 'id'>,
@@ -45,6 +49,14 @@ export async function setParcelNote(parcelId: string, year: number, text: string
   await upsertNote(
     (n) => n.parcelId === parcelId && n.year === year,
     () => ({ parcelId, year, text: text.trim() }),
+    text,
+  )
+}
+
+export async function setTreeNote(treeId: string, year: number, text: string): Promise<void> {
+  await upsertNote(
+    (n) => n.treeId === treeId && n.year === year,
+    () => ({ treeId, year, text: text.trim() }),
     text,
   )
 }

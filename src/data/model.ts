@@ -228,6 +228,7 @@ export interface SeasonNote {
   year: number
   cropId?: string
   parcelId?: string
+  treeId?: string
   text: string
   updatedAt?: number // epoch ms, mis a jour automatiquement par les hooks Dexie
   deletedAt?: number // epoch ms, presence = supprime logiquement (tombstone)

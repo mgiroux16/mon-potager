@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { db } from '../data/db'
-import { getCropNote, getParcelNote, setCropNote, setParcelNote } from './seasonNotesService'
+import { getCropNote, getParcelNote, setCropNote, setParcelNote, getTreeNote, setTreeNote } from './seasonNotesService'
 import type { SeasonNote } from '../data/model'
 
 describe('getCropNote', () => {
@@ -82,5 +82,32 @@ describe('setParcelNote', () => {
     const rows = await db.seasonNotes.toArray()
     expect(rows).toHaveLength(1)
     expect(rows[0].text).toBe('texte corrigé')
+  })
+})
+
+describe('getTreeNote', () => {
+  it('renvoie le texte de la note correspondant a l arbre et a l annee', () => {
+    const notes: SeasonNote[] = [{ id: 'n1', year: 2026, treeId: 'tree1', text: 'bonne recolte' }]
+    expect(getTreeNote(notes, 'tree1', 2026)).toBe('bonne recolte')
+  })
+
+  it('renvoie une chaine vide si aucune note ne correspond', () => {
+    expect(getTreeNote([], 'tree1', 2026)).toBe('')
+  })
+})
+
+describe('setTreeNote', () => {
+  it('cree une note pour l arbre et l annee donnes', async () => {
+    await setTreeNote('tree1', 2026, 'fruits abimes par la grele')
+    const notes = await db.seasonNotes.toArray()
+    expect(notes).toHaveLength(1)
+    expect(notes[0]).toMatchObject({ treeId: 'tree1', year: 2026, text: 'fruits abimes par la grele' })
+  })
+
+  it('supprime la note si le texte redevient vide', async () => {
+    await setTreeNote('tree1', 2026, 'note')
+    await setTreeNote('tree1', 2026, '   ')
+    const notes = await db.seasonNotes.toArray()
+    expect(notes).toHaveLength(0)
   })
 })
