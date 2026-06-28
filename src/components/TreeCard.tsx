@@ -89,6 +89,11 @@ export function TreeCard({ tree }: TreeCardProps) {
         .filter((e) => e.treeId === tree.id)
         .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
     : []
+  const photoEntries = expanded
+    ? log
+        .filter((e) => e.treeId === tree.id && (e.photoUrls?.length ?? 0) > 0)
+        .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
+    : []
 
   return (
     <div className="overflow-hidden rounded-lg bg-green-50">
@@ -216,6 +221,26 @@ export function TreeCard({ tree }: TreeCardProps) {
                 {journalEntries.map((e) => (
                   <li key={e.id} className="px-2 py-1">
                     {e.date} : {e.title ?? e.description ?? e.type}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          <div>
+            <p className="font-medium text-green-800">Photos de l'arbre</p>
+            {photoEntries.length === 0 ? (
+              <p className="text-gray-500">Aucune photo enregistrée.</p>
+            ) : (
+              <ul className="flex flex-wrap gap-2">
+                {photoEntries.map((e) => (
+                  <li key={e.id} className="flex flex-col items-center gap-1">
+                    <img
+                      src={e.photoUrls?.[0]}
+                      alt={`Photo du ${e.date}`}
+                      className="size-16 rounded object-cover"
+                    />
+                    <span className="text-xs text-gray-500">{e.date}</span>
                   </li>
                 ))}
               </ul>
