@@ -13,7 +13,7 @@ import { LOG_TYPE_LABELS } from '../services/logView'
 import { LOG_TYPE_ICONS } from '../components/logTypeIcons'
 import { PhotoInput } from '../components/PhotoInput'
 
-type TargetKind = 'parcelle' | 'oya' | 'culture' | 'element' | 'none'
+type TargetKind = 'parcelle' | 'oya' | 'culture' | 'arbre' | 'element' | 'none'
 type MeasureKind = 'volume' | 'quantite' | 'description' | 'titre_description' | 'none'
 
 export interface FormConfig {
@@ -34,10 +34,14 @@ const FREQUENT: FormConfig[] = [
 const OTHER_TYPES: LogEntryType[] = [
   'semis', 'plantation', 'paillage', 'traitement', 'compost',
   'taille', 'depense', 'diagnostic', 'releve_pluie', 'note',
+  'floraison', 'nouaison', 'chute_fruits',
 ]
 
+const TREE_OBSERVATION_TYPES: LogEntryType[] = ['floraison', 'nouaison', 'chute_fruits']
+
 function genericConfig(type: LogEntryType): FormConfig {
-  return { type, target: 'none', measure: 'titre_description', withTime: false }
+  const target = TREE_OBSERVATION_TYPES.includes(type) ? 'arbre' : 'none'
+  return { type, target, measure: 'titre_description', withTime: false }
 }
 
 export function configForType(type: LogEntryType): FormConfig {
@@ -63,6 +67,7 @@ function visibleTargets(config: FormConfig, initial?: Partial<NewLogEntry>): Set
   if (config.target === 'parcelle') s.add('parcelle')
   if (config.target === 'oya') s.add('oya')
   if (config.target === 'culture') s.add('culture')
+  if (config.target === 'arbre') s.add('arbre')
   if (config.target === 'element') {
     s.add('parcelle')
     s.add('culture')

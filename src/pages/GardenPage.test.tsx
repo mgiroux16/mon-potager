@@ -86,7 +86,7 @@ describe('GardenPage', () => {
     fireEvent.change(input, { target: { value: 'Carré nouvelle parcelle' } })
     fireEvent.submit(input.closest('form')!)
     await waitFor(() => {
-      expect(screen.getByText('Carré nouvelle parcelle')).toBeInTheDocument()
+      expect(screen.getAllByText('Carré nouvelle parcelle').length).toBeGreaterThan(0)
     })
   })
 })

@@ -1,11 +1,14 @@
 import {
   AlertTriangle,
+  Apple,
   Carrot,
+  Cherry,
   CloudRain,
   Droplet,
   Droplets,
   Euro,
   Eye,
+  Flower2,
   Layers,
   Recycle,
   Scissors,
@@ -34,4 +37,7 @@ export const LOG_TYPE_ICONS: Record<LogEntryType, LucideIcon> = {
   depense: Euro,
   diagnostic: Stethoscope,
   note: StickyNote,
+  floraison: Flower2,
+  nouaison: Cherry,
+  chute_fruits: Apple,
 }

@@ -33,6 +33,9 @@ export const LOG_ENTRY_TYPES = [
   'depense',
   'diagnostic',
   'note',
+  'floraison',
+  'nouaison',
+  'chute_fruits',
 ] as const
 
 export type LogEntryType = (typeof LOG_ENTRY_TYPES)[number]

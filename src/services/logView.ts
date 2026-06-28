@@ -37,6 +37,9 @@ export const LOG_TYPE_LABELS: Record<LogEntryType, string> = {
   depense: 'Dépense',
   diagnostic: 'Diagnostic',
   note: 'Note',
+  floraison: 'Floraison',
+  nouaison: 'Nouaison',
+  chute_fruits: 'Chute de fruits',
 }
 
 // Pick<...> plutot que GardenLogEntry entier : ces deux helpers servent aussi a resumer

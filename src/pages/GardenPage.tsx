@@ -6,6 +6,7 @@ import { db, newId } from '../data/db'
 import type { Crop, VegetableFamily } from '../data/model'
 import { getInactiveParcels, getHarvestReminders, getRotationReminders } from '../services/reminderService'
 import { ParcelCard } from '../components/ParcelCard'
+import { TreeCard } from '../components/TreeCard'
 import { nextFreeMapSlot, DEFAULT_MAP_SIZE_M } from '../services/mapLayout'
 
 function todayISO(): string {
@@ -77,6 +78,8 @@ export function GardenPage() {
 
   const [creatingParcel, setCreatingParcel] = useState(false)
   const [newParcelName, setNewParcelName] = useState('')
+  const [creatingTree, setCreatingTree] = useState(false)
+  const [newTreeName, setNewTreeName] = useState('')
 
   const today = todayISO()
   const inactiveParcels = getInactiveParcels(parcels, log, today)
@@ -203,13 +206,44 @@ export function GardenPage() {
         <h2 className="flex items-center gap-2 text-lg font-semibold text-green-700">
           <Trees size={18} /> Verger
         </h2>
-        <ul className="mt-2 space-y-1">
+        <div className="mt-2 grid grid-cols-1 gap-3">
           {trees.map((t) => (
-            <li key={t.id} className="rounded bg-green-50 px-3 py-2">
-              {t.name}
-            </li>
+            <TreeCard key={t.id} tree={t} />
           ))}
-        </ul>
+        </div>
+        {creatingTree ? (
+          <form
+            className="mt-2 flex gap-2"
+            onSubmit={async (e) => {
+              e.preventDefault()
+              const trimmed = newTreeName.trim()
+              if (trimmed) {
+                await db.trees.add({ id: newId(), name: trimmed })
+              }
+              setNewTreeName('')
+              setCreatingTree(false)
+            }}
+          >
+            <input
+              autoFocus
+              aria-label="Nom du nouvel arbre"
+              value={newTreeName}
+              onChange={(e) => setNewTreeName(e.target.value)}
+              className="rounded border border-green-300 px-2 py-1 text-sm"
+            />
+            <button type="submit" className="rounded bg-green-600 px-3 py-1 text-sm text-white">
+              Créer
+            </button>
+          </form>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setCreatingTree(true)}
+            className="mt-2 text-sm font-medium text-green-700"
+          >
+            + Nouvel arbre
+          </button>
+        )}
       </section>
     </div>
   )
