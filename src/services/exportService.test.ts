@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { db, newId } from '../data/db'
-import { exportAll, logAudit } from './exportService'
+import { exportAll, exportParcelsCsv, logAudit } from './exportService'
 
 beforeEach(async () => {
   await Promise.all(db.tables.map((t) => t.clear()))
@@ -33,5 +33,15 @@ describe('exportService', () => {
     const entries = await db.auditLog.toArray()
     expect(entries).toHaveLength(1)
     expect(entries[0].type).toBe('export-json')
+  })
+
+  it('exportParcelsCsv génère un CSV avec en-têtes et échappement', async () => {
+    await db.parcels.add({ id: 'p1', name: 'Carré nord', areaM2: 12, soil: 'argileux; humide' })
+    const csv = await exportParcelsCsv()
+    const lines = csv.split('\n')
+    expect(lines[0]).toBe('id;name;areaM2;exposure;soil;mulch')
+    expect(lines[1]).toBe('p1;Carré nord;12;;"argileux; humide";')
+    const entries = await db.auditLog.toArray()
+    expect(entries.some((e) => e.type === 'export-csv' && e.label === 'CSV — Parcelles')).toBe(true)
   })
 })

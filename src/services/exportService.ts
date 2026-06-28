@@ -15,6 +15,30 @@ export async function logAudit(entry: {
   await db.auditLog.add({ id: newId(), date: Date.now(), ...entry })
 }
 
+function csvEscape(value: unknown): string {
+  if (value === undefined || value === null) return ''
+  const str = String(value)
+  if (/[;"\n]/.test(str)) {
+    return `"${str.replace(/"/g, '""')}"`
+  }
+  return str
+}
+
+function toCsv(headers: string[], rows: unknown[][]): string {
+  const lines = [headers.join(';'), ...rows.map((row) => row.map(csvEscape).join(';'))]
+  return lines.join('\n')
+}
+
+export async function exportParcelsCsv(): Promise<string> {
+  const parcels = await db.parcels.toArray()
+  const csv = toCsv(
+    ['id', 'name', 'areaM2', 'exposure', 'soil', 'mulch'],
+    parcels.map((p) => [p.id, p.name, p.areaM2, p.exposure, p.soil, p.mulch]),
+  )
+  await logAudit({ type: 'export-csv', label: 'CSV — Parcelles', recordCount: parcels.length })
+  return csv
+}
+
 export async function exportAll(): Promise<PotagerExport> {
   const tables: Record<string, unknown[]> = {}
   for (const table of db.tables) {
