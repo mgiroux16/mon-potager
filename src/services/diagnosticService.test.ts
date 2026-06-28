@@ -46,6 +46,7 @@ describe('buildDiagnosticPrompt', () => {
     expect(prompt).toContain('mildiou note fin juillet')
     expect(prompt).toContain('arrosage')
     expect(prompt).toContain('faible, moyen ou eleve')
+    expect(prompt).toContain('suggestedTreatment')
   })
 })
 
@@ -80,6 +81,17 @@ describe('parseDiagnosticResponse', () => {
   it('leve une erreur si aucune hypothese valide n a survecu au parsing', () => {
     const raw = JSON.stringify([{ text: 'x', indices: 'y', confidence: 'extreme' }])
     expect(() => parseDiagnosticResponse(raw)).toThrow('Réponse Gemini illisible pour le diagnostic')
+  })
+
+  it('accepte une hypothese avec suggestedTreatment et une sans', () => {
+    const raw = JSON.stringify([
+      { text: 'mildiou', indices: 'taches brunes', confidence: 'moyen', suggestedTreatment: 'bouillie bordelaise' },
+      { text: 'exces d eau', indices: 'sol detrempe', confidence: 'faible' },
+    ])
+    const hypotheses = parseDiagnosticResponse(raw)
+    expect(hypotheses).toHaveLength(2)
+    expect(hypotheses[0].suggestedTreatment).toBe('bouillie bordelaise')
+    expect(hypotheses[1].suggestedTreatment).toBeUndefined()
   })
 })
 

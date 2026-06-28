@@ -50,10 +50,11 @@ export function buildDiagnosticPrompt(input: DiagnosticPromptInput): string {
     historyLines,
     '',
     'Propose entre 2 et 4 hypotheses plausibles (jamais une certitude). Pour chaque hypothese,',
-    'donne le texte, les indices precis du contexte ci-dessus qui la soutiennent, et un niveau',
-    'de confiance qui doit etre exactement l un de ces trois mots : faible, moyen ou eleve.',
-    'Reponds UNIQUEMENT par un tableau JSON d objets { "text", "indices", "confidence" },',
-    'sans aucun texte autour.',
+    'donne le texte, les indices precis du contexte ci-dessus qui la soutiennent, un niveau',
+    'de confiance qui doit etre exactement l un de ces trois mots : faible, moyen ou eleve,',
+    'et une piste de traitement concrete (suggestedTreatment) adaptee a cette hypothese precise.',
+    'Reponds UNIQUEMENT par un tableau JSON d objets { "text", "indices", "confidence",',
+    '"suggestedTreatment" }, sans aucun texte autour.',
   ].join('\n')
 }
 
@@ -95,13 +96,17 @@ export function parseDiagnosticResponse(raw: string): DiagnosticHypothesis[] {
   const hypotheses: DiagnosticHypothesis[] = []
   for (const item of parsed) {
     if (typeof item !== 'object' || item === null) continue
-    const { text, indices, confidence } = item as Record<string, unknown>
+    const { text, indices, confidence, suggestedTreatment } = item as Record<string, unknown>
     if (typeof text !== 'string' || text.trim() === '') continue
     if (typeof indices !== 'string' || indices.trim() === '') continue
     if (typeof confidence !== 'string' || !VALID_CONFIDENCES.includes(confidence as HypothesisConfidence)) {
       continue
     }
-    hypotheses.push({ text, indices, confidence: confidence as HypothesisConfidence })
+    const hypothesis: DiagnosticHypothesis = { text, indices, confidence: confidence as HypothesisConfidence }
+    if (typeof suggestedTreatment === 'string' && suggestedTreatment.trim() !== '') {
+      hypothesis.suggestedTreatment = suggestedTreatment
+    }
+    hypotheses.push(hypothesis)
   }
 
   if (hypotheses.length === 0) throw new Error('Réponse Gemini illisible pour le diagnostic')
