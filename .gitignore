@@ -25,3 +25,6 @@ dev-dist
 *.njsproj
 *.sln
 *.sw?
+
+# Git worktrees isolés (superpowers)
+.worktrees/
