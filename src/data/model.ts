@@ -239,6 +239,7 @@ export interface DiagnosticHypothesis {
   text: string
   indices: string
   confidence: HypothesisConfidence
+  suggestedTreatment?: string
 }
 
 export type DiagnosticStatus = 'ouvert' | 'clos'
