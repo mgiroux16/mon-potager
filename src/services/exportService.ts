@@ -1,5 +1,5 @@
 import { db, newId } from '../data/db'
-import type { AuditLogType, Crop } from '../data/model'
+import type { AuditLogType, Crop, GardenLogEntry } from '../data/model'
 
 export interface PotagerExport {
   version: number
@@ -62,6 +62,34 @@ export async function exportCropsCsv(season?: number): Promise<string> {
   )
   const label = season !== undefined ? `CSV — Cultures saison ${season}` : 'CSV — Cultures (toutes saisons)'
   await logAudit({ type: 'export-csv', label, recordCount: crops.length })
+  return csv
+}
+
+function entryYear(entry: GardenLogEntry): number {
+  return Number(entry.date.slice(0, 4))
+}
+
+export async function exportLogCsv(
+  filters: { season?: number; parcelId?: string } = {},
+): Promise<string> {
+  let entries = await db.log.toArray()
+  if (filters.season !== undefined) entries = entries.filter((e) => entryYear(e) === filters.season)
+  if (filters.parcelId !== undefined) entries = entries.filter((e) => e.parcelId === filters.parcelId)
+  const csv = toCsv(
+    ['id', 'type', 'date', 'title', 'description', 'parcelId', 'cropId', 'quantityKg', 'volumeLiters'],
+    entries.map((e) => [
+      e.id,
+      e.type,
+      e.date,
+      e.title,
+      e.description,
+      e.parcelId,
+      e.cropId,
+      e.quantityKg,
+      e.volumeLiters,
+    ]),
+  )
+  await logAudit({ type: 'export-csv', label: 'CSV — Journal', recordCount: entries.length })
   return csv
 }
 
