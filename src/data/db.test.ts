@@ -6,10 +6,11 @@ beforeEach(async () => {
 })
 
 describe('PotagerDB', () => {
-  it('expose les 13 tables du modèle', () => {
+  it('expose les 14 tables du modèle', () => {
     const names = db.tables.map((t) => t.name).sort()
     expect(names).toEqual(
       [
+        'auditLog',
         'catalog',
         'crops',
         'diagnostics',
@@ -70,7 +71,7 @@ describe('migration version 10 (diagnostics)', () => {
     })
     const rows = await db.diagnostics.toArray()
     expect(rows).toHaveLength(1)
-    expect(db.verno).toBe(10)
+    expect(db.verno).toBe(11)
   })
 })
 

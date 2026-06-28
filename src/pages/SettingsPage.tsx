@@ -8,6 +8,9 @@ import { getSyncStatus } from '../services/syncService'
 import type { SyncStatus } from '../services/syncService'
 import { auth } from '../data/firebase'
 import { ExportButton } from '../components/ExportButton'
+import { ImportButton } from '../components/ImportButton'
+import { CsvExportPanel } from '../components/CsvExportPanel'
+import { AuditLogPanel } from '../components/AuditLogPanel'
 
 const SYNC_STATUS_LABELS: Record<SyncStatus, string> = {
   synced: 'Synchronisé',
@@ -209,6 +212,21 @@ export function SettingsPage() {
       <section className="flex flex-col gap-2">
         <h2 className="text-sm font-semibold text-green-900">Sauvegarde</h2>
         <ExportButton />
+      </section>
+
+      <section className="flex flex-col gap-2">
+        <h2 className="text-sm font-semibold text-green-900">Importer une sauvegarde</h2>
+        <ImportButton />
+      </section>
+
+      <section className="flex flex-col gap-2">
+        <h2 className="text-sm font-semibold text-green-900">Export CSV</h2>
+        <CsvExportPanel />
+      </section>
+
+      <section className="flex flex-col gap-2">
+        <h2 className="text-sm font-semibold text-green-900">Journal système</h2>
+        <AuditLogPanel />
       </section>
 
       <section className="flex flex-col gap-2">
