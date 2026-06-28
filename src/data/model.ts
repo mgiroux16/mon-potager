@@ -255,3 +255,13 @@ export interface Diagnostic {
   updatedAt?: number // epoch ms, mis a jour automatiquement par les hooks Dexie
   deletedAt?: number // epoch ms, presence = supprime logiquement (tombstone)
 }
+
+export type AuditLogType = 'export-json' | 'export-csv' | 'import'
+
+export interface AuditLogEntry {
+  id?: string
+  type: AuditLogType
+  date: number // epoch ms
+  label: string
+  recordCount: number
+}
