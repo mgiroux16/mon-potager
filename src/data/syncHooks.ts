@@ -14,6 +14,7 @@ const TABLE_NAMES = [
   'settings',
   'varieties',
   'seasonNotes',
+  'diagnostics',
 ] as const
 
 export type TableName = (typeof TABLE_NAMES)[number]
