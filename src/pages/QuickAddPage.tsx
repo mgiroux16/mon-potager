@@ -198,6 +198,12 @@ export function EntryForm({ config, initial, onSaved, onCancel }: {
 
       <h1 className="text-xl font-semibold text-green-950">{LOG_TYPE_LABELS[config.type]}</h1>
 
+      {initial?.sourcePhrase && (
+        <blockquote className="rounded-lg border-l-4 border-green-300 bg-green-50 px-3 py-2 text-sm italic text-green-900">
+          Tu as dit : « {initial.sourcePhrase} »
+        </blockquote>
+      )}
+
       {!useLegacyElement && visible.has('parcelle') && (
         <label className="flex flex-col gap-1 text-sm text-green-800">
           Parcelle

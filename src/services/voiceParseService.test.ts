@@ -112,4 +112,38 @@ describe('parseVoiceDrafts', () => {
     expect(drafts[0].parsed).toBe(false)
     expect(drafts[0].draft.type).toBe('note')
   })
+
+  it('lit la transcription dans un objet {transcript, entries} et la pose sur chaque draft', () => {
+    const text = JSON.stringify({
+      transcript: 'j ai recolte trois kilos de tomates et arrose vingt litres',
+      entries: [
+        { type: 'recolte', quantityKg: 3, cropId: '10' },
+        { type: 'arrosage', volumeLiters: 20, cropId: '10' },
+      ],
+    })
+    const drafts = parseVoiceDrafts(text, catalog, transcript)
+    expect(drafts).toHaveLength(2)
+    expect(drafts[0].draft.sourcePhrase).toBe(
+      'j ai recolte trois kilos de tomates et arrose vingt litres',
+    )
+    expect(drafts[1].draft.sourcePhrase).toBe(
+      'j ai recolte trois kilos de tomates et arrose vingt litres',
+    )
+  })
+
+  it('extrait l objet transcript/entries meme entoure de texte ou de markdown', () => {
+    const text =
+      'Voici :\n```json\n{"transcript":"deux kilos de courgettes","entries":[{"type":"recolte","quantityKg":2}]}\n```'
+    const drafts = parseVoiceDrafts(text, catalog, transcript)
+    expect(drafts).toHaveLength(1)
+    expect(drafts[0].draft.sourcePhrase).toBe('deux kilos de courgettes')
+    expect(drafts[0].draft.quantityKg).toBe(2)
+  })
+
+  it('ignore un transcript non textuel sans faire echouer le parsing', () => {
+    const text = JSON.stringify({ transcript: 42, entries: [{ type: 'recolte', quantityKg: 1 }] })
+    const drafts = parseVoiceDrafts(text, catalog, transcript)
+    expect(drafts).toHaveLength(1)
+    expect(drafts[0].draft.sourcePhrase).toBeUndefined()
+  })
 })

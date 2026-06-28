@@ -71,6 +71,8 @@ export function VoiceReviewPage() {
   }
 
   const editingCard = cards.find((c) => c.key === editingKey)
+  // Toutes les cartes d'une meme dictee partagent la meme phrase source.
+  const sourcePhrase = cards.find((c) => c.draft.sourcePhrase)?.draft.sourcePhrase
 
   if (editingCard) {
     return (
@@ -94,6 +96,11 @@ export function VoiceReviewPage() {
       <p className="text-sm text-green-800">
         Valide, modifie ou supprime chaque action avant de continuer.
       </p>
+      {sourcePhrase && (
+        <blockquote className="rounded-lg border-l-4 border-green-300 bg-green-50 px-3 py-2 text-sm italic text-green-900">
+          Tu as dit : « {sourcePhrase} »
+        </blockquote>
+      )}
       <ul className="flex flex-col gap-3">
         {cards.map((card) => {
           const type = card.draft.type ?? 'note'

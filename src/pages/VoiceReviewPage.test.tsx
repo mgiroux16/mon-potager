@@ -123,6 +123,23 @@ describe('VoiceReviewPage', () => {
     expect(all).toHaveLength(0)
   })
 
+  it('affiche la phrase dictee quand les brouillons en portent une', () => {
+    renderReview([
+      { type: 'recolte', quantityKg: 3, sourcePhrase: 'deux kilos de courgettes ce matin' },
+      { type: 'arrosage', volumeLiters: 20, sourcePhrase: 'deux kilos de courgettes ce matin' },
+    ])
+
+    expect(
+      screen.getByText('deux kilos de courgettes ce matin', { exact: false }),
+    ).toBeInTheDocument()
+  })
+
+  it('n affiche rien si aucun brouillon n a de phrase source', () => {
+    renderReview([{ type: 'recolte', quantityKg: 3 }, { type: 'arrosage', volumeLiters: 20 }])
+
+    expect(screen.queryByText('Tu as dit :', { exact: false })).not.toBeInTheDocument()
+  })
+
   it('Valider sauvegarde une date par defaut quand le brouillon n en a pas', async () => {
     const user = userEvent.setup()
     renderReview([{ type: 'observation', description: 'tout va bien' }])

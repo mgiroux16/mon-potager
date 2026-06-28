@@ -198,6 +198,32 @@ describe('QuickAddPage avec brouillon vocal', () => {
     })
   })
 
+  it('affiche la phrase dictee quand le brouillon en porte une', async () => {
+    await seedVoice()
+    render(
+      <MemoryRouter
+        initialEntries={[
+          {
+            pathname: '/ajouter',
+            state: {
+              voiceDraft: {
+                type: 'arrosage',
+                volumeLiters: 10,
+                sourcePhrase: 'arrose dix litres les tomates',
+              },
+            },
+          },
+        ]}
+      >
+        <QuickAddPage />
+      </MemoryRouter>,
+    )
+
+    expect(
+      await screen.findByText('arrose dix litres les tomates', { exact: false }),
+    ).toBeInTheDocument()
+  })
+
   it('sans brouillon, affiche la grille de saisie rapide (non-regression)', () => {
     render(
       <MemoryRouter initialEntries={['/ajouter']}>

@@ -44,13 +44,15 @@ export function buildVoiceAudioPrompt(catalog: GardenCatalog, todayISO: string):
     listForPrompt('Arbres (treeId)', catalog.trees),
     '',
     'La phrase peut decrire plusieurs actions distinctes (ex : une recolte puis un arrosage).',
-    'Reponds UNIQUEMENT par un tableau JSON d objets, sans texte autour, meme s il n y a qu',
-    'une seule action detectee. Chaque objet ne porte que les champs reconnus :',
+    'Reponds UNIQUEMENT par un objet JSON, sans texte autour, de la forme :',
+    '{"transcript": "<transcription mot pour mot de l audio>", "entries": [...]}.',
+    '"entries" est un tableau d objets, meme s il n y a qu une seule action detectee.',
+    'Chaque objet de "entries" ne porte que les champs reconnus :',
     'type, date (YYYY-MM-DD), time (HH:mm), title, description,',
     'parcelId, cropId, oyaId, treeId, volumeLiters, rainMm, quantityKg.',
     'Omets tout champ non mentionne dans la phrase.',
     'Une entree peut porter a la fois parcelId et cropId.',
-    'Mets toujours dans "description" la transcription de ce qui a ete dit pour cette action.',
+    'Mets toujours dans "description" un resume de ce qui a ete dit pour cette action.',
     'N invente jamais un identifiant absent du catalogue.',
   ].join('\n')
 }
@@ -71,6 +73,50 @@ function extractJsonArray(text: string): string | null {
   const end = text.lastIndexOf(']')
   if (start === -1 || end === -1 || end < start) return null
   return text.slice(start, end + 1)
+}
+
+function extractJsonObject(text: string): string | null {
+  const start = text.indexOf('{')
+  const end = text.lastIndexOf('}')
+  if (start === -1 || end === -1 || end < start) return null
+  return text.slice(start, end + 1)
+}
+
+interface ExtractedEntries {
+  entries: unknown[]
+  transcript?: string
+}
+
+// Reponse attendue : {"transcript": "...", "entries": [...]}. On retombe sur un simple
+// tableau si Gemini ne respecte pas l'enveloppe (resilience face a un format legerement
+// different), au prix de perdre la transcription dans ce cas.
+function extractEntries(text: string): ExtractedEntries | null {
+  const objText = extractJsonObject(text)
+  if (objText) {
+    try {
+      const obj = JSON.parse(objText)
+      if (obj && typeof obj === 'object' && Array.isArray(obj.entries)) {
+        return {
+          entries: obj.entries,
+          transcript: typeof obj.transcript === 'string' ? obj.transcript : undefined,
+        }
+      }
+    } catch {
+      // ignore, on retente avec l'extraction de tableau ci-dessous
+    }
+  }
+
+  const arrText = extractJsonArray(text)
+  if (arrText) {
+    try {
+      const arr = JSON.parse(arrText)
+      if (Array.isArray(arr)) return { entries: arr }
+    } catch {
+      // ignore, retombe sur le repli note plus bas
+    }
+  }
+
+  return null
 }
 
 function fallback(transcript: string): VoiceDraft[] {
@@ -124,22 +170,18 @@ export function parseVoiceDrafts(
   catalog: GardenCatalog,
   transcript: string,
 ): VoiceDraft[] {
-  const json = extractJsonArray(geminiText)
-  if (!json) return fallback(transcript)
+  const extracted = extractEntries(geminiText)
+  if (!extracted || extracted.entries.length === 0) return fallback(transcript)
 
-  let rawArray: unknown
-  try {
-    rawArray = JSON.parse(json)
-  } catch {
-    return fallback(transcript)
-  }
-  if (!Array.isArray(rawArray) || rawArray.length === 0) return fallback(transcript)
-
-  const items = rawArray
+  const items = extracted.entries
     .filter((item): item is Record<string, unknown> => typeof item === 'object' && item !== null)
     .slice(0, MAX_DRAFTS)
 
   if (items.length === 0) return fallback(transcript)
 
-  return items.map((raw) => parseOneDraft(raw, catalog))
+  return items.map((raw) => {
+    const voiceDraft = parseOneDraft(raw, catalog)
+    if (extracted.transcript) voiceDraft.draft.sourcePhrase = extracted.transcript
+    return voiceDraft
+  })
 }
