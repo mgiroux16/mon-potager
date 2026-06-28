@@ -20,11 +20,12 @@ import {
   countArrosagesBetween,
 } from '../services/weatherSummary'
 import { getSettings } from '../services/settingsService'
-import { callGemini } from '../services/geminiService'
+import { callGemini, callGeminiVision } from '../services/geminiService'
 import {
   buildDiagnosticPrompt,
   parseDiagnosticResponse,
   createDiagnostic,
+  parseDataUrl,
 } from '../services/diagnosticService'
 import { buildSeasonHistoryLines } from '../services/diagnosticContext'
 import { LOG_TYPE_ICONS } from '../components/logTypeIcons'
@@ -94,7 +95,8 @@ function DiagnoseButton({
         : 'Donnees meteo indisponibles.'
       const seasonHistory = buildSeasonHistoryLines({ cropId: entry.cropId, notes: seasonNotes, diagnostics })
       const prompt = buildDiagnosticPrompt({ problemEntry: entry, recentEntries, weatherSummary, seasonHistory })
-      const raw = await callGemini(prompt, geminiApiKey)
+      const photo = entry.photoUrls?.[0] ? parseDataUrl(entry.photoUrls[0]) : null
+      const raw = photo ? await callGeminiVision(prompt, photo, geminiApiKey) : await callGemini(prompt, geminiApiKey)
       const hypotheses = parseDiagnosticResponse(raw)
       await createDiagnostic({
         problemEntryId: entry.id as string,

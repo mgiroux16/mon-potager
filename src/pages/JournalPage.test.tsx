@@ -16,6 +16,13 @@ vi.mock('../services/weatherService', () => ({
   __clearWeatherCache: vi.fn(),
 }))
 
+const callGemini = vi.fn(async () => '[{"text":"h","indices":"i","confidence":"faible"}]')
+const callGeminiVision = vi.fn(async () => '[{"text":"h","indices":"i","confidence":"faible"}]')
+vi.mock('../services/geminiService', () => ({
+  callGemini: (...args: unknown[]) => callGemini(...(args as [])),
+  callGeminiVision: (...args: unknown[]) => callGeminiVision(...(args as [])),
+}))
+
 beforeEach(async () => {
   await Promise.all(db.tables.map((t) => t.clear()))
 })
@@ -88,6 +95,30 @@ describe('JournalPage', () => {
     renderJournal()
     await waitFor(() => expect(screen.getByText('feuilles jaunes')).toBeInTheDocument())
     expect(screen.getByRole('button', { name: 'Agrandir la photo 1' })).toBeInTheDocument()
+  })
+
+  it('envoie la photo a callGeminiVision si l entree probleme en a une', async () => {
+    callGemini.mockClear()
+    callGeminiVision.mockClear()
+    await db.settings.put({ id: 'settings', geminiApiKey: 'AIza-x' } as never)
+    await addLogEntry({
+      type: 'probleme',
+      date: '2026-06-24',
+      description: 'taches sur les feuilles',
+      photoUrls: ['data:image/jpeg;base64,QUJD'],
+    })
+    renderJournal()
+    const user = userEvent.setup()
+    await waitFor(() => expect(screen.getByText('taches sur les feuilles')).toBeInTheDocument())
+    await user.click(screen.getByRole('button', { name: 'Diagnostiquer' }))
+
+    await waitFor(() => expect(callGeminiVision).toHaveBeenCalledTimes(1))
+    expect(callGeminiVision).toHaveBeenCalledWith(
+      expect.any(String),
+      { data: 'QUJD', mimeType: 'image/jpeg' },
+      'AIza-x',
+    )
+    expect(callGemini).not.toHaveBeenCalled()
   })
 
   it('affiche le badge température sur une entrée qui porte un snapshot', async () => {
