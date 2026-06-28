@@ -12,6 +12,7 @@ import type {
   AppSettings,
   Variety,
   SeasonNote,
+  Diagnostic,
 } from './model'
 
 const TABLE_NAMES = [
@@ -59,6 +60,7 @@ export class PotagerDB extends Dexie {
   settings!: Table<AppSettings, string>
   varieties!: Table<Variety, string>
   seasonNotes!: Table<SeasonNote, string>
+  diagnostics!: Table<Diagnostic, string>
 
   constructor() {
     super('mon-potager')
@@ -227,6 +229,10 @@ export class PotagerDB extends Dexie {
           longitude: 0.1957,
         })
       }
+    })
+
+    this.version(10).stores({
+      diagnostics: 'id, problemEntryId, cropId, parcelId, treeId, status, createdAt, updatedAt',
     })
   }
 }
