@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { db, newId } from '../data/db'
-import { exportAll, exportParcelsCsv, logAudit } from './exportService'
+import { exportAll, exportCropsCsv, exportParcelsCsv, logAudit } from './exportService'
 
 beforeEach(async () => {
   await Promise.all(db.tables.map((t) => t.clear()))
@@ -43,5 +43,23 @@ describe('exportService', () => {
     expect(lines[1]).toBe('p1;Carré nord;12;;"argileux; humide";')
     const entries = await db.auditLog.toArray()
     expect(entries.some((e) => e.type === 'export-csv' && e.label === 'CSV — Parcelles')).toBe(true)
+  })
+
+  it('exportCropsCsv filtre par saison et trace l\'audit', async () => {
+    await db.crops.add({ id: 'c1', name: 'Tomate', status: 'en_place', plantingDate: '2025-05-01' })
+    await db.crops.add({ id: 'c2', name: 'Poireau', status: 'en_place', plantingDate: '2026-03-01' })
+    const csv = await exportCropsCsv(2025)
+    const lines = csv.split('\n')
+    expect(lines).toHaveLength(2)
+    expect(lines[1]).toContain('Tomate')
+    const entries = await db.auditLog.toArray()
+    expect(entries.some((e) => e.label === 'CSV — Cultures saison 2025')).toBe(true)
+  })
+
+  it('exportCropsCsv sans filtre exporte toutes les cultures', async () => {
+    await db.crops.add({ id: 'c1', name: 'Tomate', status: 'en_place', plantingDate: '2025-05-01' })
+    await db.crops.add({ id: 'c2', name: 'Poireau', status: 'en_place', plantingDate: '2026-03-01' })
+    const csv = await exportCropsCsv()
+    expect(csv.split('\n')).toHaveLength(3)
   })
 })
