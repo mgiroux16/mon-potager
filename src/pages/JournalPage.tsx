@@ -20,16 +20,116 @@ import {
   countArrosagesBetween,
 } from '../services/weatherSummary'
 import { getSettings } from '../services/settingsService'
+import { callGemini } from '../services/geminiService'
+import {
+  buildDiagnosticPrompt,
+  parseDiagnosticResponse,
+  createDiagnostic,
+} from '../services/diagnosticService'
+import { buildSeasonHistoryLines } from '../services/diagnosticContext'
 import { LOG_TYPE_ICONS } from '../components/logTypeIcons'
 import { PhotoThumbs } from '../components/PhotoThumbs'
 import { WeatherContextBanner } from '../components/WeatherContextBanner'
-import type { GardenLogEntry, LogEntryType } from '../data/model'
+import type { Diagnostic, GardenLogEntry, LogEntryType, SeasonNote } from '../data/model'
 
 function chipClass(active: boolean): string {
   return [
     'rounded-full px-3 py-1 text-sm font-medium transition-colors',
     active ? 'bg-green-600 text-white' : 'bg-green-100 text-green-800 hover:bg-green-200',
   ].join(' ')
+}
+
+function DiagnoseButton({
+  entry,
+  history,
+  entries,
+  seasonNotes,
+  diagnostics,
+  geminiApiKey,
+}: {
+  entry: GardenLogEntry
+  history: DailyWeather[] | null
+  entries: GardenLogEntry[]
+  seasonNotes: SeasonNote[]
+  diagnostics: Diagnostic[]
+  geminiApiKey: string | undefined
+}) {
+  const [status, setStatus] = useState<'idle' | 'loading' | 'error'>('idle')
+  const [error, setError] = useState<string | null>(null)
+
+  const existing = diagnostics.find((d) => d.problemEntryId === entry.id)
+  if (existing) {
+    return (
+      <Link to="/diagnostics" className="text-xs font-medium text-green-700">
+        Voir le diagnostic →
+      </Link>
+    )
+  }
+
+  async function diagnose() {
+    if (!geminiApiKey) {
+      setStatus('error')
+      setError('Aucune clé Gemini configurée dans les réglages.')
+      return
+    }
+    setStatus('loading')
+    setError(null)
+    try {
+      const cutoff = new Date(entry.date)
+      cutoff.setDate(cutoff.getDate() - 14)
+      const cutoffISO = cutoff.toISOString().slice(0, 10)
+      const recentEntries = entries.filter(
+        (e) =>
+          e.date >= cutoffISO &&
+          e.date <= entry.date &&
+          (e.cropId === entry.cropId || e.parcelId === entry.parcelId),
+      )
+      const weatherSummary = history
+        ? `Pluie cumulee 14 jours : ${history
+            .slice(-14)
+            .reduce((sum, d) => sum + d.rainMm, 0)
+            .toFixed(1)} mm. Temperature max recente : ${Math.max(
+            ...history.slice(-14).map((d) => d.tempMaxC),
+          )} °C.`
+        : 'Donnees meteo indisponibles.'
+      const seasonHistory = buildSeasonHistoryLines({ cropId: entry.cropId, notes: seasonNotes, diagnostics })
+      const prompt = buildDiagnosticPrompt({ problemEntry: entry, recentEntries, weatherSummary, seasonHistory })
+      const raw = await callGemini(prompt, geminiApiKey)
+      const hypotheses = parseDiagnosticResponse(raw)
+      await createDiagnostic({
+        problemEntryId: entry.id as string,
+        cropId: entry.cropId,
+        parcelId: entry.parcelId,
+        treeId: entry.treeId,
+        hypotheses,
+      })
+      setStatus('idle')
+    } catch (e) {
+      setStatus('error')
+      setError(e instanceof Error ? e.message : String(e))
+    }
+  }
+
+  return (
+    <div className="mt-1">
+      <button
+        type="button"
+        onClick={diagnose}
+        disabled={status === 'loading'}
+        className="text-xs font-medium text-green-700 disabled:opacity-50"
+      >
+        {status === 'loading' ? 'Analyse en cours…' : 'Diagnostiquer'}
+      </button>
+      {status === 'error' && error && (
+        <p className="mt-1 text-xs text-red-700">
+          {error}{' '}
+          <button type="button" onClick={diagnose} className="font-medium underline">
+            Réessayer
+          </button>
+        </p>
+      )}
+    </div>
+  )
 }
 
 export function JournalPage() {
@@ -41,6 +141,8 @@ export function JournalPage() {
   const [filter, setFilter] = useState<LogEntryType | 'tout'>('tout')
   const [query, setQuery] = useState('')
   const settings = useLiveQuery(() => getSettings(), [], undefined)
+  const seasonNotes = useLiveQuery(() => db.seasonNotes.toArray(), [], [])
+  const diagnostics = useLiveQuery(() => db.diagnostics.toArray(), [], [])
   const [history, setHistory] = useState<DailyWeather[] | null>(null)
 
   useEffect(() => {
@@ -151,6 +253,16 @@ export function JournalPage() {
                 <WeatherContextBanner text={contextFor(entry)} />
                 {entry.photoUrls && entry.photoUrls.length > 0 && (
                   <PhotoThumbs urls={entry.photoUrls} />
+                )}
+                {entry.type === 'probleme' && (
+                  <DiagnoseButton
+                    entry={entry}
+                    history={history}
+                    entries={entries}
+                    seasonNotes={seasonNotes}
+                    diagnostics={diagnostics}
+                    geminiApiKey={settings?.geminiApiKey}
+                  />
                 )}
               </div>
               <div className="flex shrink-0 flex-col items-end gap-1">
