@@ -6,8 +6,20 @@ import {
   createDiagnostic,
   getDiagnosticForEntry,
   updateDiagnosticOutcome,
+  parseDataUrl,
 } from './diagnosticService'
 import type { GardenLogEntry } from '../data/model'
+
+describe('parseDataUrl', () => {
+  it('extrait le mimeType et les donnees base64 d un data URL', () => {
+    const result = parseDataUrl('data:image/jpeg;base64,QUJD')
+    expect(result).toEqual({ data: 'QUJD', mimeType: 'image/jpeg' })
+  })
+
+  it('renvoie null si la chaine n est pas un data URL valide', () => {
+    expect(parseDataUrl('https://example.com/photo.jpg')).toBeNull()
+  })
+})
 
 describe('buildDiagnosticPrompt', () => {
   it('inclut le probleme, la fenetre de 14 jours et l historique multi-saisons', () => {

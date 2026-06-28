@@ -57,6 +57,16 @@ export function buildDiagnosticPrompt(input: DiagnosticPromptInput): string {
   ].join('\n')
 }
 
+/**
+ * Extrait { data, mimeType } d'un data URL (ex: produit par compressImage pour photoUrls).
+ * Renvoie null si la chaine ne suit pas le format `data:<mime>;base64,<data>`.
+ */
+export function parseDataUrl(url: string): { data: string; mimeType: string } | null {
+  const match = /^data:([^;]+);base64,(.+)$/.exec(url)
+  if (!match) return null
+  return { mimeType: match[1], data: match[2] }
+}
+
 function extractJsonArray(text: string): string | null {
   const start = text.indexOf('[')
   const end = text.lastIndexOf(']')
