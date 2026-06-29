@@ -58,6 +58,26 @@ export async function fetchTodaySnapshot(
   return snap
 }
 
+export async function fetchForecast(
+  latitude: number,
+  longitude: number,
+  days: number,
+): Promise<DailyWeather[] | null> {
+  const params =
+    `latitude=${latitude}&longitude=${longitude}` +
+    `&daily=${DAILY}&forecast_days=${days}&timezone=auto`
+  const data = await getForecast(params)
+  const time = data?.daily?.time
+  if (!data || !time) return null
+  const daily = data.daily!
+  return time.map((date, i) => ({
+    date,
+    tempMaxC: daily.temperature_2m_max?.[i] ?? 0,
+    tempMinC: daily.temperature_2m_min?.[i] ?? 0,
+    rainMm: daily.precipitation_sum?.[i] ?? 0,
+  }))
+}
+
 export async function fetchDailyHistory(
   latitude: number,
   longitude: number,
