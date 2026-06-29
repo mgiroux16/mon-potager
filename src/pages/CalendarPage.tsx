@@ -41,12 +41,19 @@ function Section({ title, items, emptyVerb }: SectionProps) {
 export function CalendarPage() {
   const [month, setMonth] = useState(() => new Date().getMonth() + 1)
   const [catalog, setCatalog] = useState<CatalogItem[]>([])
+  const [gardenCatalogIds, setGardenCatalogIds] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     db.catalog.toArray().then(setCatalog)
+    db.crops.toArray().then((crops) => {
+      const ids = crops
+        .filter((crop) => !crop.deletedAt && crop.catalogId)
+        .map((crop) => crop.catalogId as string)
+      setGardenCatalogIds(new Set(ids))
+    })
   }, [])
 
-  const plan: MonthPlan = getMonthPlan(catalog, month)
+  const plan: MonthPlan = getMonthPlan(catalog, month, gardenCatalogIds)
 
   return (
     <div>

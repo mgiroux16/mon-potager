@@ -240,6 +240,26 @@ export class PotagerDB extends Dexie {
     this.version(11).stores({
       auditLog: 'id, type, date',
     })
+
+    // Calendrier de semis : catalogue elargi a 22 legumes (etait limite aux 10
+    // cultures de Mathieu) pour proposer des idees de semis/plantation au-dela
+    // de ce qui est deja en place. bulkPut par id, n'efface rien d'existant.
+    this.version(12).stores({}).upgrade(async (tx) => {
+      await tx.table('catalog').bulkPut([
+        { id: 'catalog-11', vegetable: 'Carotte', family: 'apiacees', sowingMonths: [3, 4, 5, 6, 7], harvestMonths: [6, 7, 8, 9, 10], daysToHarvest: 70, companions: ['Oignon', 'Poireau', 'Tomate'], antagonists: ['Aneth'] },
+        { id: 'catalog-12', vegetable: 'Poireau', family: 'alliacees', sowingMonths: [2, 3], plantingMonths: [5, 6], harvestMonths: [9, 10, 11, 12, 1, 2], daysToHarvest: 150, companions: ['Carotte', 'Céleri'], antagonists: ['Haricot', 'Pois'] },
+        { id: 'catalog-13', vegetable: 'Chou', family: 'brassicacees', sowingMonths: [3, 7], plantingMonths: [4, 5, 8, 9], harvestMonths: [6, 7, 11, 12, 1], daysToHarvest: 90, companions: ['Céleri'], antagonists: ['Fraise'] },
+        { id: 'catalog-14', vegetable: 'Radis', family: 'brassicacees', sowingMonths: [3, 4, 5, 6, 7, 8, 9], harvestMonths: [4, 5, 6, 7, 8, 9, 10], daysToHarvest: 25, companions: ['Carotte', 'Laitue'], antagonists: [] },
+        { id: 'catalog-15', vegetable: 'Laitue', family: 'asteracees', sowingMonths: [2, 3, 4, 5, 6, 7, 8, 9], plantingMonths: [3, 4, 5, 6, 7, 8, 9, 10], harvestMonths: [4, 5, 6, 7, 8, 9, 10, 11], daysToHarvest: 60, companions: ['Radis', 'Carotte'], antagonists: [] },
+        { id: 'catalog-16', vegetable: 'Épinard', family: 'chenopodiacees', sowingMonths: [2, 3, 8, 9], harvestMonths: [4, 5, 10, 11], daysToHarvest: 45, companions: [], antagonists: [] },
+        { id: 'catalog-17', vegetable: 'Betterave', family: 'chenopodiacees', sowingMonths: [4, 5, 6], harvestMonths: [7, 8, 9, 10], daysToHarvest: 90, companions: ['Oignon'], antagonists: [] },
+        { id: 'catalog-18', vegetable: 'Petit pois', family: 'fabacees', sowingMonths: [2, 3, 4, 10], harvestMonths: [5, 6, 7], daysToHarvest: 80, companions: ['Carotte', 'Radis'], antagonists: ['Ail', 'Oignon'] },
+        { id: 'catalog-19', vegetable: 'Fève', family: 'fabacees', sowingMonths: [2, 3, 10, 11], harvestMonths: [5, 6], daysToHarvest: 100, companions: ['Pomme de terre'], antagonists: ['Ail', 'Oignon'] },
+        { id: 'catalog-20', vegetable: 'Poivron', family: 'solanacees', sowingMonths: [2, 3], plantingMonths: [5], harvestMonths: [7, 8, 9, 10], daysToHarvest: 90, companions: ['Basilic'], antagonists: ['Pomme de terre', 'Fenouil'] },
+        { id: 'catalog-21', vegetable: 'Aubergine', family: 'solanacees', sowingMonths: [2, 3], plantingMonths: [5], harvestMonths: [7, 8, 9, 10], daysToHarvest: 90, companions: ['Haricot'], antagonists: ['Pomme de terre', 'Fenouil'] },
+        { id: 'catalog-22', vegetable: 'Concombre', family: 'cucurbitacees', sowingMonths: [4, 5], plantingMonths: [5, 6], harvestMonths: [7, 8, 9], daysToHarvest: 60, companions: ['Haricot', 'Mais'], antagonists: ['Pomme de terre'] },
+      ])
+    })
   }
 }
 

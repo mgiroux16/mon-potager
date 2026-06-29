@@ -18,10 +18,18 @@ function filterByMonth(
   return catalog.filter((item) => item[field]?.includes(month)).sort(byVegetable)
 }
 
-export function getMonthPlan(catalog: CatalogItem[], month: number): MonthPlan {
+export function getMonthPlan(
+  catalog: CatalogItem[],
+  month: number,
+  gardenCatalogIds?: Set<string>,
+): MonthPlan {
+  const harvestable = gardenCatalogIds
+    ? catalog.filter((item) => item.id && gardenCatalogIds.has(item.id))
+    : catalog
+
   return {
     toSow: filterByMonth(catalog, month, 'sowingMonths'),
     toPlant: filterByMonth(catalog, month, 'plantingMonths'),
-    toHarvest: filterByMonth(catalog, month, 'harvestMonths'),
+    toHarvest: filterByMonth(harvestable, month, 'harvestMonths'),
   }
 }
