@@ -10,7 +10,7 @@ import {
   type ParcelSeasonRow,
 } from '../services/seasonSummaryService'
 import { getCropNote, getParcelNote, setCropNote, setParcelNote } from '../services/seasonNotesService'
-import type { AppSettings, SeasonNote } from '../data/model'
+import type { AppSettings, Expense, SeasonNote } from '../data/model'
 
 function todayISO(): string {
   const d = new Date()
@@ -188,6 +188,34 @@ function ParcelRowView({ row, year, notes }: { row: ParcelSeasonRow; year: numbe
   )
 }
 
+function ExpenseListView({ expenses, year }: { expenses: Expense[]; year: number }) {
+  const yearExpenses = expenses
+    .filter((e) => e.date.startsWith(String(year)))
+    .sort((a, b) => b.date.localeCompare(a.date))
+
+  if (yearExpenses.length === 0) {
+    return <p className="text-sm text-gray-500">Aucune dépense enregistrée pour {year}.</p>
+  }
+
+  const total = yearExpenses.reduce((sum, e) => sum + e.amountEuros, 0)
+
+  return (
+    <div className="space-y-2">
+      <p className="text-sm font-medium text-green-900">Total {year} : {formatEuros(total)}</p>
+      <ul className="space-y-1">
+        {yearExpenses.map((e) => (
+          <li key={e.id} className="flex justify-between rounded bg-green-50 px-3 py-2 text-sm">
+            <span>
+              {e.label} <span className="text-gray-500">· {e.date}</span>
+            </span>
+            <span className="font-medium text-green-900">{formatEuros(e.amountEuros)}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
 export function SeasonSummaryPage() {
   const currentYear = new Date().getFullYear()
   const [year, setYear] = useState(currentYear)
@@ -211,6 +239,13 @@ export function SeasonSummaryPage() {
       <h1 className="text-xl font-bold text-green-800">Bilan de saison</h1>
 
       <AddExpenseForm />
+
+      <section>
+        <h2 className="text-lg font-semibold text-green-700">Dépenses</h2>
+        <div className="mt-2">
+          <ExpenseListView expenses={expenses} year={year} />
+        </div>
+      </section>
 
       <label className="flex flex-col gap-1 text-sm text-green-800">
         Année
