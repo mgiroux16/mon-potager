@@ -54,6 +54,17 @@ export function buildVoiceAudioPrompt(catalog: GardenCatalog, todayISO: string):
     'Une entree peut porter a la fois parcelId et cropId.',
     'Mets toujours dans "description" un resume de ce qui a ete dit pour cette action.',
     'N invente jamais un identifiant absent du catalogue.',
+    '',
+    'Attention au type "arrosage" : toute phrase qui parle d arroser une parcelle, un arbre',
+    'ou une culture avec de l eau (en litres ou en arrosoirs, ex : "j ai arrose 10 litres",',
+    '"arrosage de la parcelle nord", "deux arrosoirs sur les tomates") est de type "arrosage",',
+    'jamais "observation" ou "note". Convertis "un arrosoir" en environ 10 litres si besoin.',
+    'Extrais toujours volumeLiters quand un volume ou un nombre d arrosoirs est mentionne.',
+    'Ne confonds pas "arrosage" (eau sur une parcelle/arbre) avec "remplissage_oya" (eau',
+    'versee dans un oya) ni avec "releve_pluie" (pluie tombee naturellement).',
+    'Exemple : "j ai arrose 15 litres sur la parcelle nord ce matin" ->',
+    '{"type": "arrosage", "parcelId": "<id parcelle nord>", "volumeLiters": 15,',
+    '"time": "<heure du matin si precisee>", "description": "Arrosage parcelle nord, 15 litres"}.',
   ].join('\n')
 }
 

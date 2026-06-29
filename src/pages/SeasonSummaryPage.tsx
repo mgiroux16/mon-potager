@@ -1,6 +1,7 @@
 import { useState } from 'react'
+import type { FormEvent } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { db } from '../data/db'
+import { db, newId } from '../data/db'
 import { getSettings } from '../services/settingsService'
 import {
   summarizeCropSeason,
@@ -10,6 +11,77 @@ import {
 } from '../services/seasonSummaryService'
 import { getCropNote, getParcelNote, setCropNote, setParcelNote } from '../services/seasonNotesService'
 import type { AppSettings, SeasonNote } from '../data/model'
+
+function todayISO(): string {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+function AddExpenseForm() {
+  const [label, setLabel] = useState('')
+  const [amount, setAmount] = useState('')
+  const [date, setDate] = useState(todayISO())
+  const [saved, setSaved] = useState(false)
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault()
+    await db.expenses.add({
+      id: newId(),
+      label: label.trim() || 'Dépense',
+      amountEuros: Number(amount.replace(',', '.')) || 0,
+      date: date || todayISO(),
+      amortization: 'consommable',
+    })
+    setLabel('')
+    setAmount('')
+    setDate(todayISO())
+    setSaved(true)
+    setTimeout(() => setSaved(false), 2000)
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="rounded-lg border border-green-200 bg-white p-3 space-y-2">
+      <h2 className="text-sm font-semibold text-green-800">Ajouter une dépense</h2>
+      <label className="flex flex-col gap-1 text-sm text-green-800">
+        Objet
+        <input
+          type="text"
+          value={label}
+          onChange={(e) => setLabel(e.target.value)}
+          placeholder="Ex. terreau, semences…"
+          className="rounded-lg border border-green-200 px-3 py-2 text-sm"
+        />
+      </label>
+      <label className="flex flex-col gap-1 text-sm text-green-800">
+        Montant (€)
+        <input
+          type="text"
+          inputMode="decimal"
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+          placeholder="0"
+          className="rounded-lg border border-green-200 px-3 py-2 text-sm"
+        />
+      </label>
+      <label className="flex flex-col gap-1 text-sm text-green-800">
+        Date
+        <input
+          type="date"
+          value={date}
+          onChange={(e) => setDate(e.target.value)}
+          className="rounded-lg border border-green-200 px-3 py-2 text-sm"
+        />
+      </label>
+      <button
+        type="submit"
+        className="rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white"
+      >
+        Ajouter
+      </button>
+      {saved ? <p className="text-sm text-green-700">Dépense ajoutée.</p> : null}
+    </form>
+  )
+}
 
 function useSettings(): AppSettings | undefined {
   return useLiveQuery(() => getSettings(), [], undefined)
@@ -137,6 +209,8 @@ export function SeasonSummaryPage() {
   return (
     <div className="p-4 space-y-6">
       <h1 className="text-xl font-bold text-green-800">Bilan de saison</h1>
+
+      <AddExpenseForm />
 
       <label className="flex flex-col gap-1 text-sm text-green-800">
         Année
