@@ -30,7 +30,7 @@ function WeatherWidget({ latitude, longitude }: { latitude: number; longitude: n
     setLoading(true)
     Promise.all([
       fetchCurrentDetail(latitude, longitude),
-      fetchForecastDetail(latitude, longitude, 5),
+      fetchForecastDetail(latitude, longitude, 15),
     ]).then(([cur, days]) => {
       if (!alive) return
       setCurrent(cur)
