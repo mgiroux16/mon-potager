@@ -1,4 +1,4 @@
-import { HashRouter, Route, Routes } from 'react-router-dom'
+import { HashRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AuthGate } from './components/AuthGate'
 import { Layout } from './components/Layout'
 import { DashboardPage } from './pages/DashboardPage'
@@ -13,7 +13,11 @@ import { SeasonSummaryPage } from './pages/SeasonSummaryPage'
 import { CalendarPage } from './pages/CalendarPage'
 import { DiagnosticsPage } from './pages/DiagnosticsPage'
 import { SettingsPage } from './pages/SettingsPage'
-import { MorePage } from './pages/MorePage'
+import { PlaceholderPage } from './pages/PlaceholderPage'
+import { CarnetPage } from './pages/CarnetPage'
+import { JardinSectionPage } from './pages/JardinSectionPage'
+import { PilotageSectionPage } from './pages/PilotageSectionPage'
+import { Euro, MessageCircle } from 'lucide-react'
 
 function App() {
   return (
@@ -21,19 +25,70 @@ function App() {
       <HashRouter>
         <Routes>
           <Route element={<Layout />}>
+            {/* Aujourd'hui */}
             <Route index element={<DashboardPage />} />
-            <Route path="journal" element={<JournalPage />} />
+
+            {/* Carnet */}
+            <Route path="carnet" element={<CarnetPage />}>
+              <Route index element={<Navigate to="journal" replace />} />
+              <Route path="journal" element={<JournalPage />} />
+              <Route path="diagnostics" element={<DiagnosticsPage />} />
+              <Route
+                path="assistant"
+                element={
+                  <PlaceholderPage
+                    title="Assistant"
+                    subtitle="Pose une question sur ton potager"
+                    icon={<MessageCircle className="size-5" />}
+                    todo="Phase 3 — assistant Gemini en partage explicite"
+                  />
+                }
+              />
+            </Route>
+
+            {/* Saisie rapide — bouton central */}
             <Route path="ajouter" element={<QuickAddPage />} />
             <Route path="revue-vocale" element={<VoiceReviewPage />} />
-            <Route path="jardin" element={<GardenPage />} />
-            <Route path="jardin/carte" element={<GardenMapPage />} />
-            <Route path="recoltes" element={<HarvestPage />} />
-            <Route path="eau" element={<WaterPage />} />
-            <Route path="bilan" element={<SeasonSummaryPage />} />
-            <Route path="calendrier" element={<CalendarPage />} />
-            <Route path="diagnostics" element={<DiagnosticsPage />} />
-            <Route path="plus" element={<MorePage />} />
+
+            {/* Jardin */}
+            <Route path="jardin" element={<JardinSectionPage />}>
+              <Route index element={<Navigate to="parcelles" replace />} />
+              <Route path="parcelles" element={<GardenPage />} />
+              <Route path="carte" element={<GardenMapPage />} />
+              <Route path="eau" element={<WaterPage />} />
+              <Route path="verger" element={<GardenPage />} />
+            </Route>
+
+            {/* Pilotage */}
+            <Route path="pilotage" element={<PilotageSectionPage />}>
+              <Route index element={<Navigate to="bilan" replace />} />
+              <Route path="bilan" element={<SeasonSummaryPage />} />
+              <Route path="recoltes" element={<HarvestPage />} />
+              <Route
+                path="argent"
+                element={
+                  <PlaceholderPage
+                    title="Argent"
+                    subtitle="Dépenses, amortissements et bilan économique"
+                    icon={<Euro className="size-5" />}
+                    todo="Phase 1C — écran Argent avec 3 onglets"
+                  />
+                }
+              />
+              <Route path="calendrier" element={<CalendarPage />} />
+            </Route>
+
+            {/* Réglages */}
             <Route path="reglages" element={<SettingsPage />} />
+
+            {/* Redirects depuis les anciennes routes */}
+            <Route path="journal" element={<Navigate to="/carnet/journal" replace />} />
+            <Route path="eau" element={<Navigate to="/jardin/eau" replace />} />
+            <Route path="recoltes" element={<Navigate to="/pilotage/recoltes" replace />} />
+            <Route path="bilan" element={<Navigate to="/pilotage/bilan" replace />} />
+            <Route path="calendrier" element={<Navigate to="/pilotage/calendrier" replace />} />
+            <Route path="diagnostics" element={<Navigate to="/carnet/diagnostics" replace />} />
+            <Route path="plus" element={<Navigate to="/pilotage" replace />} />
           </Route>
         </Routes>
       </HashRouter>
