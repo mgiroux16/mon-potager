@@ -28,22 +28,40 @@ describe('CalendarPage', () => {
     })
   })
 
-  it('affiche les legumes du catalogue dans la bonne section', async () => {
+  it('affiche les legumes du catalogue dans la section semis (non filtree sur le jardin)', async () => {
+    // Test deterministe : on seme au mois courant, donc visible des le montage,
+    // sans dependre de la date. La section "a semer" n'est pas filtree sur le jardin
+    // (contrairement a "a recolter" depuis la refonte calendrier).
+    const currentMonth = new Date().getMonth() + 1
     await db.catalog.add({
       id: newId(), vegetable: 'Tomate',
       family: 'solanacees',
-      sowingMonths: [3, 4],
-      plantingMonths: [5],
-      harvestMonths: [7, 8, 9, 10],
+      sowingMonths: [currentMonth],
     })
 
     render(<CalendarPage />)
-    fireEvent.click(screen.getByLabelText('Mois suivant'))
-    fireEvent.click(screen.getByLabelText('Mois suivant'))
 
     await waitFor(() => {
       expect(screen.getByText('Tomate')).toBeInTheDocument()
     })
+  })
+
+  it('ne montre une recolte que si la culture est au jardin', async () => {
+    const currentMonth = new Date().getMonth() + 1
+    // Item catalogue recoltable ce mois-ci mais AUCUNE culture plantee -> section vide.
+    await db.catalog.add({
+      id: newId(), vegetable: 'Courgette',
+      family: 'cucurbitacees',
+      harvestMonths: [currentMonth],
+    })
+
+    render(<CalendarPage />)
+
+    // On attend que le mois courant soit rendu, puis on vérifie l'absence.
+    await waitFor(() => {
+      expect(screen.getByText(MOIS_FR[currentMonth - 1])).toBeInTheDocument()
+    })
+    expect(screen.queryByText('Courgette')).toBeNull()
   })
 
   it('navigue au mois precedent et suivant, avec un cycle sur l annee', async () => {
