@@ -13,12 +13,11 @@ import { SeasonSummaryPage } from './pages/SeasonSummaryPage'
 import { CalendarPage } from './pages/CalendarPage'
 import { DiagnosticsPage } from './pages/DiagnosticsPage'
 import { SettingsPage } from './pages/SettingsPage'
-import { PlaceholderPage } from './pages/PlaceholderPage'
 import { CarnetPage } from './pages/CarnetPage'
 import { JardinSectionPage } from './pages/JardinSectionPage'
 import { PilotageSectionPage } from './pages/PilotageSectionPage'
 import { ArgentPage } from './pages/ArgentPage'
-import { MessageCircle } from 'lucide-react'
+import { AssistantPage } from './pages/AssistantPage'
 
 function App() {
   return (
@@ -34,17 +33,7 @@ function App() {
               <Route index element={<Navigate to="journal" replace />} />
               <Route path="journal" element={<JournalPage />} />
               <Route path="diagnostics" element={<DiagnosticsPage />} />
-              <Route
-                path="assistant"
-                element={
-                  <PlaceholderPage
-                    title="Assistant"
-                    subtitle="Pose une question sur ton potager"
-                    icon={<MessageCircle className="size-5" />}
-                    todo="Phase 3 — assistant Gemini en partage explicite"
-                  />
-                }
-              />
+              <Route path="assistant" element={<AssistantPage />} />
             </Route>
 
             {/* Saisie rapide — bouton central */}
