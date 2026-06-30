@@ -143,14 +143,14 @@ function WeatherCondensed({
 
       {open && today && (
         <div className="border-t border-blue-100 px-3 pb-3 pt-2">
-          <ForecastDetail today={today} />
+          <ForecastDetail />
         </div>
       )}
     </div>
   )
 }
 
-function ForecastDetail({ today }: { today: DailyWeatherDetail }) {
+function ForecastDetail() {
   const [forecast, setForecast] = useState<DailyWeatherDetail[] | null>(null)
   const settings = useLiveQuery(() => getSettings(), [], undefined)
 

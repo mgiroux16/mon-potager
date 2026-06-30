@@ -180,6 +180,12 @@ export interface CatalogItem {
 
 export type ExpenseAmortization = 'consommable' | 'etale' | 'durable'
 
+// Axe orthogonal a l'amortissement : une depense revient-elle (abonnement, eau,
+// electricite, location) ou est-elle ponctuelle (graines, terreau, materiel) ?
+// Ne jamais fusionner recurrence et amortization en un seul menu (cf. audit 1C).
+export type ExpenseRecurrence = 'ponctuelle' | 'recurrente'
+export type ExpensePeriodicity = 'mensuelle' | 'annuelle'
+
 export interface Expense {
   id?: string
   label: string
@@ -188,6 +194,8 @@ export interface Expense {
   amortization: ExpenseAmortization
   lifespanYears?: number // pour 'durable'
   usagePeriodMonths?: number // pour 'etale'
+  recurrence?: ExpenseRecurrence // defaut 'ponctuelle' (backfill migration v13)
+  periodicity?: ExpensePeriodicity // si recurrente : montant mensuel ou annuel
   category?: string
   parcelId?: string
   cropId?: string

@@ -260,6 +260,18 @@ export class PotagerDB extends Dexie {
         { id: 'catalog-22', vegetable: 'Concombre', family: 'cucurbitacees', sowingMonths: [4, 5], plantingMonths: [5, 6], harvestMonths: [7, 8, 9], daysToHarvest: 60, companions: ['Haricot', 'Mais'], antagonists: ['Pomme de terre'] },
       ])
     })
+
+    // Module Argent : axe recurrence (fixe/variable) distinct de l'amortissement.
+    // Les depenses existantes sont ponctuelles par defaut. Backfill seul, schema
+    // inchange (filtrage en memoire, pas d'index sur recurrence).
+    this.version(13).stores({}).upgrade(async (tx) => {
+      const rows = await tx.table('expenses').toArray()
+      for (const row of rows) {
+        if (row.recurrence == null) {
+          await tx.table('expenses').update(row.id, { recurrence: 'ponctuelle' })
+        }
+      }
+    })
   }
 }
 

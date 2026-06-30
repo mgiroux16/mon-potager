@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { render, screen, waitFor, fireEvent } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
 import { db, newId } from '../data/db'
 import { SeasonSummaryPage } from './SeasonSummaryPage'
 
@@ -7,9 +8,18 @@ beforeEach(async () => {
   await Promise.all(db.tables.map((t) => t.clear()))
 })
 
+// Le bilan contient un <Link> vers /pilotage/argent : il faut un contexte Router.
+function renderPage() {
+  return render(
+    <MemoryRouter>
+      <SeasonSummaryPage />
+    </MemoryRouter>,
+  )
+}
+
 describe('SeasonSummaryPage', () => {
   it('affiche un message si aucune donnee pour l annee courante', async () => {
-    render(<SeasonSummaryPage />)
+    renderPage()
     await waitFor(() => {
       expect(screen.getByText(/Rien à montrer pour/)).toBeInTheDocument()
     })
@@ -33,7 +43,7 @@ describe('SeasonSummaryPage', () => {
       createdAt: Date.now(),
     })
 
-    render(<SeasonSummaryPage />)
+    renderPage()
     await waitFor(() => {
       expect(screen.getAllByText('Tomates').length).toBeGreaterThan(0)
       expect(screen.getAllByText('Carré nord').length).toBeGreaterThan(0)
@@ -59,7 +69,7 @@ describe('SeasonSummaryPage', () => {
       createdAt: Date.now(),
     })
 
-    render(<SeasonSummaryPage />)
+    renderPage()
 
     const cropNoteField = await screen.findByLabelText('À refaire ou à changer pour Tomates')
     fireEvent.change(cropNoteField, { target: { value: 'Espacer davantage les plants' } })

@@ -23,7 +23,9 @@ describe('exportService', () => {
     await db.log.add({ id: newId(), type: 'note', date: '2026-06-25', title: 'test', createdAt: 1 })
     await db.varieties.add({ id: newId(), name: 'Agata', vegetable: 'Pomme de terre' })
     const dump = await exportAll()
-    expect(dump.version).toBe(11)
+    // version = db.verno courant ; on évite de figer le numéro (monte à chaque migration).
+    expect(dump.version).toBe(db.verno)
+    expect(dump.version).toBeGreaterThanOrEqual(11)
     expect(typeof dump.exportedAt).toBe('number')
     expect(dump.tables.log).toHaveLength(1)
     expect(dump.tables.varieties).toHaveLength(1)

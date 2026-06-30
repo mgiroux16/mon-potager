@@ -17,7 +17,8 @@ import { PlaceholderPage } from './pages/PlaceholderPage'
 import { CarnetPage } from './pages/CarnetPage'
 import { JardinSectionPage } from './pages/JardinSectionPage'
 import { PilotageSectionPage } from './pages/PilotageSectionPage'
-import { Euro, MessageCircle } from 'lucide-react'
+import { ArgentPage } from './pages/ArgentPage'
+import { MessageCircle } from 'lucide-react'
 
 function App() {
   return (
@@ -64,17 +65,7 @@ function App() {
               <Route index element={<Navigate to="bilan" replace />} />
               <Route path="bilan" element={<SeasonSummaryPage />} />
               <Route path="recoltes" element={<HarvestPage />} />
-              <Route
-                path="argent"
-                element={
-                  <PlaceholderPage
-                    title="Argent"
-                    subtitle="Dépenses, amortissements et bilan économique"
-                    icon={<Euro className="size-5" />}
-                    todo="Phase 1C — écran Argent avec 3 onglets"
-                  />
-                }
-              />
+              <Route path="argent" element={<ArgentPage />} />
               <Route path="calendrier" element={<CalendarPage />} />
             </Route>
 

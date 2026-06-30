@@ -88,15 +88,21 @@ describe('migration UUID (v3 -> v4)', () => {
     const settings = await upgraded.settings.toArray()
 
     expect(parcels).toHaveLength(1)
-    expect(catalog).toHaveLength(1)
     expect(varieties).toHaveLength(1)
     expect(crops).toHaveLength(1)
     expect(oyas).toHaveLength(1)
     expect(log).toHaveLength(1)
     expect(settings).toHaveLength(1)
 
+    // Le catalogue contient la tomate migree + les 12 legumes injectes par la
+    // migration v12 (catalogue elargi). On isole la tomate migree par sa relation
+    // au lieu de figer le nombre total de lignes.
+    const tomato = catalog.find((c) => c.id === crops[0].catalogId)
+    expect(tomato).toBeDefined()
+    expect(tomato?.vegetable).toBe('Tomate')
+
     // tous les ids sont desormais des UUID string, plus jamais les anciens numeriques.
-    for (const row of [...parcels, ...catalog, ...varieties, ...crops, ...oyas, ...log]) {
+    for (const row of [...parcels, ...varieties, ...crops, ...oyas, ...log, tomato!]) {
       expect(typeof row.id).toBe('string')
       expect(row.id).not.toBe(String(legacyIds.parcelId))
     }
@@ -104,9 +110,9 @@ describe('migration UUID (v3 -> v4)', () => {
 
     // les relations croisees pointent vers les nouveaux UUID, pas vers les anciens nombres.
     expect(crops[0].parcelId).toBe(parcels[0].id)
-    expect(crops[0].catalogId).toBe(catalog[0].id)
+    expect(crops[0].catalogId).toBe(tomato!.id)
     expect(crops[0].varietyId).toBe(varieties[0].id)
-    expect(varieties[0].catalogId).toBe(catalog[0].id)
+    expect(varieties[0].catalogId).toBe(tomato!.id)
     expect(oyas[0].parcelId).toBe(parcels[0].id)
     expect(oyas[0].cropIds).toEqual([crops[0].id])
     expect(log[0].parcelId).toBe(parcels[0].id)
@@ -149,6 +155,29 @@ describe('migration v8 (ajout updatedAt/deletedAt)', () => {
     await upgraded.open()
     const rows = await upgraded.parcels.where('updatedAt').above(0).toArray()
     expect(rows).toEqual([])
+    upgraded.close()
+  })
+})
+
+describe('migration v13 (recurrence des depenses)', () => {
+  it("donne recurrence 'ponctuelle' aux depenses existantes qui n'en ont pas", async () => {
+    const legacy = new LegacyDB()
+    await legacy.open()
+    await legacy.table('expenses').add({
+      label: 'Terreau',
+      amountEuros: 12,
+      date: '2026-04-01',
+      amortization: 'consommable',
+    })
+    legacy.close()
+
+    const upgraded = new PotagerDB()
+    await upgraded.open()
+    const expenses = await upgraded.expenses.toArray()
+    expect(expenses).toHaveLength(1)
+    expect(expenses[0].recurrence).toBe('ponctuelle')
+    // l'amortissement existant n'est pas touche
+    expect(expenses[0].amortization).toBe('consommable')
     upgraded.close()
   })
 })

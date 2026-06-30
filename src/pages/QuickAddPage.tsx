@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { ArrowLeft, MoreHorizontal } from 'lucide-react'
+import { ArrowLeft, Euro, MoreHorizontal } from 'lucide-react'
 import { db } from '../data/db'
 import type { LogEntryType } from '../data/model'
 import { addLogEntry, type NewLogEntry } from '../services/logService'
@@ -12,6 +12,7 @@ import { getSettings } from '../services/settingsService'
 import { LOG_TYPE_LABELS } from '../services/logView'
 import { LOG_TYPE_ICONS } from '../components/logTypeIcons'
 import { PhotoInput } from '../components/PhotoInput'
+import { ExpenseForm } from '../components/ExpenseForm'
 
 type TargetKind = 'parcelle' | 'oya' | 'culture' | 'arbre' | 'element' | 'none'
 type MeasureKind = 'volume' | 'quantite' | 'description' | 'titre_description' | 'none'
@@ -31,9 +32,12 @@ const FREQUENT: FormConfig[] = [
   { type: 'probleme', target: 'element', measure: 'description', withTime: false },
 ]
 
+// 'depense' n'est plus ici : le bouton Dépense ouvre le formulaire Expense complet
+// (table expenses, une seule source de verite). Les logs 'depense' historiques
+// restent affiches dans le Journal mais ne sont plus creables ici.
 const OTHER_TYPES: LogEntryType[] = [
   'semis', 'plantation', 'paillage', 'traitement', 'compost',
-  'taille', 'depense', 'diagnostic', 'releve_pluie', 'note',
+  'taille', 'diagnostic', 'releve_pluie', 'note',
   'floraison', 'nouaison', 'chute_fruits',
 ]
 
@@ -58,7 +62,7 @@ function nowHM(): string {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 }
 
-type View = 'grid' | 'autre' | FormConfig
+type View = 'grid' | 'autre' | 'depense' | FormConfig
 
 type TargetField = 'parcelle' | 'culture' | 'oya' | 'arbre'
 
@@ -498,6 +502,27 @@ export function QuickAddPage() {
     )
   }
 
+  if (view === 'depense') {
+    return (
+      <section className="flex flex-col gap-4">
+        <button
+          type="button"
+          onClick={backToGrid}
+          className="flex items-center gap-1 self-start text-sm text-indigo-700"
+        >
+          <ArrowLeft className="size-4" /> Retour
+        </button>
+        <h1 className="text-xl font-semibold text-indigo-950">Dépense</h1>
+        <ExpenseForm
+          onSaved={() => {
+            setConfirmation('Dépense enregistrée.')
+            backToGrid()
+          }}
+        />
+      </section>
+    )
+  }
+
   if (view !== 'grid') {
     return (
       <EntryForm
@@ -539,6 +564,20 @@ export function QuickAddPage() {
             </button>
           )
         })}
+        <button
+          type="button"
+          onClick={() => {
+            setConfirmation(null)
+            setDraft(undefined)
+            setView('depense')
+          }}
+          className="flex flex-col items-center gap-2 rounded-2xl bg-white px-3 py-5 shadow-sm"
+        >
+          <span className="grid size-11 place-items-center rounded-xl bg-indigo-100 text-indigo-700">
+            <Euro className="size-6" />
+          </span>
+          <span className="text-sm font-medium text-green-950">Dépense</span>
+        </button>
         <button
           type="button"
           onClick={() => {

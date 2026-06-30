@@ -71,7 +71,9 @@ describe('migration version 10 (diagnostics)', () => {
     })
     const rows = await db.diagnostics.toArray()
     expect(rows).toHaveLength(1)
-    expect(db.verno).toBe(11)
+    // La table diagnostics est introduite en v10 ; on vérifie le plancher sans
+    // figer le numéro exact (il monte à chaque migration : v13 et au-delà).
+    expect(db.verno).toBeGreaterThanOrEqual(10)
   })
 })
 
