@@ -1,16 +1,18 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import Dexie from 'dexie'
 import { db, newId } from '../data/db'
-import { runInitialSync, getSyncStatus, purgeOldTombstones } from './syncService'
+import { runInitialSync, getSyncStatus, purgeOldTombstones, TABLE_NAMES } from './syncService'
 import * as firestoreClient from '../data/firestoreClient'
 
 const DB_NAME = 'mon-potager'
 
 beforeEach(async () => {
+  localStorage.clear()
   await db.open()
 })
 
 afterEach(async () => {
+  localStorage.clear()
   db.close()
   await Dexie.delete(DB_NAME)
   vi.restoreAllMocks()
@@ -22,15 +24,16 @@ describe('runInitialSync', () => {
     await db.parcels.add({ id, name: 'Locale uniquement' })
 
     vi.spyOn(firestoreClient, 'fetchAllRecords').mockResolvedValue([])
-    const pushSpy = vi.spyOn(firestoreClient, 'pushRecord').mockResolvedValue()
+    const pushSpy = vi.spyOn(firestoreClient, 'pushRecords').mockResolvedValue()
 
     await runInitialSync('uid-test')
 
     expect(pushSpy).toHaveBeenCalledWith(
       'uid-test',
       'parcels',
-      id,
-      expect.objectContaining({ name: 'Locale uniquement' }),
+      expect.arrayContaining([
+        expect.objectContaining({ id, data: expect.objectContaining({ name: 'Locale uniquement' }) }),
+      ]),
     )
   })
 
@@ -41,7 +44,7 @@ describe('runInitialSync', () => {
     vi.spyOn(firestoreClient, 'fetchAllRecords').mockImplementation(async (_uid, table) =>
       table === 'parcels' ? [{ id, name: 'Nouvelle', updatedAt: 200 }] : [],
     )
-    vi.spyOn(firestoreClient, 'pushRecord').mockResolvedValue()
+    vi.spyOn(firestoreClient, 'pushRecords').mockResolvedValue()
 
     await runInitialSync('uid-test')
 
@@ -56,7 +59,7 @@ describe('runInitialSync', () => {
     vi.spyOn(firestoreClient, 'fetchAllRecords').mockImplementation(async (_uid, table) =>
       table === 'parcels' ? [{ id, name: 'Distante ancienne', updatedAt: 100 }] : [],
     )
-    const pushSpy = vi.spyOn(firestoreClient, 'pushRecord').mockResolvedValue()
+    const pushSpy = vi.spyOn(firestoreClient, 'pushRecords').mockResolvedValue()
 
     await runInitialSync('uid-test')
 
@@ -65,26 +68,92 @@ describe('runInitialSync', () => {
     expect(pushSpy).toHaveBeenCalledWith(
       'uid-test',
       'parcels',
-      id,
-      expect.objectContaining({ name: 'Locale recente' }),
+      expect.arrayContaining([
+        expect.objectContaining({ id, data: expect.objectContaining({ name: 'Locale recente' }) }),
+      ]),
     )
+  })
+
+  it('synchronise toutes les tables en parallele', async () => {
+    const fetchSpy = vi.spyOn(firestoreClient, 'fetchAllRecords').mockResolvedValue([])
+    vi.spyOn(firestoreClient, 'pushRecords').mockResolvedValue()
+
+    await runInitialSync('uid-test')
+
+    expect(fetchSpy).toHaveBeenCalledTimes(TABLE_NAMES.length)
+    expect(getSyncStatus()).toBe('synced')
+  })
+
+  it('continue a synchroniser les autres tables si une table echoue', async () => {
+    vi.spyOn(firestoreClient, 'fetchAllRecords').mockImplementation(async (_uid, table) => {
+      if (table === 'log') throw new Error('quota exceeded')
+      return []
+    })
+    vi.spyOn(firestoreClient, 'pushRecords').mockResolvedValue()
+
+    await runInitialSync('uid-test')  // ne doit pas throw
+
+    expect(getSyncStatus()).toBe('error')
+  })
+
+  it('utilise fetchRecordsSince si un curseur lastSyncAt existe (sync incrementale)', async () => {
+    const cursor = 1_000_000
+    localStorage.setItem('sync:lastAt:parcels', String(cursor))
+
+    const incrementalSpy = vi.spyOn(firestoreClient, 'fetchRecordsSince').mockResolvedValue([])
+    const fullSpy = vi.spyOn(firestoreClient, 'fetchAllRecords').mockResolvedValue([])
+    vi.spyOn(firestoreClient, 'pushRecords').mockResolvedValue()
+
+    await runInitialSync('uid-test')
+
+    // parcels a un curseur -> fetchRecordsSince; les autres n'en ont pas -> fetchAllRecords
+    expect(incrementalSpy).toHaveBeenCalledWith('uid-test', 'parcels', expect.any(Number))
+    expect(fullSpy).not.toHaveBeenCalledWith('uid-test', 'parcels')
+  })
+
+  it('recupere un enregistrement distant dont updatedAt est dans le buffer de recouvrement (decalage horloge)', async () => {
+    const id = newId()
+    const cursor = 1_000_000
+    const bufferMs = 5 * 60 * 1000
+    // Simule un record ecrit par un autre appareil avec une horloge en retard de 1 min
+    const skewedRecord = { id, name: 'Hors cursor mais dans buffer', updatedAt: cursor - 60_000 }
+
+    localStorage.setItem('sync:lastAt:parcels', String(cursor))
+
+    vi.spyOn(firestoreClient, 'fetchRecordsSince').mockImplementation(async (_uid, table, sinceMs) => {
+      if (table === 'parcels') {
+        // Verifie que la requete part bien de cursor - buffer (pas de cursor seul)
+        expect(sinceMs).toBe(cursor - bufferMs)
+        return [skewedRecord]
+      }
+      return []
+    })
+    vi.spyOn(firestoreClient, 'fetchAllRecords').mockResolvedValue([])
+    vi.spyOn(firestoreClient, 'pushRecords').mockResolvedValue()
+
+    await runInitialSync('uid-test')
+
+    const row = await db.table('parcels').get(id)
+    expect(row?.name).toBe('Hors cursor mais dans buffer')
   })
 })
 
 describe('getSyncStatus', () => {
   it('passe a "synced" une fois la sync initiale terminee avec succes', async () => {
     vi.spyOn(firestoreClient, 'fetchAllRecords').mockResolvedValue([])
-    vi.spyOn(firestoreClient, 'pushRecord').mockResolvedValue()
+    vi.spyOn(firestoreClient, 'pushRecords').mockResolvedValue()
 
     await runInitialSync('uid-test')
 
     expect(getSyncStatus()).toBe('synced')
   })
 
-  it('passe a "error" si la sync initiale echoue', async () => {
+  it('passe a "error" si toutes les tables echouent', async () => {
     vi.spyOn(firestoreClient, 'fetchAllRecords').mockRejectedValue(new Error('reseau coupe'))
+    vi.spyOn(firestoreClient, 'fetchRecordsSince').mockRejectedValue(new Error('reseau coupe'))
+    vi.spyOn(firestoreClient, 'pushRecords').mockResolvedValue()
 
-    await expect(runInitialSync('uid-test')).rejects.toThrow('reseau coupe')
+    await runInitialSync('uid-test')  // resout sans throw, erreurs absorbees par table
 
     expect(getSyncStatus()).toBe('error')
   })

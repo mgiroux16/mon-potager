@@ -1,4 +1,14 @@
-import { collection, doc, setDoc, onSnapshot, getDocs, type Unsubscribe } from 'firebase/firestore'
+import {
+  collection,
+  doc,
+  setDoc,
+  onSnapshot,
+  getDocs,
+  query,
+  where,
+  writeBatch,
+  type Unsubscribe,
+} from 'firebase/firestore'
 import { firestore } from './firebase'
 import type { TableName } from './syncHooks'
 
@@ -15,6 +25,35 @@ export async function pushRecord(
   await setDoc(doc(firestore, tableCollectionPath(uid, table), id), data, { merge: true })
 }
 
+const BATCH_SIZE = 500
+
+export async function pushRecords(
+  uid: string,
+  table: TableName,
+  items: { id: string; data: Record<string, unknown> }[],
+): Promise<void> {
+  if (items.length === 0) return
+  for (let i = 0; i < items.length; i += BATCH_SIZE) {
+    const chunk = items.slice(i, i + BATCH_SIZE)
+    const batch = writeBatch(firestore)
+    for (const { id, data } of chunk) {
+      batch.set(doc(firestore, tableCollectionPath(uid, table), id), data, { merge: true })
+    }
+    try {
+      await batch.commit()
+    } catch {
+      // Batch failed (ex : doc > 1 Mo) : retomber sur les pushes individuels
+      for (const { id, data } of chunk) {
+        try {
+          await pushRecord(uid, table, id, data)
+        } catch (err) {
+          console.error(`[sync] enregistrement ignore ${table}/${id}`, err)
+        }
+      }
+    }
+  }
+}
+
 export async function fetchAllRecords(
   uid: string,
   table: TableName,
@@ -23,12 +62,34 @@ export async function fetchAllRecords(
   return snapshot.docs.map((d) => ({ ...d.data(), id: d.id }))
 }
 
+export async function fetchRecordsSince(
+  uid: string,
+  table: TableName,
+  sinceMs: number,
+): Promise<Record<string, unknown>[]> {
+  const q = query(
+    collection(firestore, tableCollectionPath(uid, table)),
+    where('updatedAt', '>', sinceMs),
+  )
+  const snapshot = await getDocs(q)
+  return snapshot.docs.map((d) => ({ ...d.data(), id: d.id }))
+}
+
+export type DocChange = {
+  type: 'added' | 'modified' | 'removed'
+  record: Record<string, unknown>
+}
+
 export function watchTable(
   uid: string,
   table: TableName,
-  onChange: (records: Record<string, unknown>[]) => void,
+  onChange: (changes: DocChange[]) => void,
 ): Unsubscribe {
   return onSnapshot(collection(firestore, tableCollectionPath(uid, table)), (snapshot) => {
-    onChange(snapshot.docs.map((d) => ({ ...d.data(), id: d.id })))
+    const changes = snapshot.docChanges().map((change) => ({
+      type: change.type,
+      record: { ...change.doc.data(), id: change.doc.id },
+    }))
+    if (changes.length > 0) onChange(changes)
   })
 }

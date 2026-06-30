@@ -1,10 +1,16 @@
 import { db } from '../data/db'
 import type { TableName } from '../data/syncHooks'
 import { withMaintenanceMode } from '../data/syncHooks'
-import { fetchAllRecords, pushRecord, watchTable } from '../data/firestoreClient'
+import {
+  fetchAllRecords,
+  fetchRecordsSince,
+  pushRecords,
+  watchTable,
+  type DocChange,
+} from '../data/firestoreClient'
 import { resolveMerge } from './syncMerge'
 
-const TABLE_NAMES: TableName[] = [
+export const TABLE_NAMES: TableName[] = [
   'log',
   'parcels',
   'crops',
@@ -19,6 +25,10 @@ const TABLE_NAMES: TableName[] = [
   'seasonNotes',
 ]
 
+// Recouvrement pour absorber les décalages d'horloge entre appareils.
+// La requête incrémentale part de (cursor - buffer) au lieu de cursor.
+const CLOCK_SKEW_BUFFER_MS = 5 * 60 * 1000
+
 export type SyncStatus = 'synced' | 'syncing' | 'offline' | 'error'
 
 let status: SyncStatus = 'offline'
@@ -27,13 +37,57 @@ export function getSyncStatus(): SyncStatus {
   return status
 }
 
-async function syncTable(uid: string, table: TableName): Promise<void> {
-  const remoteRows = await fetchAllRecords(uid, table)
+function getLastSyncAt(table: TableName): number | null {
+  try {
+    const v = localStorage.getItem(`sync:lastAt:${table}`)
+    return v ? Number(v) : null
+  } catch {
+    return null
+  }
+}
+
+function setLastSyncAt(table: TableName, ms: number): void {
+  try {
+    localStorage.setItem(`sync:lastAt:${table}`, String(ms))
+  } catch {
+    // Ignore (ex : navigation privée sans localStorage)
+  }
+}
+
+/** Efface tous les curseurs pour forcer un full-sync au prochain runInitialSync. */
+export function resetSyncCursors(): void {
+  for (const table of TABLE_NAMES) {
+    try {
+      localStorage.removeItem(`sync:lastAt:${table}`)
+    } catch {
+      // ignore
+    }
+  }
+}
+
+async function syncTable(uid: string, table: TableName): Promise<number> {
+  const lastSyncAt = getLastSyncAt(table)
+  const isIncremental = lastSyncAt !== null
+
+  // Fetch remote : incrémental avec buffer de recouvrement, ou full-sync au premier lancement
+  const remoteRows = isIncremental
+    ? await fetchRecordsSince(uid, table, lastSyncAt - CLOCK_SKEW_BUFFER_MS)
+    : await fetchAllRecords(uid, table)
+
+  const docsRead = remoteRows.length
   const remoteById = new Map(remoteRows.map((r) => [r.id as string, r]))
-  const localRows = (await db.table(table).toArray()) as Record<string, unknown>[]
-  const localById = new Map(localRows.map((r) => [r.id as string, r]))
+
+  // Fetch local delta en mémoire (taille mono-utilisateur, pas de contrainte de perf)
+  const allLocalRows = (await db.table(table).toArray()) as Record<string, unknown>[]
+  const localDelta = isIncremental
+    ? allLocalRows.filter(
+        (r) => ((r.updatedAt as number | undefined) ?? 0) > lastSyncAt - CLOCK_SKEW_BUFFER_MS,
+      )
+    : allLocalRows
+  const localById = new Map(localDelta.map((r) => [r.id as string, r]))
 
   const allIds = new Set([...remoteById.keys(), ...localById.keys()])
+  const toPush: { id: string; data: Record<string, unknown> }[] = []
 
   for (const id of allIds) {
     const local = localById.get(id)
@@ -41,31 +95,54 @@ async function syncTable(uid: string, table: TableName): Promise<void> {
     const winner = resolveMerge(local, remote)
     if (winner === undefined) continue
 
-    try {
-      if (winner === remote && winner !== local) {
+    if (winner === remote && winner !== local) {
+      try {
         await db.table(table).put(winner)
+      } catch (err) {
+        console.error(`[sync] put local ignore ${table}/${id}`, err)
       }
-      if (winner === local && winner !== remote) {
-        await pushRecord(uid, table, id, winner)
-      }
-    } catch (err) {
-      // Un enregistrement isole (ex: photo > 1 Mo, limite Firestore) ne doit pas
-      // faire echouer toute la synchro : on le journalise et on continue.
-      console.error(`[sync] enregistrement ignore ${table}/${id}`, err)
+    }
+    if (winner === local && winner !== remote) {
+      toPush.push({ id, data: winner })
     }
   }
+
+  if (toPush.length > 0) {
+    await pushRecords(uid, table, toPush)
+  }
+
+  // Avance le curseur sur le max(updatedAt) vu dans le lot (pas Date.now())
+  const maxUpdatedAt = remoteRows.reduce(
+    (m, r) => Math.max(m, (r.updatedAt as number | undefined) ?? 0),
+    0,
+  )
+  if (maxUpdatedAt > 0) {
+    setLastSyncAt(table, maxUpdatedAt)
+  }
+
+  return docsRead
 }
 
 export async function runInitialSync(uid: string): Promise<void> {
   status = 'syncing'
-  try {
-    for (const table of TABLE_NAMES) {
-      await syncTable(uid, table)
-    }
-    status = 'synced'
-  } catch (err) {
-    status = 'error'
-    throw err
+  const startMs = Date.now()
+  let hasError = false
+
+  const counts = await Promise.all(
+    TABLE_NAMES.map((table) =>
+      syncTable(uid, table).catch((err: unknown) => {
+        console.error(`[sync] table ${table} echec`, err)
+        hasError = true
+        return 0
+      }),
+    ),
+  )
+
+  status = hasError ? 'error' : 'synced'
+
+  if (import.meta.env.DEV) {
+    const totalDocsRead = counts.reduce((s, n) => s + n, 0)
+    console.debug(`[sync:perf] docs lus : ${totalDocsRead}, durée : ${Date.now() - startMs}ms`)
   }
 }
 
@@ -74,9 +151,11 @@ const unsubscribers: Array<() => void> = []
 export function startRealtimeSync(uid: string): void {
   stopRealtimeSync()
   for (const table of TABLE_NAMES) {
-    const unsubscribe = watchTable(uid, table, (records) => {
+    const unsubscribe = watchTable(uid, table, (changes: DocChange[]) => {
       void Promise.all(
-        records.map(async (remote) => {
+        changes.map(async ({ type, record: remote }) => {
+          // Les suppressions passent par tombstone (deletedAt), pas par delete Firestore
+          if (type === 'removed') return
           const id = remote.id as string
           const local = (await db.table(table).get(id)) as Record<string, unknown> | undefined
           const winner = resolveMerge(local, remote)

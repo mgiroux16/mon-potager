@@ -4,7 +4,7 @@ import type { AppSettings } from '../data/model'
 import { getSettings, saveSettings } from '../services/settingsService'
 import { testGeminiConnection } from '../services/geminiService'
 import { signOutUser } from '../services/authService'
-import { getSyncStatus } from '../services/syncService'
+import { getSyncStatus, resetSyncCursors, runInitialSync } from '../services/syncService'
 import type { SyncStatus } from '../services/syncService'
 import { auth } from '../data/firebase'
 import { ExportButton } from '../components/ExportButton'
@@ -50,6 +50,7 @@ export function SettingsPage() {
   const [settings, setSettings] = useState<AppSettings | null>(null)
   const [saved, setSaved] = useState(false)
   const [test, setTest] = useState<TestState>({ status: 'idle' })
+  const [resyncState, setResyncState] = useState<'idle' | 'syncing' | 'done' | 'erreur'>('idle')
 
   useEffect(() => {
     void getSettings().then(setSettings)
@@ -69,6 +70,16 @@ export function SettingsPage() {
     if (!settings) return
     await saveSettings(settings)
     setSaved(true)
+  }
+
+  async function handleResync() {
+    const uid = auth.currentUser?.uid
+    if (!uid) return
+    setResyncState('syncing')
+    resetSyncCursors()
+    await runInitialSync(uid)
+    setResyncState(getSyncStatus() === 'synced' ? 'done' : 'erreur')
+    setTimeout(() => setResyncState('idle'), 3000)
   }
 
   async function handleTest() {
@@ -235,6 +246,20 @@ export function SettingsPage() {
           <p className="text-sm text-green-700">{auth.currentUser.email}</p>
         )}
         <SyncStatusIndicator />
+        <button
+          type="button"
+          onClick={() => void handleResync()}
+          disabled={resyncState === 'syncing'}
+          className="rounded-lg border border-green-300 px-4 py-2 text-sm font-medium text-green-800 disabled:opacity-60"
+        >
+          {resyncState === 'syncing' ? 'Synchronisation en cours…' : 'Resynchroniser tout'}
+        </button>
+        {resyncState === 'done' && (
+          <p className="text-sm text-green-700">Synchronisation complète.</p>
+        )}
+        {resyncState === 'erreur' && (
+          <p className="text-sm text-red-600">Erreur de synchronisation. Réessaie plus tard.</p>
+        )}
         <button
           type="button"
           onClick={() => signOutUser()}
