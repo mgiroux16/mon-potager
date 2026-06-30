@@ -10,7 +10,10 @@ import {
   type CropSeasonRow,
   type ParcelSeasonRow,
 } from '../services/seasonSummaryService'
+import { summarizeHarvests } from '../services/harvestService'
 import { getCropNote, getParcelNote, setCropNote, setParcelNote } from '../services/seasonNotesService'
+import { EconomicBalanceBanner } from '../components/EconomicBalanceBanner'
+import { ListCard } from '../components/ui/ListCard'
 import type { AppSettings, Expense, SeasonNote } from '../data/model'
 
 function useSettings(): AppSettings | undefined {
@@ -123,26 +126,26 @@ function ExpenseListView({ expenses, year }: { expenses: Expense[]; year: number
     .filter((e) => e.date.startsWith(String(year)))
     .sort((a, b) => b.date.localeCompare(a.date))
 
-  if (yearExpenses.length === 0) {
-    return <p className="text-sm text-gray-500">Aucune dépense enregistrée pour {year}.</p>
-  }
-
   const total = yearExpenses.reduce((sum, e) => sum + e.amountEuros, 0)
 
   return (
-    <div className="space-y-2">
-      <p className="text-sm font-medium text-green-900">Total {year} : {formatEuros(total)}</p>
-      <ul className="space-y-1">
-        {yearExpenses.map((e) => (
-          <li key={e.id} className="flex justify-between rounded bg-green-50 px-3 py-2 text-sm">
-            <span>
-              {e.label} <span className="text-gray-500">· {e.date}</span>
-            </span>
-            <span className="font-medium text-green-900">{formatEuros(e.amountEuros)}</span>
-          </li>
-        ))}
-      </ul>
-    </div>
+    <ListCard
+      emptyMessage={`Aucune dépense enregistrée pour ${year}.`}
+      header={
+        <p className="text-sm font-medium text-green-900">
+          Total {year} : {formatEuros(total)}
+        </p>
+      }
+      items={yearExpenses}
+      renderItem={(e) => (
+        <li key={e.id} className="flex justify-between rounded bg-green-50 px-3 py-2 text-sm">
+          <span>
+            {e.label} <span className="text-gray-600">· {e.date}</span>
+          </span>
+          <span className="font-medium text-green-900">{formatEuros(e.amountEuros)}</span>
+        </li>
+      )}
+    />
   )
 }
 
@@ -163,14 +166,17 @@ export function SeasonSummaryPage() {
 
   const cropRows = summarizeCropSeason(entries, crops, varieties, parcels, expenses, year, settings)
   const parcelRows = summarizeParcelSeason(entries, parcels, crops, expenses, year, settings)
+  const harvestRows = summarizeHarvests(entries, crops)
 
   return (
     <div className="p-4 space-y-6">
-      <h1 className="text-xl font-bold text-green-800">Bilan de saison</h1>
+      <h1 className="text-title-screen text-green-950">Bilan de saison</h1>
+
+      <EconomicBalanceBanner expenses={expenses} harvestRows={harvestRows} year={year} />
 
       <section>
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-green-700">Dépenses</h2>
+          <h2 className="text-title-card text-green-700">Dépenses</h2>
           <Link
             to="/pilotage/argent"
             className="flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-indigo-700"
@@ -205,7 +211,7 @@ export function SeasonSummaryPage() {
       ) : (
         <>
           <section>
-            <h2 className="text-lg font-semibold text-green-700">Par culture et variété</h2>
+            <h2 className="text-title-card text-green-700">Par culture et variété</h2>
             <ul className="mt-2 space-y-1">
               {cropRows.map((row) => (
                 <CropRowView
@@ -219,7 +225,7 @@ export function SeasonSummaryPage() {
           </section>
 
           <section>
-            <h2 className="text-lg font-semibold text-green-700">Par parcelle</h2>
+            <h2 className="text-title-card text-green-700">Par parcelle</h2>
             <ul className="mt-2 space-y-1">
               {parcelRows.map((row) => (
                 <ParcelRowView key={row.parcelId} row={row} year={year} notes={notes} />

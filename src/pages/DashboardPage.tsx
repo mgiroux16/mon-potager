@@ -30,6 +30,8 @@ import { getTodayAgenda, type AgendaItem, type AgendaItemKind } from '../service
 import { summarizeTankAutonomy } from '../services/tankAutonomyService'
 import { summarizeHarvests } from '../services/harvestService'
 import type { NewLogEntry } from '../services/logService'
+import { HeroCard } from '../components/ui/HeroCard'
+import { MetricCard } from '../components/ui/MetricCard'
 
 function todayISO(): string {
   const d = new Date()
@@ -71,30 +73,6 @@ function agendaActionDraft(item: AgendaItem): Partial<NewLogEntry> | undefined {
   return undefined
 }
 
-// ——— Composant carte métrique ———
-function MetricCard({
-  label,
-  value,
-  sub,
-  icon,
-}: {
-  label: string
-  value: string
-  sub?: string
-  icon: React.ReactNode
-}) {
-  return (
-    <div className="flex flex-col gap-1 rounded-xl border border-green-100 bg-white p-3 shadow-sm">
-      <div className="flex items-center gap-1.5 text-xs text-green-700/60">
-        {icon}
-        {label}
-      </div>
-      <span className="text-lg font-semibold text-green-900 leading-none">{value}</span>
-      {sub && <span className="text-xs text-green-700/50">{sub}</span>}
-    </div>
-  )
-}
-
 // ——— Widget météo condensé ———
 function WeatherCondensed({
   current,
@@ -119,19 +97,19 @@ function WeatherCondensed({
           <span className="font-medium">
             {current?.tempC != null ? `${Math.round(current.tempC)} °C` : ''}
             {today && (
-              <span className="ml-2 font-normal text-blue-700/70">
+              <span className="ml-2 font-normal text-blue-700">
                 {Math.round(today.tempMinC)}° / {Math.round(today.tempMaxC)}°
               </span>
             )}
           </span>
           {today && today.rainMm > 0 && (
-            <span className="flex items-center gap-1 text-blue-700/70">
+            <span className="flex items-center gap-1 text-blue-700">
               <CloudRain className="size-3.5" />
               {today.rainMm} mm
             </span>
           )}
           {today && (
-            <span className="text-blue-700/60 hidden sm:inline">
+            <span className="text-blue-700 hidden sm:inline">
               {weatherCodeLabel(today.weatherCode)}
             </span>
           )}
@@ -159,7 +137,7 @@ function ForecastDetail() {
     fetchForecastDetail(settings.latitude, settings.longitude, 15).then(setForecast)
   }, [settings])
 
-  if (!forecast) return <p className="text-xs text-blue-700/60">Chargement prévisions…</p>
+  if (!forecast) return <p className="text-xs text-blue-700">Chargement prévisions…</p>
 
   return (
     <div className="flex gap-2 overflow-x-auto pb-1">
@@ -169,10 +147,10 @@ function ForecastDetail() {
           className="flex shrink-0 flex-col items-center gap-0.5 rounded-lg bg-white/70 px-2 py-1.5 text-xs text-blue-900"
         >
           <span className="font-medium">{formatDayLabel(d.date)}</span>
-          <span className="text-blue-700/70">
+          <span className="text-blue-700">
             {Math.round(d.tempMinC)}° / {Math.round(d.tempMaxC)}°
           </span>
-          <span className="text-center text-blue-700/60">{weatherCodeLabel(d.weatherCode)}</span>
+          <span className="text-center text-blue-700">{weatherCodeLabel(d.weatherCode)}</span>
           {d.rainMm > 0 && (
             <span className="flex items-center gap-0.5 text-blue-600">
               <CloudRain className="size-3" />
@@ -261,13 +239,11 @@ export function DashboardPage() {
   return (
     <section className="flex flex-col gap-5">
       {/* ——— Bloc 1 : Héros « À faire aujourd'hui » ——— */}
-      <div>
-        <h1 className="mb-3 text-xl font-semibold text-green-950">À faire aujourd'hui</h1>
-
+      <HeroCard title="À faire aujourd'hui">
         {agendaItems.length === 0 ? (
           <div className="flex items-center gap-3 rounded-xl border border-green-100 bg-white p-4 shadow-sm">
             <Leaf className="size-5 shrink-0 text-green-500" />
-            <p className="text-sm text-green-700">Tout est sous contrôle, profite de ton jardin !</p>
+            <p className="text-body text-green-700">Tout est sous contrôle, profite de ton jardin !</p>
           </div>
         ) : (
           <ul className="flex flex-col gap-2">
@@ -281,20 +257,18 @@ export function DashboardPage() {
                   <span className="mt-0.5 shrink-0">{agendaIcon(item.kind)}</span>
                   <span className="flex flex-col gap-0.5">
                     <span className="text-sm font-medium text-green-900">{item.label}</span>
-                    {item.detail && (
-                      <span className="text-xs text-green-700/60">{item.detail}</span>
-                    )}
+                    {item.detail && <span className="text-caption text-green-700">{item.detail}</span>}
                   </span>
                 </button>
               </li>
             ))}
           </ul>
         )}
-      </div>
+      </HeroCard>
 
       {/* ——— Bloc 2 : Métriques ——— */}
       <div>
-        <h2 className="mb-2 text-sm font-semibold text-green-700/60 uppercase tracking-wide">
+        <h2 className="mb-2 text-title-card text-green-700 uppercase tracking-wide">
           En un coup d'œil
         </h2>
         <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
@@ -302,11 +276,13 @@ export function DashboardPage() {
             label="Eau ce mois"
             value={waterMonth > 0 ? `${Math.round(waterMonth)} L` : '—'}
             icon={<Droplets className="size-3.5" />}
+            tone="eau"
           />
           <MetricCard
             label="Récoltes saison"
             value={totalKgSeason > 0 ? `${totalKgSeason.toFixed(1)} kg` : '—'}
             icon={<Wheat className="size-3.5" />}
+            tone="recolte"
           />
           <MetricCard
             label="Cuves"
@@ -319,12 +295,14 @@ export function DashboardPage() {
             }
             sub={tankSummary.autonomyDays != null ? 'avant vide' : undefined}
             icon={<PackageOpen className="size-3.5" />}
+            tone="eau"
           />
           <MetricCard
             label="€ saison"
             value="—"
             sub="Phase 1C"
             icon={<BarChart3 className="size-3.5" />}
+            tone="argent"
           />
         </div>
       </div>
@@ -332,7 +310,7 @@ export function DashboardPage() {
       {/* ——— Bloc 3 : Météo condensée ——— */}
       {(current || todayForecast) && settings && (
         <div>
-          <h2 className="mb-2 text-sm font-semibold text-green-700/60 uppercase tracking-wide">
+          <h2 className="mb-2 text-title-card text-green-700 uppercase tracking-wide">
             Météo
           </h2>
           <WeatherCondensed current={current} today={todayForecast} />

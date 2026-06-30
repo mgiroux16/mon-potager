@@ -1,5 +1,61 @@
 @import 'tailwindcss';
 
+/*
+ * Tokens couleurs sémantiques (brief Phase 2B) : alias vers la palette Tailwind existante.
+ * marque=vert, eau=bleu, récolte=ambre, argent=indigo, alerte=rouge.
+ * Réservés aux fonds/bordures/icônes/accents : pour le texte coloré, utiliser les
+ * nuances 700+ (700/800/900) qui seules passent le contraste AA (4.5:1) mesuré sur
+ * fond blanc ou sur la teinte -50 correspondante. Les nuances 600 (ratio ~3:1, parfois
+ * moins pour l'ambre) ne sont pas conformes en texte normal.
+ */
+@theme {
+  --color-marque-50: var(--color-green-50);
+  --color-marque-100: var(--color-green-100);
+  --color-marque-600: var(--color-green-600);
+  --color-marque-700: var(--color-green-700);
+  --color-marque-800: var(--color-green-800);
+
+  --color-eau-50: var(--color-blue-50);
+  --color-eau-100: var(--color-blue-100);
+  --color-eau-600: var(--color-blue-600);
+  --color-eau-700: var(--color-blue-700);
+  --color-eau-800: var(--color-blue-800);
+
+  --color-recolte-50: var(--color-amber-50);
+  --color-recolte-100: var(--color-amber-100);
+  --color-recolte-600: var(--color-amber-600);
+  --color-recolte-700: var(--color-amber-700);
+  --color-recolte-800: var(--color-amber-800);
+
+  --color-argent-50: var(--color-indigo-50);
+  --color-argent-100: var(--color-indigo-100);
+  --color-argent-600: var(--color-indigo-600);
+  --color-argent-700: var(--color-indigo-700);
+  --color-argent-900: var(--color-indigo-900);
+
+  --color-alerte-50: var(--color-red-50);
+  --color-alerte-100: var(--color-red-100);
+  --color-alerte-600: var(--color-red-600);
+  --color-alerte-700: var(--color-red-700);
+  --color-alerte-800: var(--color-red-800);
+}
+
+/* Échelle typo 3 niveaux (brief Phase 2B) */
+@layer base {
+  .text-title-screen {
+    @apply text-xl font-semibold tracking-tight;
+  }
+  .text-title-card {
+    @apply text-sm font-semibold;
+  }
+  .text-body {
+    @apply text-sm;
+  }
+  .text-caption {
+    @apply text-xs;
+  }
+}
+
 :root {
   color-scheme: light;
 }

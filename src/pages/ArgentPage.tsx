@@ -4,49 +4,20 @@ import { Trash2 } from 'lucide-react'
 import { db } from '../data/db'
 import type { Expense } from '../data/model'
 import { ExpenseForm } from '../components/ExpenseForm'
+import { EconomicBalanceBanner } from '../components/EconomicBalanceBanner'
+import { ListCard } from '../components/ui/ListCard'
 import { summarizeHarvests } from '../services/harvestService'
 import {
   bucketOf,
   annualAmortizedCost,
   remainingAmortization,
   seasonExpenseSummary,
-  economicBalance,
 } from '../services/expenseService'
 
 type Tab = 'fixes' | 'variables' | 'amortissements'
 
 function formatEuros(value: number): string {
   return `${value.toLocaleString('fr-FR', { maximumFractionDigits: 2 })} €`
-}
-
-function SummaryBanner({ expenses, harvestRows, year }: {
-  expenses: Expense[]
-  harvestRows: ReturnType<typeof summarizeHarvests>
-  year: number
-}) {
-  const balance = economicBalance(expenses, harvestRows, year)
-  const positive = balance.balance >= 0
-
-  return (
-    <div className="grid grid-cols-3 gap-2">
-      <div className="flex flex-col gap-0.5 rounded-xl border border-indigo-100 bg-indigo-50/60 p-3">
-        <span className="text-xs text-indigo-700/70">Coût réel {year}</span>
-        <span className="text-base font-semibold text-indigo-900">{formatEuros(balance.realCost)}</span>
-      </div>
-      <div className="flex flex-col gap-0.5 rounded-xl border border-amber-100 bg-amber-50/60 p-3">
-        <span className="text-xs text-amber-700/80">Valeur récoltes</span>
-        <span className="text-base font-semibold text-amber-700">{formatEuros(balance.harvestValue)}</span>
-      </div>
-      <div className={`flex flex-col gap-0.5 rounded-xl border p-3 ${positive ? 'border-green-100 bg-green-50/60' : 'border-red-100 bg-red-50/60'}`}>
-        <span className={`text-xs ${positive ? 'text-green-700/80' : 'text-red-700/80'}`}>
-          {positive ? 'Économie' : 'Déficit'}
-        </span>
-        <span className={`text-base font-semibold ${positive ? 'text-green-700' : 'text-red-600'}`}>
-          {formatEuros(balance.balance)}
-        </span>
-      </div>
-    </div>
-  )
 }
 
 function ExpenseRow({ expense, children }: { expense: Expense; children?: React.ReactNode }) {
@@ -57,8 +28,8 @@ function ExpenseRow({ expense, children }: { expense: Expense; children?: React.
     <li className="flex items-center justify-between gap-2 rounded-lg bg-indigo-50/50 px-3 py-2 text-sm">
       <span className="min-w-0 flex-1">
         <span className="font-medium text-indigo-950">{expense.label}</span>
-        <span className="text-indigo-700/60"> · {expense.date}</span>
-        {expense.category && <span className="text-indigo-700/50"> · {expense.category}</span>}
+        <span className="text-indigo-700"> · {expense.date}</span>
+        {expense.category && <span className="text-indigo-700"> · {expense.category}</span>}
       </span>
       {children}
       <span className="font-medium text-indigo-900">{formatEuros(expense.amountEuros)}</span>
@@ -101,7 +72,7 @@ export function ArgentPage() {
   return (
     <section className="flex flex-col gap-5">
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold text-indigo-950">Argent</h1>
+        <h1 className="text-title-screen text-indigo-950">Argent</h1>
         <select
           aria-label="Année"
           value={year}
@@ -114,7 +85,7 @@ export function ArgentPage() {
         </select>
       </div>
 
-      <SummaryBanner expenses={expenses ?? []} harvestRows={harvestRows} year={year} />
+      <EconomicBalanceBanner expenses={expenses ?? []} harvestRows={harvestRows} year={year} />
 
       {/* Onglets */}
       <nav className="flex gap-1 border-b border-indigo-100">
@@ -127,20 +98,19 @@ export function ArgentPage() {
               'px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors',
               tab === id
                 ? 'border-indigo-600 text-indigo-700'
-                : 'border-transparent text-indigo-700/50 hover:text-indigo-700',
+                : 'border-transparent text-gray-500 hover:text-indigo-700',
             ].join(' ')}
           >
-            {label} {count > 0 && <span className="text-indigo-400">({count})</span>}
+            {label} {count > 0 && <span className="text-indigo-600">({count})</span>}
           </button>
         ))}
       </nav>
 
       {/* Contenu onglet */}
       {tab === 'fixes' && (
-        <TabContent
-          empty="Aucune dépense fixe / récurrente pour cette année."
-          subtotal={summary.fixesEuros}
-          subtotalLabel="Total fixes annualisé"
+        <ListCard
+          emptyMessage="Aucune dépense fixe / récurrente pour cette année."
+          header={<TabSubtotal label="Total fixes annualisé" value={summary.fixesEuros} />}
           items={fixes}
           renderItem={(e) => (
             <ExpenseRow key={e.id} expense={e}>
@@ -153,26 +123,24 @@ export function ArgentPage() {
       )}
 
       {tab === 'variables' && (
-        <TabContent
-          empty="Aucune dépense variable / ponctuelle pour cette année."
-          subtotal={summary.consommablesEuros}
-          subtotalLabel="Total variables"
+        <ListCard
+          emptyMessage="Aucune dépense variable / ponctuelle pour cette année."
+          header={<TabSubtotal label="Total variables" value={summary.consommablesEuros} />}
           items={variables}
           renderItem={(e) => <ExpenseRow key={e.id} expense={e} />}
         />
       )}
 
       {tab === 'amortissements' && (
-        <TabContent
-          empty="Aucun bien durable / étalé pour cette année."
-          subtotal={summary.amortizedEuros}
-          subtotalLabel={`Part amortie ${year}`}
+        <ListCard
+          emptyMessage="Aucun bien durable / étalé pour cette année."
+          header={<TabSubtotal label={`Part amortie ${year}`} value={summary.amortizedEuros} />}
           items={amortissements}
           renderItem={(e) => (
             <ExpenseRow key={e.id} expense={e}>
               <span className="whitespace-nowrap text-xs text-indigo-600">
                 {formatEuros(annualAmortizedCost(e))}/an
-                <span className="text-indigo-400"> · reste {formatEuros(remainingAmortization(e, year))}</span>
+                <span> · reste {formatEuros(remainingAmortization(e, year))}</span>
               </span>
             </ExpenseRow>
           )}
@@ -184,23 +152,11 @@ export function ArgentPage() {
   )
 }
 
-function TabContent({ items, renderItem, empty, subtotal, subtotalLabel }: {
-  items: Expense[]
-  renderItem: (e: Expense) => React.ReactNode
-  empty: string
-  subtotal: number
-  subtotalLabel: string
-}) {
-  if (items.length === 0) {
-    return <p className="text-sm text-indigo-700/50">{empty}</p>
-  }
+function TabSubtotal({ label, value }: { label: string; value: number }) {
   return (
-    <div className="flex flex-col gap-2">
-      <div className="flex justify-between text-sm font-medium text-indigo-900">
-        <span>{subtotalLabel}</span>
-        <span>{formatEuros(subtotal)}</span>
-      </div>
-      <ul className="flex flex-col gap-1.5">{items.map(renderItem)}</ul>
+    <div className="flex justify-between text-sm font-medium text-indigo-900">
+      <span>{label}</span>
+      <span>{formatEuros(value)}</span>
     </div>
   )
 }

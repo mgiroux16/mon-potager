@@ -37,7 +37,7 @@ function NavItemLink({ to, label, icon: Icon, primary }: NavItem) {
             ? 'text-white'
             : isActive
               ? 'text-green-700'
-              : 'text-green-700/50 hover:text-green-700',
+              : 'text-gray-500 hover:text-green-700',
         ].join(' ')
       }
     >
@@ -70,7 +70,7 @@ function SidebarNavItem({ to, label, icon: Icon }: NavItem) {
           'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
           isActive
             ? 'bg-green-100 text-green-800'
-            : 'text-green-700/60 hover:bg-green-50 hover:text-green-800',
+            : 'text-gray-500 hover:bg-green-50 hover:text-green-800',
         ].join(' ')
       }
     >
@@ -110,7 +110,7 @@ export function Layout() {
         <div className="mt-auto border-t border-green-100 p-3">
           <NavLink
             to="/reglages"
-            className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-green-700/60 transition-colors hover:bg-green-50 hover:text-green-800"
+            className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-500 transition-colors hover:bg-green-50 hover:text-green-800"
           >
             <Settings className="size-5 shrink-0" />
             <span>Réglages</span>
