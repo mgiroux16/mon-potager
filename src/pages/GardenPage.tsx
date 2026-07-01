@@ -82,7 +82,7 @@ export function GardenPage() {
   const [newTreeName, setNewTreeName] = useState('')
 
   const today = todayISO()
-  const inactiveParcels = getInactiveParcels(parcels, log, today)
+  const inactiveParcels = getInactiveParcels(parcels, log, crops, today)
   const harvestReminders = getHarvestReminders(crops, catalog, log, today)
   const rotationReminders = getRotationReminders(parcels, crops, catalog, today)
   const hasReminders =
@@ -100,8 +100,7 @@ export function GardenPage() {
           <ul className="mt-2 space-y-1">
             {inactiveParcels.map((r) => (
               <li key={`parcel-${r.parcel.id}`} className="rounded bg-amber-50 px-3 py-2 text-sm">
-                {r.parcel.name} : rien noté depuis{' '}
-                {r.daysSinceLastEntry == null ? 'jamais' : `${r.daysSinceLastEntry} j`}
+                {r.parcel.name} : Rien depuis {r.daysSinceLastEntry} j
               </li>
             ))}
             {harvestReminders.map((r) => (

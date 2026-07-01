@@ -51,12 +51,29 @@ describe('GardenPage', () => {
     })
   })
 
-  it('affiche une section Rappels pour les parcelles jamais touchees du jardin seede', async () => {
+  it("n'affiche pas de rappel pour une parcelle jamais touchee (peut etre neuve), jardin seede sans activite", async () => {
+    render(<GardenPage />, { wrapper: MemoryRouter })
+    await waitFor(() => {
+      expect(screen.getAllByText('Planche tomates').length).toBeGreaterThan(0)
+    })
+    expect(screen.queryByRole('heading', { name: 'Rappels' })).not.toBeInTheDocument()
+  })
+
+  it('affiche une section Rappels pour une parcelle a culture active sans activite depuis 21+ j', async () => {
+    const old = new Date()
+    old.setDate(old.getDate() - 25)
+    await db.log.add({
+      id: newId(),
+      type: 'observation',
+      date: old.toISOString().slice(0, 10),
+      parcelId: 'parcel-1',
+      createdAt: Date.now(),
+    })
     render(<GardenPage />, { wrapper: MemoryRouter })
     await waitFor(() => {
       expect(screen.getByRole('heading', { name: 'Rappels' })).toBeInTheDocument()
     })
-    expect(screen.getAllByText('Planche tomates').length).toBeGreaterThan(0)
+    expect(screen.getByText('Planche tomates : Rien depuis 25 j')).toBeInTheDocument()
   })
 
   it('n affiche pas la section Rappels quand toutes les parcelles ont une activite recente et aucune culture n est mure', async () => {

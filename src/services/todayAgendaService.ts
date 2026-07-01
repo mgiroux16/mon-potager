@@ -46,6 +46,23 @@ function daysBetween(from: string, to: string): number {
   )
 }
 
+/** Nombre de jours depuis le dernier arrosage connu d'une parcelle, null si jamais arrosée. */
+function lastWateringDaysAgo(parcelId: string, log: GardenLogEntry[], today: string): number | null {
+  const dates = log
+    .filter((e) => e.type === 'arrosage' && entryParcelIds(e).includes(parcelId))
+    .map((e) => e.date)
+  if (dates.length === 0) return null
+  const lastDate = dates.reduce((max, d) => (d > max ? d : max))
+  return daysBetween(lastDate, today)
+}
+
+function arrosageJustification(parcel: Parcel, log: GardenLogEntry[], today: string, rain2d: number): string {
+  const daysSince = lastWateringDaysAgo(parcel.id as string, log, today)
+  const wateringPart = daysSince != null ? `Pas arrosé depuis ${daysSince} j` : 'Jamais arrosé'
+  const rainPart = `pluie récente ${Math.round(rain2d * 10) / 10} mm`
+  return `${wateringPart} · ${rainPart}`
+}
+
 export function getTodayAgenda(input: TodayAgendaInput): AgendaItem[] {
   const { parcels, crops, catalog, tanks, log, today, weatherHistory, todayTempMinC } = input
   const items: AgendaItem[] = []
@@ -102,13 +119,14 @@ export function getTodayAgenda(input: TodayAgendaInput): AgendaItem[] {
       for (let i = 0; i < shown.length; i++) {
         const parcel = shown[i]
         const isLast = i === shown.length - 1
+        let detail = arrosageJustification(parcel, log, today, rain2d)
+        if (isLast && extra > 0) {
+          detail += ` · et ${extra} autre${extra > 1 ? 's' : ''} parcelle${extra > 1 ? 's' : ''}`
+        }
         items.push({
           kind: 'arrosage',
           label: `Arroser : ${parcel.name}`,
-          detail:
-            isLast && extra > 0
-              ? `et ${extra} autre${extra > 1 ? 's' : ''} parcelle${extra > 1 ? 's' : ''}`
-              : undefined,
+          detail,
           parcelId: parcel.id,
           priority: 2,
         })

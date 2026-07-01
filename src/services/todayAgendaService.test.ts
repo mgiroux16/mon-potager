@@ -98,6 +98,32 @@ describe('getTodayAgenda', () => {
     expect(result.some((i) => i.kind === 'arrosage')).toBe(false)
   })
 
+  it('justifie l item arrosage avec le nombre de jours depuis le dernier arrosage et la pluie recente', () => {
+    const parcels = [parcel('p1', 'Tomates')]
+    const crops = [crop('c1', 'p1')]
+    const log = [logEntry({ type: 'arrosage', date: '2026-06-20', parcelId: 'p1' })] // 10 j avant TODAY
+    const result = getTodayAgenda(makeInput({
+      parcels,
+      crops,
+      log,
+      weatherHistory: [{ date: TODAY, tempMaxC: 25, tempMinC: 14, rainMm: 1.2 }],
+    }))
+    const item = result.find((i) => i.kind === 'arrosage')
+    expect(item?.detail).toBe('Pas arrosé depuis 10 j · pluie récente 1.2 mm')
+  })
+
+  it('justifie l item arrosage par "Jamais arrosé" si aucun historique', () => {
+    const parcels = [parcel('p1', 'Tomates')]
+    const crops = [crop('c1', 'p1')]
+    const result = getTodayAgenda(makeInput({
+      parcels,
+      crops,
+      weatherHistory: [{ date: TODAY, tempMaxC: 25, tempMinC: 14, rainMm: 0 }],
+    }))
+    const item = result.find((i) => i.kind === 'arrosage')
+    expect(item?.detail).toBe('Jamais arrosé · pluie récente 0 mm')
+  })
+
   it("ne conseille pas d'arrosage pour une parcelle deja arrosee via une entree multi-parcelles (goutte-a-goutte commun)", () => {
     const parcels = [parcel('p1', 'Tomates'), parcel('p2', 'Courges')]
     const crops = [crop('c1', 'p1'), crop('c2', 'p2')]

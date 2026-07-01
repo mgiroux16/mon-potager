@@ -6,35 +6,57 @@ function entry(over: Partial<GardenLogEntry>): GardenLogEntry {
   return { type: 'observation', date: '2026-06-01', createdAt: Date.now(), ...over }
 }
 
+function activeCrop(over: Partial<Crop>): Crop {
+  return { name: 'Tomates', status: 'en_place', ...over }
+}
+
 describe('getInactiveParcels', () => {
   const parcels: Parcel[] = [
     { id: '1', name: 'Carré nord' },
     { id: '2', name: 'Carré sud' },
     { id: '3', name: 'Carré jamais touché' },
   ]
+  const crops: Crop[] = [
+    activeCrop({ id: 'c1', parcelId: '1' }),
+    activeCrop({ id: 'c2', parcelId: '2' }),
+    activeCrop({ id: 'c3', parcelId: '3' }),
+  ]
 
   it('exclut une parcelle avec une entree recente', () => {
     const log = [entry({ parcelId: '1', date: '2026-06-20' })]
-    const result = getInactiveParcels(parcels, log, '2026-06-27')
+    const result = getInactiveParcels(parcels, log, crops, '2026-06-27')
     expect(result.find((r) => r.parcel.id === '1')).toBeUndefined()
   })
 
   it('inclut une parcelle dont la derniere entree depasse le seuil', () => {
     const log = [entry({ parcelId: '2', date: '2026-05-01' })]
-    const result = getInactiveParcels(parcels, log, '2026-06-27')
+    const result = getInactiveParcels(parcels, log, crops, '2026-06-27')
     const match = result.find((r) => r.parcel.id === '2')
     expect(match?.daysSinceLastEntry).toBe(57)
   })
 
-  it('inclut une parcelle sans aucune entree avec daysSinceLastEntry null', () => {
-    const result = getInactiveParcels(parcels, [], '2026-06-27')
-    const match = result.find((r) => r.parcel.id === '3')
-    expect(match?.daysSinceLastEntry).toBeNull()
+  it("n'alerte plus sur une parcelle jamais notee (peut etre neuve)", () => {
+    const result = getInactiveParcels(parcels, [], crops, '2026-06-27')
+    expect(result.find((r) => r.parcel.id === '3')).toBeUndefined()
+  })
+
+  it("n'alerte pas si la parcelle n'a aucune culture en place (jachere volontaire)", () => {
+    const parcelsSansCulture: Parcel[] = [{ id: '9', name: 'Jachère' }]
+    const log = [entry({ parcelId: '9', date: '2026-05-01' })]
+    const result = getInactiveParcels(parcelsSansCulture, log, [], '2026-06-27')
+    expect(result).toHaveLength(0)
+  })
+
+  it('compte une entree arrosage multi-parcelles comme activite pour chaque parcelle jointe', () => {
+    const log = [entry({ type: 'arrosage', parcelIds: ['1', '2'], date: '2026-06-20' })]
+    const result = getInactiveParcels(parcels, log, crops, '2026-06-27')
+    expect(result.find((r) => r.parcel.id === '1')).toBeUndefined()
+    expect(result.find((r) => r.parcel.id === '2')).toBeUndefined()
   })
 
   it('respecte un seuil personnalise', () => {
     const log = [entry({ parcelId: '1', date: '2026-06-20' })]
-    const result = getInactiveParcels(parcels, log, '2026-06-27', 5)
+    const result = getInactiveParcels(parcels, log, crops, '2026-06-27', 5)
     expect(result.find((r) => r.parcel.id === '1')).toBeDefined()
   })
 })

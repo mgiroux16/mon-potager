@@ -1,8 +1,9 @@
 import type { Parcel, GardenLogEntry, Crop, CatalogItem, VegetableFamily } from '../data/model'
+import { entryParcelIds } from './logView'
 
 export interface InactiveParcelReminder {
   parcel: Parcel
-  daysSinceLastEntry: number | null
+  daysSinceLastEntry: number
 }
 
 export interface HarvestReminder {
@@ -18,20 +19,29 @@ function daysBetween(from: string, to: string): number {
   return Math.round((toMs - fromMs) / (1000 * 60 * 60 * 24))
 }
 
+/**
+ * Parcelles dont l'activité s'est arrêtée depuis longtemps. Une parcelle jamais notée
+ * n'est PAS un signal (elle peut être neuve) : seule une activité qui s'est interrompue
+ * compte. Restreint en plus aux parcelles avec une culture en place ou en récolte,
+ * pour ne pas relancer sur une jachère volontaire.
+ */
 export function getInactiveParcels(
   parcels: Parcel[],
   log: GardenLogEntry[],
+  crops: Crop[],
   today: string,
   thresholdDays = 21,
 ): InactiveParcelReminder[] {
   const result: InactiveParcelReminder[] = []
 
   for (const parcel of parcels) {
-    const entries = log.filter((e) => e.parcelId === parcel.id)
-    if (entries.length === 0) {
-      result.push({ parcel, daysSinceLastEntry: null })
-      continue
-    }
+    const hasActiveCrop = crops.some(
+      (c) => c.parcelId === parcel.id && (c.status === 'en_place' || c.status === 'en_recolte'),
+    )
+    if (!hasActiveCrop) continue
+
+    const entries = log.filter((e) => entryParcelIds(e).includes(parcel.id as string))
+    if (entries.length === 0) continue
 
     const lastDate = entries.reduce((max, e) => (e.date > max ? e.date : max), entries[0].date)
     const days = daysBetween(lastDate, today)
