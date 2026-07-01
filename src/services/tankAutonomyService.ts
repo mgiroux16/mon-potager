@@ -1,4 +1,5 @@
 import type { GardenLogEntry, WaterTank } from '../data/model'
+import { entryParcelIds } from './logView'
 
 export interface TankAutonomySummary {
   totalCapacityLiters: number
@@ -23,7 +24,7 @@ export function summarizeTankAutonomy(
 
   let liters7 = 0
   for (const e of entries) {
-    if (e.type !== 'arrosage' || e.volumeLiters == null || e.parcelId == null) continue
+    if (e.type !== 'arrosage' || e.volumeLiters == null || entryParcelIds(e).length === 0) continue
     const ageDays = daysBetween(e.date, refDate)
     if (ageDays < 0 || ageDays > 7) continue
     liters7 += e.volumeLiters

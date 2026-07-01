@@ -44,10 +44,24 @@ export const LOG_TYPE_LABELS: Record<LogEntryType, string> = {
 
 // Pick<...> plutot que GardenLogEntry entier : ces deux helpers servent aussi a resumer
 // un brouillon vocal partiel (VoiceReviewPage), pas seulement une entree deja en base.
-export type TargetFields = Pick<GardenLogEntry, 'parcelId' | 'cropId' | 'oyaId' | 'treeId'>
+export type TargetFields = Pick<GardenLogEntry, 'parcelId' | 'parcelIds' | 'cropId' | 'oyaId' | 'treeId'>
+
+/**
+ * Parcelles concernées par une entrée : parcelIds si présent (arrosage multi-parcelles,
+ * goutte-à-goutte commun), sinon parcelId seul, sinon aucune. À utiliser partout où on teste
+ * "cette entrée concerne-t-elle telle parcelle" plutôt que comparer parcelId directement.
+ */
+export function entryParcelIds(entry: Pick<GardenLogEntry, 'parcelId' | 'parcelIds'>): string[] {
+  if (entry.parcelIds && entry.parcelIds.length > 0) return entry.parcelIds
+  return entry.parcelId != null ? [entry.parcelId] : []
+}
 
 export function resolveTargetName(entry: TargetFields, refs: LogRefs): string | undefined {
-  if (entry.parcelId != null) return refs.parcels.get(entry.parcelId)?.name
+  const parcelIds = entryParcelIds(entry)
+  if (parcelIds.length > 0) {
+    const names = parcelIds.map((id) => refs.parcels.get(id)?.name ?? '(parcelle supprimée)')
+    return names.join(' + ')
+  }
   if (entry.cropId != null) return refs.crops.get(entry.cropId)?.name
   if (entry.oyaId != null) return refs.oyas.get(entry.oyaId)?.name
   if (entry.treeId != null) return refs.trees.get(entry.treeId)?.name

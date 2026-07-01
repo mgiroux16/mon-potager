@@ -33,8 +33,7 @@ describe('QuickAddPage', () => {
 
     await user.click(screen.getByRole('button', { name: 'Arrosage' }))
 
-    const option = await screen.findByRole('option', { name: 'Planche test' })
-    await user.selectOptions(screen.getByLabelText('Parcelle'), option)
+    await user.click(await screen.findByLabelText('Planche test'))
     await user.type(screen.getByLabelText('Volume (litres)'), '30')
     await user.click(screen.getByRole('button', { name: 'Valider' }))
 
@@ -48,6 +47,33 @@ describe('QuickAddPage', () => {
     expect(entry.parcelId).toBeDefined()
   })
 
+  it('permet de tracer un arrosage sur plusieurs parcelles (goutte-à-goutte commun), sans volume', async () => {
+    await db.parcels.add({ id: newId(), name: 'Planche A' })
+    await db.parcels.add({ id: newId(), name: 'Planche B' })
+    render(
+      <MemoryRouter>
+        <QuickAddPage />
+      </MemoryRouter>,
+    )
+    const user = userEvent.setup()
+
+    await user.click(screen.getByRole('button', { name: 'Arrosage' }))
+
+    await user.click(await screen.findByLabelText('Planche A'))
+    await user.click(screen.getByLabelText('Planche B'))
+    await user.click(screen.getByRole('button', { name: 'Valider' }))
+
+    await waitFor(async () => {
+      const all = await listLog()
+      expect(all).toHaveLength(1)
+    })
+    const [entry] = await listLog()
+    expect(entry.type).toBe('arrosage')
+    expect(entry.volumeLiters).toBeUndefined()
+    expect(entry.parcelId).toBeUndefined()
+    expect(entry.parcelIds).toHaveLength(2)
+  })
+
   it('enregistre durationMinutes independamment du volume sur une entree arrosage', async () => {
     await db.parcels.add({ id: newId(), name: 'Planche test' })
     render(
@@ -59,8 +85,7 @@ describe('QuickAddPage', () => {
 
     await user.click(screen.getByRole('button', { name: 'Arrosage' }))
 
-    const option = await screen.findByRole('option', { name: 'Planche test' })
-    await user.selectOptions(screen.getByLabelText('Parcelle'), option)
+    await user.click(await screen.findByLabelText('Planche test'))
     await user.type(screen.getByLabelText('Volume (litres)'), '10')
     await user.type(screen.getByLabelText('Durée (minutes)'), '15')
     await user.click(screen.getByRole('button', { name: 'Valider' }))
@@ -85,8 +110,7 @@ describe('QuickAddPage', () => {
 
     await user.click(screen.getByRole('button', { name: 'Arrosage' }))
 
-    const option = await screen.findByRole('option', { name: 'Planche test' })
-    await user.selectOptions(screen.getByLabelText('Parcelle'), option)
+    await user.click(await screen.findByLabelText('Planche test'))
     await user.type(screen.getByLabelText('Durée (minutes)'), '20')
     await user.click(screen.getByRole('button', { name: 'Valider' }))
 
@@ -167,7 +191,7 @@ describe('QuickAddPage avec brouillon vocal', () => {
 
     expect(await screen.findByRole('heading', { name: 'Arrosage' })).toBeInTheDocument()
     expect(screen.getByLabelText('Volume (litres)')).toHaveValue(10)
-    expect(screen.getByLabelText('Parcelle')).toBeInTheDocument()
+    expect(screen.getByLabelText('Parcelle A')).toBeChecked()
     expect(screen.getByLabelText('Culture')).toBeInTheDocument()
   })
 

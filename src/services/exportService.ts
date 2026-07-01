@@ -1,5 +1,6 @@
 import { db, newId } from '../data/db'
 import type { AuditLogType, Crop, GardenLogEntry } from '../data/model'
+import { entryParcelIds } from './logView'
 
 export interface PotagerExport {
   version: number
@@ -74,7 +75,9 @@ export async function exportLogCsv(
 ): Promise<string> {
   let entries = await db.log.toArray()
   if (filters.season !== undefined) entries = entries.filter((e) => entryYear(e) === filters.season)
-  if (filters.parcelId !== undefined) entries = entries.filter((e) => e.parcelId === filters.parcelId)
+  if (filters.parcelId !== undefined) {
+    entries = entries.filter((e) => entryParcelIds(e).includes(filters.parcelId as string))
+  }
   const csv = toCsv(
     ['id', 'type', 'date', 'title', 'description', 'parcelId', 'cropId', 'quantityKg', 'volumeLiters'],
     entries.map((e) => [
@@ -83,7 +86,7 @@ export async function exportLogCsv(
       e.date,
       e.title,
       e.description,
-      e.parcelId,
+      entryParcelIds(e).join('+') || undefined,
       e.cropId,
       e.quantityKg,
       e.volumeLiters,

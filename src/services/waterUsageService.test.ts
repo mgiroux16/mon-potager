@@ -86,6 +86,24 @@ describe('summarizeWaterUsage', () => {
     expect(rows).toHaveLength(0)
   })
 
+  it('repartit egalement le volume entre les parcelles jointes (goutte-a-goutte commun)', () => {
+    const parcels = [parcel({ id: '1', name: 'Carrés du fond' }), parcel({ id: '2', name: 'Allée' })]
+    const entries = [entry({ parcelIds: ['1', '2'], date: '2026-06-20', volumeLiters: 10 })]
+    const rows = summarizeWaterUsage(entries, parcels, '2026-06-21')
+    expect(rows.find((r) => r.parcelId === '1')?.liters7).toBe(5)
+    expect(rows.find((r) => r.parcelId === '2')?.liters7).toBe(5)
+  })
+
+  it('trace une parcelle arrosee sans volume renseigne dans une entree multi-parcelles', () => {
+    // Meme sans volume, une entree arrosage multi-parcelles ne doit pas planter ni etre
+    // comptee : summarizeWaterUsage ne porte que sur les litres (0 ligne ici est correct,
+    // le suivi de presence se fait ailleurs, cf. todayAgendaService).
+    const parcels = [parcel({ id: '1' }), parcel({ id: '2' })]
+    const entries = [entry({ parcelIds: ['1', '2'], date: '2026-06-20' })]
+    const rows = summarizeWaterUsage(entries, parcels, '2026-06-21')
+    expect(rows).toHaveLength(0)
+  })
+
   it('trie les resultats par nom de parcelle alphabetique', () => {
     const parcels = [parcel({ id: '1', name: 'Tomates' }), parcel({ id: '2', name: 'Allée' })]
     const entries = [

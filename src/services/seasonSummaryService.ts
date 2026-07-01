@@ -1,4 +1,5 @@
 import type { AppSettings, GardenLogEntry, Crop, Variety, Parcel, Expense } from '../data/model'
+import { entryParcelIds } from './logView'
 
 export interface SeasonBounds {
   start: string
@@ -153,13 +154,19 @@ export function summarizeParcelSeason(
   }
 
   for (const e of entries) {
-    if (e.parcelId == null || !inWindow(e.date, bounds)) continue
+    if (!inWindow(e.date, bounds)) continue
 
-    if (e.type === 'recolte' && e.quantityKg != null) {
+    if (e.type === 'recolte' && e.quantityKg != null && e.parcelId != null) {
       rowFor(e.parcelId).totalKg += e.quantityKg
     } else if (e.type === 'arrosage' && e.volumeLiters != null) {
-      rowFor(e.parcelId).totalWaterLiters += e.volumeLiters
-    } else if (e.type === 'releve_pluie' && e.rainMm != null) {
+      // Répartition égale entre les parcelles jointes (goutte-à-goutte commun) : pas de
+      // double comptage, à raffiner le jour où un débitmètre par parcelle existe.
+      const ids = entryParcelIds(e)
+      if (ids.length > 0) {
+        const share = e.volumeLiters / ids.length
+        for (const parcelId of ids) rowFor(parcelId).totalWaterLiters += share
+      }
+    } else if (e.type === 'releve_pluie' && e.rainMm != null && e.parcelId != null) {
       const parcel = parcels.find((p) => p.id === e.parcelId)
       if (parcel?.areaM2 != null) {
         rowFor(e.parcelId).totalRainLiters += e.rainMm * parcel.areaM2

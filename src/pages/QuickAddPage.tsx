@@ -9,7 +9,7 @@ import { addLogEntry, type NewLogEntry } from '../services/logService'
 import { findOrCreateVariety } from '../services/varietyService'
 import { fetchTodaySnapshot } from '../services/weatherService'
 import { getSettings } from '../services/settingsService'
-import { LOG_TYPE_LABELS } from '../services/logView'
+import { LOG_TYPE_LABELS, entryParcelIds } from '../services/logView'
 import { LOG_TYPE_ICONS } from '../components/logTypeIcons'
 import { PhotoInput } from '../components/PhotoInput'
 import { ExpenseForm } from '../components/ExpenseForm'
@@ -77,7 +77,7 @@ function visibleTargets(config: FormConfig, initial?: Partial<NewLogEntry>): Set
     s.add('culture')
     s.add('arbre')
   }
-  if (initial?.parcelId != null) s.add('parcelle')
+  if (initial?.parcelId != null || (initial?.parcelIds?.length ?? 0) > 0) s.add('parcelle')
   if (initial?.cropId != null) s.add('culture')
   if (initial?.oyaId != null) s.add('oya')
   if (initial?.treeId != null) s.add('arbre')
@@ -100,6 +100,13 @@ export function EntryForm({ config, initial, onSaved, onCancel }: {
   const [date, setDate] = useState(initial?.date ?? todayISO())
   const [time, setTime] = useState(initial?.time ?? nowHM())
   const [parcelId, setParcelId] = useState(initial?.parcelId != null ? String(initial.parcelId) : '')
+  // Arrosage seulement : plusieurs parcelles possibles (goutte-à-goutte commun).
+  const [parcelIds, setParcelIds] = useState<string[]>(
+    initial ? entryParcelIds(initial as { parcelId?: string; parcelIds?: string[] }) : [],
+  )
+  function toggleParcelId(id: string) {
+    setParcelIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]))
+  }
   const [cropId, setCropId] = useState(initial?.cropId != null ? String(initial.cropId) : '')
   const [oyaId, setOyaId] = useState(initial?.oyaId != null ? String(initial.oyaId) : '')
   const [treeId, setTreeId] = useState(initial?.treeId != null ? String(initial.treeId) : '')
@@ -121,6 +128,7 @@ export function EntryForm({ config, initial, onSaved, onCancel }: {
   const hasDraftTarget =
     initial != null &&
     (initial.parcelId != null ||
+      (initial.parcelIds?.length ?? 0) > 0 ||
       initial.cropId != null ||
       initial.oyaId != null ||
       initial.treeId != null)
@@ -147,7 +155,12 @@ export function EntryForm({ config, initial, onSaved, onCancel }: {
         else if (kind === 'arbre') entry.treeId = id
       }
     } else {
-      if (visible.has('parcelle') && parcelId) entry.parcelId = parcelId
+      if (visible.has('parcelle') && config.type === 'arrosage') {
+        if (parcelIds.length === 1) entry.parcelId = parcelIds[0]
+        else if (parcelIds.length > 1) entry.parcelIds = parcelIds
+      } else if (visible.has('parcelle') && parcelId) {
+        entry.parcelId = parcelId
+      }
       if (visible.has('culture') && cropId) entry.cropId = cropId
       if (visible.has('oya') && oyaId) entry.oyaId = oyaId
       if (visible.has('arbre') && treeId) entry.treeId = treeId
@@ -208,7 +221,29 @@ export function EntryForm({ config, initial, onSaved, onCancel }: {
         </blockquote>
       )}
 
-      {!useLegacyElement && visible.has('parcelle') && (
+      {!useLegacyElement && visible.has('parcelle') && config.type === 'arrosage' && (
+        <fieldset className="flex flex-col gap-1.5 text-sm text-green-800">
+          <legend className="mb-1">Parcelles arrosées</legend>
+          {parcels.length === 0 && <p className="text-xs text-gray-500">Aucune parcelle enregistrée.</p>}
+          {parcels.map((p) => (
+            <label key={p.id} className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={parcelIds.includes(p.id as string)}
+                onChange={() => toggleParcelId(p.id as string)}
+              />
+              {p.name}
+            </label>
+          ))}
+          {parcelIds.length > 1 && (
+            <p className="text-xs text-green-700">
+              Goutte-à-goutte commun : {parcelIds.length} parcelles jointes à cette entrée.
+            </p>
+          )}
+        </fieldset>
+      )}
+
+      {!useLegacyElement && visible.has('parcelle') && config.type !== 'arrosage' && (
         <label className="flex flex-col gap-1 text-sm text-green-800">
           Parcelle
           <select
@@ -338,7 +373,7 @@ export function EntryForm({ config, initial, onSaved, onCancel }: {
 
       {config.measure === 'volume' && (
         <label className="flex flex-col gap-1 text-sm text-green-800">
-          Volume (litres)
+          Volume (litres) — optionnel
           <input
             aria-label="Volume (litres)"
             type="number"

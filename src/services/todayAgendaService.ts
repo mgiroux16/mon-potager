@@ -4,6 +4,7 @@ import { resolveRainMm } from './wateringComparisonService'
 import { getHarvestReminders } from './reminderService'
 import { summarizeTankAutonomy } from './tankAutonomyService'
 import { getMonthPlan } from './calendarService'
+import { entryParcelIds } from './logView'
 
 export type AgendaItemKind =
   | 'alerte_gel'
@@ -89,7 +90,7 @@ export function getTodayAgenda(input: TodayAgendaInput): AgendaItem[] {
       const needWatering = activeParcels.filter(
         (parcel) =>
           !log.some((e) => {
-            if (e.type !== 'arrosage' || e.parcelId !== parcel.id) return false
+            if (e.type !== 'arrosage' || !entryParcelIds(e).includes(parcel.id as string)) return false
             const ageDays = daysBetween(e.date, today)
             return ageDays >= 0 && ageDays <= WATERING_WINDOW_DAYS
           }),

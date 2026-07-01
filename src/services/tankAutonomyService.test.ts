@@ -61,6 +61,13 @@ describe('summarizeTankAutonomy', () => {
     expect(result.autonomyDays).toBe(33) // 100 / 3 = 33.33 -> 33
   })
 
+  it('compte une seule fois le volume d une entree arrosage multi-parcelles (pas de double comptage)', () => {
+    const tanks = [tank({ id: '1', estimatedLiters: 1000 })]
+    const entries = [entry({ parcelIds: ['1', '2'], date: '2026-06-20', volumeLiters: 14 })]
+    const result = summarizeTankAutonomy(tanks, entries, '2026-06-21')
+    expect(result.dailyAverageLiters).toBe(2) // 14 / 7, une seule fois malgre 2 parcelles jointes
+  })
+
   it('renvoie autonomyDays null quand la consommation moyenne est nulle', () => {
     const tanks = [tank({ id: '1', estimatedLiters: 1000 })]
     const result = summarizeTankAutonomy(tanks, [], '2026-06-21')

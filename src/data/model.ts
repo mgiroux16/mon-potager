@@ -48,6 +48,10 @@ export interface GardenLogEntry {
   title?: string
   description?: string
   parcelId?: string
+  // Plusieurs parcelles arrosées par le même goutte-à-goutte (type 'arrosage' uniquement).
+  // Convention XOR avec parcelId : une entrée arrosage remplit l'un OU l'autre, jamais les deux.
+  // Tous les autres types de log continuent d'utiliser parcelId seul.
+  parcelIds?: string[]
   cropId?: string
   oyaId?: string
   treeId?: string

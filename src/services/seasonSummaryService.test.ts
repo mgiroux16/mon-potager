@@ -170,6 +170,19 @@ describe('summarizeParcelSeason', () => {
     expect(rows[0].totalWaterLiters).toBe(20)
   })
 
+  it('repartit egalement les litres d une entree arrosage multi-parcelles entre les parcelles jointes', () => {
+    const parcels: Parcel[] = [
+      { id: '10', name: 'Carre nord' },
+      { id: '11', name: 'Carre sud' },
+    ]
+    const entries = [
+      entry({ type: 'arrosage', parcelIds: ['10', '11'], date: '2026-04-01', volumeLiters: 20 }),
+    ]
+    const rows = summarizeParcelSeason(entries, parcels, [], [], 2026, settings)
+    expect(rows.find((r) => r.parcelId === '10')?.totalWaterLiters).toBe(10)
+    expect(rows.find((r) => r.parcelId === '11')?.totalWaterLiters).toBe(10)
+  })
+
   it('additionne la pluie a partir des releves manuels convertis en litres via areaM2', () => {
     const parcels: Parcel[] = [{ id: '10', name: 'Carre nord', areaM2: 10 }]
     const entries = [

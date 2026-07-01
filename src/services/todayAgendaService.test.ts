@@ -98,6 +98,18 @@ describe('getTodayAgenda', () => {
     expect(result.some((i) => i.kind === 'arrosage')).toBe(false)
   })
 
+  it("ne conseille pas d'arrosage pour une parcelle deja arrosee via une entree multi-parcelles (goutte-a-goutte commun)", () => {
+    const parcels = [parcel('p1', 'Tomates'), parcel('p2', 'Courges')]
+    const crops = [crop('c1', 'p1'), crop('c2', 'p2')]
+    const result = getTodayAgenda(makeInput({
+      parcels,
+      crops,
+      log: [logEntry({ type: 'arrosage', date: TODAY, parcelIds: ['p1', 'p2'] })],
+      weatherHistory: [{ date: TODAY, tempMaxC: 25, tempMinC: 14, rainMm: 0 }],
+    }))
+    expect(result.some((i) => i.kind === 'arrosage')).toBe(false)
+  })
+
   // — Test 6 : récolte prête
   it('déclenche recolte si culture dépasse daysToHarvest', () => {
     const cat = [catalogItem('cat1', 'Radis', { sowingMonths: [4], daysToHarvest: 30 })]

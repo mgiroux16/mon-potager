@@ -2,14 +2,19 @@ import { describe, it, expect } from 'vitest'
 import type { GardenLogEntry } from '../data/model'
 import {
   describeLogEntry,
+  entryParcelIds,
   formatLogDate,
   formatSnapshotTemp,
   resolveDetail,
+  resolveTargetName,
   type LogRefs,
 } from './logView'
 
 const refs: LogRefs = {
-  parcels: new Map([['1', { id: '1', name: 'Planche tomates' }]]),
+  parcels: new Map([
+    ['1', { id: '1', name: 'Planche tomates' }],
+    ['5', { id: '5', name: 'Planche courges' }],
+  ]),
   crops: new Map([['2', { id: '2', name: 'Tomate', status: 'en_place' }]]),
   oyas: new Map([['3', { id: '3', name: 'Oya nord', capacityLiters: 10 }]]),
   trees: new Map([['4', { id: '4', name: 'Pommier' }]]),
@@ -112,5 +117,32 @@ describe('formatSnapshotTemp', () => {
   it('renvoie null si aucune température', () => {
     expect(formatSnapshotTemp({ capturedAt: 1, source: 'manuel' })).toBeNull()
     expect(formatSnapshotTemp(undefined)).toBeNull()
+  })
+})
+
+describe('entryParcelIds', () => {
+  it('renvoie parcelIds si présent (arrosage multi-parcelles)', () => {
+    expect(entryParcelIds({ parcelId: '1', parcelIds: ['1', '5'] })).toEqual(['1', '5'])
+  })
+
+  it('retombe sur [parcelId] si parcelIds absent', () => {
+    expect(entryParcelIds({ parcelId: '1' })).toEqual(['1'])
+  })
+
+  it('renvoie un tableau vide si aucune parcelle', () => {
+    expect(entryParcelIds({})).toEqual([])
+    expect(entryParcelIds({ parcelIds: [] })).toEqual([])
+  })
+})
+
+describe('resolveTargetName avec parcelIds', () => {
+  it('joint les noms des parcelles arrosées ensemble (goutte-à-goutte commun)', () => {
+    const name = resolveTargetName(entry({ type: 'arrosage', parcelIds: ['1', '5'] }), refs)
+    expect(name).toBe('Planche tomates + Planche courges')
+  })
+
+  it('retombe sur parcelId seul si parcelIds absent', () => {
+    const name = resolveTargetName(entry({ type: 'arrosage', parcelId: '1' }), refs)
+    expect(name).toBe('Planche tomates')
   })
 })
