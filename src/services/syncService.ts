@@ -29,6 +29,30 @@ export const TABLE_NAMES: TableName[] = [
 // La requête incrémentale part de (cursor - buffer) au lieu de cursor.
 const CLOCK_SKEW_BUFFER_MS = 5 * 60 * 1000
 
+// getDocs() avec persistentLocalCache peut rester bloqué indéfiniment sur reseau
+// instable (connexion mobile) : ni resolve ni reject, ce qui bloquait Promise.all
+// pour toujours (statut "syncing" figé, bouton "Resynchroniser tout" jamais debloque).
+// Ce timeout force chaque table a echouer proprement au lieu de pendre.
+const SYNC_TABLE_TIMEOUT_MS = 20_000
+
+export function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error(`[sync] delai depasse (${ms}ms) pour ${label}`))
+    }, ms)
+    promise.then(
+      (value) => {
+        clearTimeout(timer)
+        resolve(value)
+      },
+      (err) => {
+        clearTimeout(timer)
+        reject(err)
+      },
+    )
+  })
+}
+
 export type SyncStatus = 'synced' | 'syncing' | 'offline' | 'error'
 
 let status: SyncStatus = 'offline'
@@ -130,7 +154,7 @@ export async function runInitialSync(uid: string): Promise<void> {
 
   const counts = await Promise.all(
     TABLE_NAMES.map((table) =>
-      syncTable(uid, table).catch((err: unknown) => {
+      withTimeout(syncTable(uid, table), SYNC_TABLE_TIMEOUT_MS, table).catch((err: unknown) => {
         console.error(`[sync] table ${table} echec`, err)
         hasError = true
         return 0

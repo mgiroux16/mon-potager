@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import Dexie from 'dexie'
 import { db, newId } from '../data/db'
-import { runInitialSync, getSyncStatus, purgeOldTombstones, TABLE_NAMES } from './syncService'
+import { runInitialSync, getSyncStatus, purgeOldTombstones, TABLE_NAMES, withTimeout } from './syncService'
 import * as firestoreClient from '../data/firestoreClient'
 
 const DB_NAME = 'mon-potager'
@@ -96,6 +96,18 @@ describe('runInitialSync', () => {
     expect(getSyncStatus()).toBe('error')
   })
 
+  it('ne reste pas bloque indefiniment si une table ne repond jamais (getDocs pendu)', async () => {
+    vi.spyOn(firestoreClient, 'fetchAllRecords').mockImplementation(async (_uid, table) => {
+      if (table === 'log') return new Promise(() => {}) // ne resout et ne rejette jamais
+      return []
+    })
+    vi.spyOn(firestoreClient, 'pushRecords').mockResolvedValue()
+
+    await runInitialSync('uid-test') // ne doit pas pendre pour toujours
+
+    expect(getSyncStatus()).toBe('error')
+  }, 25_000)
+
   it('utilise fetchRecordsSince si un curseur lastSyncAt existe (sync incrementale)', async () => {
     const cursor = 1_000_000
     localStorage.setItem('sync:lastAt:parcels', String(cursor))
@@ -156,6 +168,22 @@ describe('getSyncStatus', () => {
     await runInitialSync('uid-test')  // resout sans throw, erreurs absorbees par table
 
     expect(getSyncStatus()).toBe('error')
+  })
+})
+
+describe('withTimeout', () => {
+  it('resout avec la valeur de la promesse si elle resout avant le delai', async () => {
+    const result = await withTimeout(Promise.resolve('ok'), 50, 'test')
+    expect(result).toBe('ok')
+  })
+
+  it('rejette avec l erreur d origine si la promesse rejette avant le delai', async () => {
+    await expect(withTimeout(Promise.reject(new Error('boom')), 50, 'test')).rejects.toThrow('boom')
+  })
+
+  it('rejette au bout du delai si la promesse ne resout ni ne rejette jamais', async () => {
+    const stuck = new Promise(() => {})
+    await expect(withTimeout(stuck, 20, 'table-test')).rejects.toThrow(/delai depasse/)
   })
 })
 
