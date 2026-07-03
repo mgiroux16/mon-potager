@@ -1,3 +1,4 @@
+import { execSync } from 'node:child_process'
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
@@ -8,11 +9,25 @@ import basicSsl from '@vitejs/plugin-basic-ssl'
 // Le `npm run dev` habituel reste en http://localhost, sans avertissement de certificat.
 const httpsForPhone = process.env.HTTPS ? [basicSsl()] : []
 
+// Affichés dans Réglages pour vérifier facilement qu'un appareil a bien la dernière
+// version (utile car le SW peut mettre du temps à se mettre à jour sur un appareil donné).
+function gitShortHash(): string {
+  try {
+    return execSync('git rev-parse --short HEAD').toString().trim()
+  } catch {
+    return 'dev'
+  }
+}
+
 // https://vite.dev/config/
 export default defineConfig({
   // Servi depuis un sous-dossier sur GitHub Pages (https://mgiroux16.github.io/mon-potager/).
   // En dev, base reste '/' pour ne pas casser localhost.
   base: process.env.GITHUB_PAGES ? '/mon-potager/' : '/',
+  define: {
+    __APP_BUILD_HASH__: JSON.stringify(gitShortHash()),
+    __APP_BUILD_TIME__: JSON.stringify(new Date().toISOString()),
+  },
   plugins: [
     ...httpsForPhone,
     react(),

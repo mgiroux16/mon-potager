@@ -268,6 +268,10 @@ export function SettingsPage() {
           Se déconnecter
         </button>
       </section>
+
+      <p className="text-xs text-green-600">
+        Version {__APP_BUILD_HASH__} · {new Date(__APP_BUILD_TIME__).toLocaleString('fr-FR')}
+      </p>
     </form>
   )
 }
