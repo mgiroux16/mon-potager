@@ -19,6 +19,9 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
+      // Enregistrement piloté à la main (src/registerServiceWorker.ts) pour brancher
+      // la vérification périodique de mise à jour (onRegisteredSW → registration.update()).
+      injectRegister: false,
       includeAssets: ['favicon.svg'],
       manifest: {
         name: 'Mon Potager Intelligent',
@@ -42,7 +45,19 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,svg,png,ico}'],
+        // Le HTML n'est plus précaché : il est servi par la route NetworkFirst
+        // ci-dessous pour toujours charger la dernière version quand le réseau est là.
+        globPatterns: ['**/*.{js,css,svg,png,ico}'],
+        runtimeCaching: [
+          {
+            urlPattern: ({ request }) => request.mode === 'navigate',
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'app-shell',
+              networkTimeoutSeconds: 3,
+            },
+          },
+        ],
       },
       devOptions: { enabled: false },
     }),

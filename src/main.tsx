@@ -4,6 +4,7 @@ import './index.css'
 import App from './App.tsx'
 import { seedDatabase } from './data/seed'
 import { installSyncHooks } from './data/syncHooks'
+import { registerServiceWorker } from './registerServiceWorker'
 
 // Installe les hooks Dexie (updatedAt/deletedAt/push) ici plutot que dans db.ts :
 // db.ts et syncHooks.ts s'importent mutuellement (syncHooks a besoin de `db`), et
@@ -27,6 +28,8 @@ if (import.meta.env.DEV && 'serviceWorker' in navigator) {
 
 // Charge le vrai jardin au premier lancement (idempotent : sans effet si déjà présent).
 void seedDatabase()
+
+registerServiceWorker()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
