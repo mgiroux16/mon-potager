@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Sprout, Trees, MapPin, Pencil, Bell, Trash2 } from 'lucide-react'
+import { Sprout, Trees, MapPin, Pencil, Bell, Trash2, Wand2 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { db, newId } from '../data/db'
 import { softDelete } from '../data/syncHooks'
 import type { Crop, VegetableFamily } from '../data/model'
 import { getInactiveParcels, getHarvestReminders, getRotationReminders } from '../services/reminderService'
+import { dedupeGardenData } from '../services/dedupeService'
 import { ParcelCard } from '../components/ParcelCard'
 import { TreeCard } from '../components/TreeCard'
 import { nextFreeMapSlot, DEFAULT_MAP_SIZE_M } from '../services/mapLayout'
@@ -81,6 +82,22 @@ export function GardenPage() {
   const [newParcelName, setNewParcelName] = useState('')
   const [creatingTree, setCreatingTree] = useState(false)
   const [newTreeName, setNewTreeName] = useState('')
+  const [deduping, setDeduping] = useState(false)
+
+  async function handleDedupe() {
+    if (!window.confirm('Fusionner les parcelles et cultures en doublon (même nom) ?')) return
+    setDeduping(true)
+    try {
+      const { parcelsMerged, cropsMerged } = await dedupeGardenData()
+      window.alert(
+        parcelsMerged === 0 && cropsMerged === 0
+          ? 'Aucun doublon trouvé.'
+          : `${parcelsMerged} parcelle(s) et ${cropsMerged} culture(s) en doublon fusionnées.`,
+      )
+    } finally {
+      setDeduping(false)
+    }
+  }
 
   const today = todayISO()
   const inactiveParcels = getInactiveParcels(parcels, log, crops, today)
@@ -91,7 +108,18 @@ export function GardenPage() {
 
   return (
     <div className="space-y-6 p-4 lg:grid lg:grid-cols-3 lg:gap-6 lg:space-y-0 lg:p-0">
-      <h1 className="text-xl font-bold text-green-800 lg:col-span-3">Mon jardin</h1>
+      <div className="flex items-center justify-between lg:col-span-3">
+        <h1 className="text-xl font-bold text-green-800">Mon jardin</h1>
+        <button
+          type="button"
+          onClick={handleDedupe}
+          disabled={deduping}
+          className="flex items-center gap-1.5 rounded-lg bg-green-100 px-3 py-1.5 text-sm font-medium text-green-800 hover:bg-green-200 disabled:opacity-50"
+        >
+          <Wand2 size={16} />
+          {deduping ? 'Fusion en cours…' : 'Nettoyer les doublons'}
+        </button>
+      </div>
 
       {hasReminders ? (
         <section className="lg:col-span-3">
