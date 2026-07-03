@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { MouseEvent as ReactMouseEvent, WheelEvent as ReactWheelEvent, TouchEvent as ReactTouchEvent } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { useNavigate } from 'react-router-dom'
@@ -14,6 +14,25 @@ const SCALE_STEPS = [0.25, 0.5, 1, 2]
 const SCALE_MIN = 0.1
 const SCALE_MAX = 4
 const CLICK_THRESHOLD = 5
+const MENU_WIDTH = 180
+const MENU_HEIGHT = 240
+const MENU_GAP = 6
+
+function computeMenuPosition(rect: { top: number; bottom: number; left: number; right: number }) {
+  let top = rect.bottom + MENU_GAP
+  if (top + MENU_HEIGHT > window.innerHeight) {
+    top = rect.top - MENU_HEIGHT - MENU_GAP
+  }
+  top = Math.min(Math.max(top, 4), Math.max(4, window.innerHeight - MENU_HEIGHT - 4))
+
+  let left = rect.left
+  if (left + MENU_WIDTH > window.innerWidth) {
+    left = rect.right - MENU_WIDTH
+  }
+  left = Math.min(Math.max(left, 4), Math.max(4, window.innerWidth - MENU_WIDTH - 4))
+
+  return { top, left }
+}
 
 function clampScale(s: number) {
   return Math.min(SCALE_MAX, Math.max(SCALE_MIN, s))
@@ -72,6 +91,9 @@ export function GardenMapPage() {
   const resizeRef = useRef<ResizeState | null>(null)
   const [livePositions, setLivePositions] = useState<Record<string, { x: number; y: number }>>({})
   const [liveSizes, setLiveSizes] = useState<Record<string, { w: number; h: number }>>({})
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null)
+  const blockRefs = useRef<Map<string, HTMLDivElement>>(new Map())
+  const menuRef = useRef<HTMLDivElement | null>(null)
 
   const placed = parcels.filter((p) => p.mapWidth != null && p.mapHeight != null && p.id != null)
   const unplaced = parcels.filter((p) => p.mapWidth == null || p.mapHeight == null)
@@ -251,12 +273,64 @@ export function GardenMapPage() {
     }
   }
 
+  function handleBlockContextMenu(parcel: Parcel) {
+    return (e: ReactMouseEvent<HTMLDivElement>) => {
+      e.preventDefault()
+      e.stopPropagation()
+      if (parcel.id == null) return
+      setSelectedId(parcel.id)
+    }
+  }
+
+  function setBlockRef(id: string | undefined) {
+    return (el: HTMLDivElement | null) => {
+      if (id == null) return
+      if (el) blockRefs.current.set(id, el)
+      else blockRefs.current.delete(id)
+    }
+  }
+
+  // Repositionne le menu contextuel a chaque (re)selection, sur la tuile visee.
+  useLayoutEffect(() => {
+    if (selectedId == null) {
+      setMenuPos(null)
+      return
+    }
+    const el = blockRefs.current.get(selectedId)
+    if (!el) {
+      setMenuPos(null)
+      return
+    }
+    setMenuPos(computeMenuPosition(el.getBoundingClientRect()))
+  }, [selectedId])
+
+  // Un tap/clic en dehors de toute tuile et du menu ferme la selection. Un tap sur une
+  // autre tuile est deja gere par son propre mousedown/mouseup (re-selection), on ne
+  // touche donc pas a ce cas ici pour eviter un flash de fermeture/reouverture.
+  useEffect(() => {
+    if (selectedId == null) return
+    function handleOutside(e: MouseEvent | TouchEvent) {
+      const target = e.target as Node
+      if (menuRef.current?.contains(target)) return
+      for (const el of blockRefs.current.values()) {
+        if (el.contains(target)) return
+      }
+      setSelectedId(null)
+    }
+    document.addEventListener('mousedown', handleOutside)
+    document.addEventListener('touchstart', handleOutside)
+    return () => {
+      document.removeEventListener('mousedown', handleOutside)
+      document.removeEventListener('touchstart', handleOutside)
+    }
+  }, [selectedId])
+
   return (
     <div className="space-y-4 p-4">
       <h1 className="text-xl font-bold text-green-800">Carte du jardin</h1>
       <p className="text-sm text-gray-500">
-        Glisse pour déplacer · Clique pour sélectionner (rotation, dupliquer) · Coin bas-droit pour
-        redimensionner
+        Glisse pour déplacer · Tape/clique pour ouvrir le menu d'actions (clic droit aussi) · Coin
+        bas-droit pour redimensionner
       </p>
 
       <div className="flex items-center gap-2">
@@ -367,8 +441,10 @@ export function GardenMapPage() {
             return (
               <div
                 key={p.id}
+                ref={setBlockRef(p.id)}
                 data-testid={`map-block-${p.id}`}
                 onMouseDown={handleBlockPointerDown(p)}
+                onContextMenu={handleBlockContextMenu(p)}
                 className="absolute flex select-none flex-col items-center justify-center rounded-md border-2 text-center text-xs font-semibold text-gray-900 shadow-sm"
                 style={{
                   left: cell(x),
@@ -414,43 +490,49 @@ export function GardenMapPage() {
       </div>
 
       {selectedId != null &&
+        menuPos != null &&
         (() => {
           const parcel = placed.find((p) => p.id === selectedId)
           if (!parcel) return null
           return (
-            <div className="flex flex-wrap gap-2">
+            <div
+              ref={menuRef}
+              data-testid="parcel-context-menu"
+              className="fixed z-50 flex w-[180px] flex-col gap-1 rounded-lg border border-green-200 bg-white p-2 shadow-lg"
+              style={{ top: menuPos.top, left: menuPos.left }}
+            >
               <button
                 type="button"
                 onClick={() => rotateParcel(parcel)}
-                className="rounded-lg border border-green-300 px-3 py-2 text-sm text-green-700"
+                className="rounded px-3 py-2 text-left text-sm text-green-700 hover:bg-green-50"
               >
                 Rotation
               </button>
               <button
                 type="button"
                 onClick={() => startRename(parcel)}
-                className="rounded-lg border border-green-300 px-3 py-2 text-sm text-green-700"
+                className="rounded px-3 py-2 text-left text-sm text-green-700 hover:bg-green-50"
               >
                 Renommer
               </button>
               <button
                 type="button"
                 onClick={() => duplicateParcel(parcel)}
-                className="rounded-lg border border-green-300 px-3 py-2 text-sm text-green-700"
+                className="rounded px-3 py-2 text-left text-sm text-green-700 hover:bg-green-50"
               >
                 Dupliquer
               </button>
               <button
                 type="button"
                 onClick={() => waterParcel(parcel)}
-                className="rounded-lg bg-green-600 px-3 py-2 text-sm text-white"
+                className="rounded bg-green-600 px-3 py-2 text-left text-sm text-white hover:bg-green-700"
               >
                 Arroser
               </button>
               <button
                 type="button"
                 onClick={() => deleteParcel(parcel)}
-                className="rounded-lg border border-red-300 px-3 py-2 text-sm text-red-600"
+                className="rounded px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50"
               >
                 Supprimer
               </button>

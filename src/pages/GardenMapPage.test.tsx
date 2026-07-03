@@ -56,6 +56,43 @@ describe('GardenMapPage', () => {
     expect(screen.getByText('Arroser')).toBeInTheDocument()
   })
 
+  it('la selection d une tuile affiche le menu d actions ancre dessus', async () => {
+    const id = await db.parcels.add({ id: newId(), name: 'Planche tomates', mapX: 0, mapY: 0, mapWidth: 2, mapHeight: 2 })
+    render(<GardenMapPage />, { wrapper: MemoryRouter })
+    const block = await screen.findByTestId(`map-block-${id}`)
+    expect(screen.queryByTestId('parcel-context-menu')).not.toBeInTheDocument()
+
+    fireEvent.mouseDown(block, { clientX: 10, clientY: 10 })
+    fireEvent.mouseUp(screen.getByTestId('garden-map-grid'), { clientX: 10, clientY: 10 })
+
+    expect(screen.getByTestId('parcel-context-menu')).toBeInTheDocument()
+    expect(screen.getByText('Rotation')).toBeInTheDocument()
+  })
+
+  it('le clic droit sur une tuile ouvre le menu et bloque le menu natif', async () => {
+    const id = await db.parcels.add({ id: newId(), name: 'Planche tomates', mapX: 0, mapY: 0, mapWidth: 2, mapHeight: 2 })
+    render(<GardenMapPage />, { wrapper: MemoryRouter })
+    const block = await screen.findByTestId(`map-block-${id}`)
+
+    const event = fireEvent.contextMenu(block)
+
+    expect(event).toBe(false) // preventDefault() appele => l evenement est marque annule
+    expect(screen.getByTestId('parcel-context-menu')).toBeInTheDocument()
+  })
+
+  it('un clic en dehors de la tuile et du menu ferme le menu', async () => {
+    const id = await db.parcels.add({ id: newId(), name: 'Planche tomates', mapX: 0, mapY: 0, mapWidth: 2, mapHeight: 2 })
+    render(<GardenMapPage />, { wrapper: MemoryRouter })
+    const block = await screen.findByTestId(`map-block-${id}`)
+    fireEvent.mouseDown(block, { clientX: 10, clientY: 10 })
+    fireEvent.mouseUp(screen.getByTestId('garden-map-grid'), { clientX: 10, clientY: 10 })
+    expect(screen.getByTestId('parcel-context-menu')).toBeInTheDocument()
+
+    fireEvent.mouseDown(document.body)
+
+    expect(screen.queryByTestId('parcel-context-menu')).not.toBeInTheDocument()
+  })
+
   it('le bouton Arroser navigue vers le formulaire d arrosage preremplit', async () => {
     const id = await db.parcels.add({ id: newId(), name: 'Planche tomates', mapX: 0, mapY: 0, mapWidth: 2, mapHeight: 2 })
     render(<GardenMapPage />, { wrapper: MemoryRouter })
