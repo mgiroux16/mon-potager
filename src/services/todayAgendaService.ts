@@ -152,7 +152,10 @@ export function getTodayAgenda(input: TodayAgendaInput): AgendaItem[] {
   )
   const plan = getMonthPlan(catalog, month, gardenCatalogIds)
 
-  for (const item of plan.toSow.slice(0, 3)) {
+  const ownedToSow = plan.toSow.filter((item) => item.id && gardenCatalogIds.has(item.id))
+  const ownedToPlant = plan.toPlant.filter((item) => item.id && gardenCatalogIds.has(item.id))
+
+  for (const item of ownedToSow.slice(0, 3)) {
     items.push({
       kind: 'semis',
       label: `À semer ce mois : ${item.vegetable}`,
@@ -160,7 +163,7 @@ export function getTodayAgenda(input: TodayAgendaInput): AgendaItem[] {
     })
   }
 
-  for (const item of plan.toPlant.slice(0, 2)) {
+  for (const item of ownedToPlant.slice(0, 2)) {
     items.push({
       kind: 'plantation',
       label: `À planter ce mois : ${item.vegetable}`,

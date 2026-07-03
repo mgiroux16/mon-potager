@@ -148,6 +148,20 @@ describe('getTodayAgenda', () => {
     expect(result.some((i) => i.kind === 'recolte')).toBe(true)
   })
 
+  it('ne suggere pas de semer un legume absent du jardin', () => {
+    const cat = [catalogItem('cat-sauvage', 'Panais', { sowingMonths: [6] })]
+    const result = getTodayAgenda(makeInput({ catalog: cat }))
+    expect(result.some((i) => i.kind === 'semis')).toBe(false)
+  })
+
+  it('suggere de semer un legume present dans le jardin', () => {
+    const cat = [catalogItem('cat-jardin', 'Carotte', { sowingMonths: [6] })]
+    const crops = [crop('c1', 'p1', 'en_place', { catalogId: 'cat-jardin' })]
+    const result = getTodayAgenda(makeInput({ parcels: [parcel('p1')], crops, catalog: cat }))
+    const item = result.find((i) => i.kind === 'semis')
+    expect(item?.label).toBe('À semer ce mois : Carotte')
+  })
+
   // — Test 7 : hors-ligne (météo absente) → items gel/arrosage omis, sans erreur
   it('omet gel et arrosage si météo absente (hors-ligne), sans erreur', () => {
     const parcels = [parcel('p1', 'Tomates')]
