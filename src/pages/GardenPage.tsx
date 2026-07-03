@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Sprout, Trees, MapPin, Pencil, Bell } from 'lucide-react'
+import { Sprout, Trees, MapPin, Pencil, Bell, Trash2 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { db, newId } from '../data/db'
+import { softDelete } from '../data/syncHooks'
 import type { Crop, VegetableFamily } from '../data/model'
 import { getInactiveParcels, getHarvestReminders, getRotationReminders } from '../services/reminderService'
 import { ParcelCard } from '../components/ParcelCard'
@@ -184,6 +185,18 @@ export function GardenPage() {
             <li key={c.id} className="flex items-center rounded bg-green-50 px-3 py-2">
               <span>{c.name}</span>
               <CropPrice crop={c} />
+              <button
+                type="button"
+                onClick={async () => {
+                  if (c.id != null && window.confirm(`Supprimer la culture "${c.name}" ?`)) {
+                    await softDelete('crops', c.id)
+                  }
+                }}
+                aria-label={`Supprimer la culture ${c.name}`}
+                className="ml-auto rounded p-1 text-green-700/40 hover:bg-red-50 hover:text-red-600"
+              >
+                <Trash2 className="size-4" />
+              </button>
             </li>
           ))}
         </ul>

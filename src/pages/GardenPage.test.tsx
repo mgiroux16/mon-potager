@@ -1,9 +1,10 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { db, newId } from '../data/db'
 import { seedDatabase } from '../data/seed'
 import { GardenPage } from './GardenPage'
+import { describeLogEntry, type LogRefs } from '../services/logView'
 
 beforeEach(async () => {
   await Promise.all(db.tables.map((t) => t.clear()))
@@ -91,6 +92,37 @@ describe('GardenPage', () => {
       expect(screen.getByText('Carré test')).toBeInTheDocument()
     })
     expect(screen.queryByRole('heading', { name: 'Rappels' })).not.toBeInTheDocument()
+  })
+
+  it('supprime une culture en doublon (softDelete) : elle disparait, les logs lies ne plantent pas', async () => {
+    await db.log.add({
+      id: newId(),
+      type: 'recolte',
+      date: '2026-06-24',
+      cropId: 'crop-2',
+      quantityKg: 3,
+      createdAt: Date.now(),
+    })
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    render(<GardenPage />, { wrapper: MemoryRouter })
+    await waitFor(() => {
+      expect(screen.getByText('Pommes de terre Agata')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByLabelText('Supprimer la culture Pommes de terre Agata'))
+
+    await waitFor(() => {
+      expect(screen.queryByText('Pommes de terre Agata')).not.toBeInTheDocument()
+    })
+
+    // La culture est soft-deleted (tombstone), plus dans crops.toArray() : resolveTargetName
+    // doit rester sans planter et simplement ne plus donner de nom pour cette culture.
+    const remainingCrops = await db.crops.toArray()
+    expect(remainingCrops.some((c) => c.id === 'crop-2')).toBe(false)
+    const refs: LogRefs = { parcels: new Map(), crops: new Map(), oyas: new Map(), trees: new Map() }
+    const entry = (await db.log.toArray()).find((e) => e.cropId === 'crop-2')!
+    expect(() => describeLogEntry(entry, refs)).not.toThrow()
+    expect(describeLogEntry(entry, refs).target).toBeUndefined()
   })
 
   it('permet de creer une nouvelle parcelle par son nom', async () => {
