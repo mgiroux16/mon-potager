@@ -1,7 +1,12 @@
 rules_version = '2';
 
 // Chaque utilisateur authentifie n'a acces qu'a son propre sous-arbre
-// users/{uid}/** : la synchro ecrit/lit uniquement sous l'uid courant.
+// users/{uid}/** : lecture/ecriture autorisees uniquement si l'appelant est
+// connecte ET que son uid correspond au segment {uid} du chemin.
+//
+// En rules_version '2', tout chemin non explicitement autorise est refuse par
+// defaut (deny by default) : un autre uid, ou un appel non authentifie, tombe
+// donc automatiquement sur un refus. Verification : voir docs/audit/etape-0-verif-regles.md.
 service cloud.firestore {
   match /databases/{database}/documents {
     match /users/{uid}/{document=**} {
