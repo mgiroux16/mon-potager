@@ -21,19 +21,41 @@ export type TableName = (typeof TABLE_NAMES)[number]
 
 let installed = false
 let activeUid: string | null = null
-let maintenanceMode = false
+// Compteur (et non booleen) : la sync lance des lectures maintenance en parallele
+// (Promise.all sur 12 tables), un booleen retombait a false des la premiere finie.
+let maintenanceDepth = 0
 
 export function setSyncUid(uid: string | null): void {
   activeUid = uid
 }
 
-// Permet a une operation de maintenance (ex: purge des tombstones) de voir les lignes
-// avec deletedAt, que le hook 'reading' filtre normalement de toute lecture applicative.
+// Permet a une operation de maintenance (ex: purge des tombstones, merge de sync) de voir
+// les lignes avec deletedAt, que le hook 'reading' filtre de toute lecture applicative.
 export function withMaintenanceMode<T>(fn: () => Promise<T>): Promise<T> {
-  maintenanceMode = true
+  maintenanceDepth++
   return fn().finally(() => {
-    maintenanceMode = false
+    maintenanceDepth--
   })
+}
+
+// Cles "table|id|updatedAt" des ecritures en cours d'application DEPUIS Firestore.
+// Le hook de push les consomme sans re-pousser : sans ce garde-fou, chaque changement
+// distant applique en local repartait vers Firestore (echo), et sur une ligne tombstone
+// (invisible du hook 'reading') cet echo bouclait a l'infini snapshot -> put -> push ->
+// snapshot, saturant CPU et memoire (onglet a plusieurs Go).
+const remoteEchoKeys = new Set<string>()
+
+function echoKey(table: string, id: unknown, updatedAt: unknown): string {
+  return `${table}|${String(id)}|${String(updatedAt)}`
+}
+
+/** A appeler juste avant un put() qui applique une ligne venant de Firestore. */
+export function markRemoteWrite(table: TableName, row: Record<string, unknown>): void {
+  remoteEchoKeys.add(echoKey(table, row.id, row.updatedAt))
+}
+
+function consumeRemoteWrite(table: TableName, id: unknown, updatedAt: unknown): boolean {
+  return remoteEchoKeys.delete(echoKey(table, id, updatedAt))
 }
 
 export function installSyncHooks(): void {
@@ -58,7 +80,7 @@ export function installSyncHooks(): void {
     })
 
     table.hook('reading', (obj) => {
-      if (maintenanceMode) return obj
+      if (maintenanceDepth > 0) return obj
       if (obj === undefined) return obj
       const row = obj as Record<string, unknown>
       return typeof row.deletedAt === 'number' ? undefined : obj
@@ -75,7 +97,9 @@ export function installSyncHooks(): void {
     ) {
       this.onsuccess = (id: unknown) => {
         if (activeUid === null) return
-        void pushRecord(activeUid, name, id as string, obj as Record<string, unknown>)
+        const row = obj as Record<string, unknown>
+        if (consumeRemoteWrite(name, id, row.updatedAt)) return
+        void pushRecord(activeUid, name, id as string, row)
       }
     })
 
@@ -88,6 +112,7 @@ export function installSyncHooks(): void {
       this.onsuccess = () => {
         if (activeUid === null) return
         const merged = { ...(obj as Record<string, unknown>), ...(modifications as Record<string, unknown>) }
+        if (consumeRemoteWrite(name, primKey, merged.updatedAt)) return
         void pushRecord(activeUid, name, primKey as string, merged)
       }
     })

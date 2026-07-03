@@ -1,7 +1,16 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import Dexie from 'dexie'
 import { db, newId } from '../data/db'
-import { runInitialSync, getSyncStatus, purgeOldTombstones, TABLE_NAMES, withTimeout } from './syncService'
+import {
+  runInitialSync,
+  startRealtimeSync,
+  stopRealtimeSync,
+  getSyncStatus,
+  purgeOldTombstones,
+  TABLE_NAMES,
+  withTimeout,
+} from './syncService'
+import { setSyncUid } from '../data/syncHooks'
 import * as firestoreClient from '../data/firestoreClient'
 
 const DB_NAME = 'mon-potager'
@@ -13,6 +22,8 @@ beforeEach(async () => {
 
 afterEach(async () => {
   localStorage.clear()
+  stopRealtimeSync()
+  setSyncUid(null)
   db.close()
   await Dexie.delete(DB_NAME)
   vi.restoreAllMocks()
@@ -147,6 +158,93 @@ describe('runInitialSync', () => {
 
     const row = await db.table('parcels').get(id)
     expect(row?.name).toBe('Hors cursor mais dans buffer')
+  })
+})
+
+describe('boucle d echo sync (regression fuite memoire/CPU)', () => {
+  it('ne re-echange pas une ligne identique des deux cotes (meme updatedAt)', async () => {
+    const id = newId()
+    await db.parcels.add({ id, name: 'En phase', updatedAt: 100 })
+
+    vi.spyOn(firestoreClient, 'fetchAllRecords').mockImplementation(async (_uid, table) =>
+      table === 'parcels' ? [{ id, name: 'En phase', updatedAt: 100 }] : [],
+    )
+    const pushRecordsSpy = vi.spyOn(firestoreClient, 'pushRecords').mockResolvedValue()
+
+    await runInitialSync('uid-test')
+
+    expect(pushRecordsSpy).not.toHaveBeenCalled()
+  })
+
+  it('laisse en paix un tombstone identique en local et en distant', async () => {
+    const id = newId()
+    await db.parcels.add({ id, name: 'Supprimee', deletedAt: 500, updatedAt: 500 })
+    setSyncUid('uid-test')
+
+    vi.spyOn(firestoreClient, 'fetchAllRecords').mockImplementation(async (_uid, table) =>
+      table === 'parcels' ? [{ id, name: 'Supprimee', deletedAt: 500, updatedAt: 500 }] : [],
+    )
+    const pushRecordsSpy = vi.spyOn(firestoreClient, 'pushRecords').mockResolvedValue()
+    const pushRecordSpy = vi.spyOn(firestoreClient, 'pushRecord').mockResolvedValue()
+
+    await runInitialSync('uid-test')
+    await new Promise((r) => setTimeout(r, 10))
+
+    expect(pushRecordsSpy).not.toHaveBeenCalled()
+    expect(pushRecordSpy).not.toHaveBeenCalled()
+  })
+
+  it('applique une ligne distante plus recente sans la re-pousser vers Firestore', async () => {
+    const id = newId()
+    await db.parcels.add({ id, name: 'Ancienne', updatedAt: 100 })
+    setSyncUid('uid-test')
+
+    vi.spyOn(firestoreClient, 'fetchAllRecords').mockImplementation(async (_uid, table) =>
+      table === 'parcels' ? [{ id, name: 'Nouvelle', updatedAt: 200 }] : [],
+    )
+    vi.spyOn(firestoreClient, 'pushRecords').mockResolvedValue()
+    const pushRecordSpy = vi.spyOn(firestoreClient, 'pushRecord').mockResolvedValue()
+
+    await runInitialSync('uid-test')
+    await new Promise((r) => setTimeout(r, 10))
+
+    const row = await db.table('parcels').get(id)
+    expect(row?.name).toBe('Nouvelle')
+    expect(pushRecordSpy).not.toHaveBeenCalled()
+  })
+
+  it('en temps reel, applique un changement distant sans echo ni re-put d un tombstone deja connu', async () => {
+    const id = newId()
+    await db.parcels.add({ id, name: 'Supprimee', deletedAt: 500, updatedAt: 500 })
+    setSyncUid('uid-test')
+
+    const callbacks = new Map<string, (changes: firestoreClient.DocChange[]) => void>()
+    vi.spyOn(firestoreClient, 'watchTable').mockImplementation((_uid, table, onChange) => {
+      callbacks.set(table, onChange)
+      return () => {}
+    })
+    const pushRecordSpy = vi.spyOn(firestoreClient, 'pushRecord').mockResolvedValue()
+    const putSpy = vi.spyOn(db.parcels, 'put')
+
+    startRealtimeSync('uid-test')
+    // Le serveur renvoie le tombstone deja present en local : rien ne doit bouger.
+    callbacks.get('parcels')!([
+      { type: 'modified', record: { id, name: 'Supprimee', deletedAt: 500, updatedAt: 500 } },
+    ])
+    await new Promise((r) => setTimeout(r, 10))
+
+    expect(putSpy).not.toHaveBeenCalled()
+    expect(pushRecordSpy).not.toHaveBeenCalled()
+
+    // Un vrai changement distant est applique, sans repartir vers Firestore.
+    callbacks.get('parcels')!([
+      { type: 'modified', record: { id, name: 'Restauree', updatedAt: 900 } },
+    ])
+    await new Promise((r) => setTimeout(r, 10))
+
+    const row = await db.table('parcels').get(id)
+    expect(row?.name).toBe('Restauree')
+    expect(pushRecordSpy).not.toHaveBeenCalled()
   })
 })
 

@@ -1,7 +1,7 @@
 import Dexie from 'dexie'
 import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest'
 import { db, newId } from './db'
-import { softDelete, setSyncUid } from './syncHooks'
+import { markRemoteWrite, softDelete, setSyncUid } from './syncHooks'
 import * as firestoreClient from './firestoreClient'
 
 const DB_NAME = 'mon-potager'
@@ -84,5 +84,23 @@ describe('push automatique apres ecriture', () => {
     await new Promise((r) => setTimeout(r, 0))
 
     expect(pushSpy).not.toHaveBeenCalled()
+  })
+
+  it('ne re-pousse pas une ecriture marquee comme venant du distant (anti-echo)', async () => {
+    const pushSpy = vi.spyOn(firestoreClient, 'pushRecord').mockResolvedValue()
+    const id = newId()
+    await db.parcels.add({ id, name: 'Base' })
+    setSyncUid('uid-test')
+
+    const fromRemote = { id, name: 'Depuis Firestore', updatedAt: 999 }
+    markRemoteWrite('parcels', fromRemote)
+    await db.parcels.put(fromRemote)
+    await new Promise((r) => setTimeout(r, 0))
+    expect(pushSpy).not.toHaveBeenCalled()
+
+    // Une vraie modification locale qui suit est, elle, bien poussee.
+    await db.parcels.update(id, { name: 'Modif locale' })
+    await new Promise((r) => setTimeout(r, 0))
+    expect(pushSpy).toHaveBeenCalledTimes(1)
   })
 })

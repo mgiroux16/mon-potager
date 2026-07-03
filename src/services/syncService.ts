@@ -1,6 +1,6 @@
 import { db } from '../data/db'
 import type { TableName } from '../data/syncHooks'
-import { withMaintenanceMode } from '../data/syncHooks'
+import { markRemoteWrite, withMaintenanceMode } from '../data/syncHooks'
 import {
   fetchAllRecords,
   fetchRecordsSince,
@@ -101,8 +101,13 @@ async function syncTable(uid: string, table: TableName): Promise<number> {
   const docsRead = remoteRows.length
   const remoteById = new Map(remoteRows.map((r) => [r.id as string, r]))
 
-  // Fetch local delta en mémoire (taille mono-utilisateur, pas de contrainte de perf)
-  const allLocalRows = (await db.table(table).toArray()) as Record<string, unknown>[]
+  // Fetch local delta en mémoire (taille mono-utilisateur, pas de contrainte de perf).
+  // Lecture en mode maintenance : le merge doit voir les tombstones locaux, sinon une
+  // ligne supprimée passe pour absente et le tombstone distant est réappliqué (et
+  // ré-échangé) à chaque sync.
+  const allLocalRows = (await withMaintenanceMode(() =>
+    db.table(table).toArray(),
+  )) as Record<string, unknown>[]
   const localDelta = isIncremental
     ? allLocalRows.filter(
         (r) => ((r.updatedAt as number | undefined) ?? 0) > lastSyncAt - CLOCK_SKEW_BUFFER_MS,
@@ -116,11 +121,25 @@ async function syncTable(uid: string, table: TableName): Promise<number> {
   for (const id of allIds) {
     const local = localById.get(id)
     const remote = remoteById.get(id)
+
+    // Deja en phase (meme updatedAt des deux cotes) : ne rien re-echanger. Sans ce
+    // court-circuit, l'egalite renvoyait la reference locale et chaque full sync
+    // re-poussait toute la base vers Firestore.
+    if (
+      local !== undefined &&
+      remote !== undefined &&
+      ((local.updatedAt as number | undefined) ?? 0) ===
+        ((remote.updatedAt as number | undefined) ?? 0)
+    ) {
+      continue
+    }
+
     const winner = resolveMerge(local, remote)
     if (winner === undefined) continue
 
     if (winner === remote && winner !== local) {
       try {
+        markRemoteWrite(table, winner)
         await db.table(table).put(winner)
       } catch (err) {
         console.error(`[sync] put local ignore ${table}/${id}`, err)
@@ -181,9 +200,15 @@ export function startRealtimeSync(uid: string): void {
           // Les suppressions passent par tombstone (deletedAt), pas par delete Firestore
           if (type === 'removed') return
           const id = remote.id as string
-          const local = (await db.table(table).get(id)) as Record<string, unknown> | undefined
+          // Lecture en mode maintenance : sans elle, un tombstone local est invisible
+          // (hook 'reading'), le merge le croit absent et le put + push repartent en
+          // boucle infinie via le snapshot local de Firestore.
+          const local = (await withMaintenanceMode(() => db.table(table).get(id))) as
+            | Record<string, unknown>
+            | undefined
           const winner = resolveMerge(local, remote)
           if (winner === remote && winner !== local) {
+            markRemoteWrite(table, remote)
             await db.table(table).put(winner)
           }
         }),
