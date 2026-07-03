@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Link } from 'react-router-dom'
-import { NotebookPen } from 'lucide-react'
+import { NotebookPen, Trash2 } from 'lucide-react'
 import { db } from '../data/db'
+import { softDelete } from '../data/syncHooks'
 import { listLog } from '../services/logService'
 import {
   describeLogEntry,
@@ -205,6 +206,11 @@ export function JournalPage() {
   const shown = searchLogEntries(typeFiltered, query, (e) => resolveTargetName(e, refs))
   const now = new Date()
 
+  async function handleDelete(entry: GardenLogEntry) {
+    if (!window.confirm('Supprimer cette entrée du journal ?')) return
+    await softDelete('log', entry.id as string)
+  }
+
   return (
     <section className="flex flex-col gap-4">
       <h1 className="text-xl font-semibold text-green-950">Journal</h1>
@@ -274,6 +280,14 @@ export function JournalPage() {
                     {formatSnapshotTemp(entry.weather)}
                   </span>
                 )}
+                <button
+                  type="button"
+                  onClick={() => handleDelete(entry)}
+                  aria-label="Supprimer cette entrée"
+                  className="rounded p-1 text-green-700/40 hover:bg-red-50 hover:text-red-600"
+                >
+                  <Trash2 className="size-4" />
+                </button>
               </div>
             </li>
           )

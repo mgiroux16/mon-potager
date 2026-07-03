@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { db, newId } from '../data/db'
@@ -56,6 +56,34 @@ describe('JournalPage', () => {
     await user.click(screen.getByRole('button', { name: 'Récolte' }))
 
     expect(screen.queryByText('30 L')).not.toBeInTheDocument()
+    expect(screen.getByText('2 kg')).toBeInTheDocument()
+  })
+
+  it('le filtre Arrosage masque les entrées des autres types', async () => {
+    await addLogEntry({ type: 'arrosage', date: '2026-06-24', volumeLiters: 30 })
+    await addLogEntry({ type: 'recolte', date: '2026-06-24', quantityKg: 2 })
+    renderJournal()
+    await waitFor(() => expect(screen.getByText('2 kg')).toBeInTheDocument())
+
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: 'Arrosage' }))
+
+    expect(screen.getByText('30 L')).toBeInTheDocument()
+    expect(screen.queryByText('2 kg')).not.toBeInTheDocument()
+  })
+
+  it('supprime une entrée (softDelete) : elle disparaît, les autres restent', async () => {
+    await addLogEntry({ type: 'arrosage', date: '2026-06-24', volumeLiters: 30 })
+    await addLogEntry({ type: 'recolte', date: '2026-06-24', quantityKg: 2 })
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    renderJournal()
+    await waitFor(() => expect(screen.getByText('30 L')).toBeInTheDocument())
+
+    const user = userEvent.setup()
+    const arrosageItem = screen.getByText('30 L').closest('li') as HTMLElement
+    await user.click(within(arrosageItem).getByRole('button', { name: 'Supprimer cette entrée' }))
+
+    await waitFor(() => expect(screen.queryByText('30 L')).not.toBeInTheDocument())
     expect(screen.getByText('2 kg')).toBeInTheDocument()
   })
 
