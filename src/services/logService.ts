@@ -17,6 +17,12 @@ export async function addLogEntry(entry: NewLogEntry): Promise<string> {
   return id
 }
 
+// Mise a jour partielle (Dexie update()) : ne touche que les champs fournis dans `entry`,
+// donc createdAt/weather/sourcePhrase restent intacts si l'appelant ne les fixe pas.
+export async function updateLogEntry(id: string, entry: NewLogEntry): Promise<void> {
+  await db.log.update(id, entry)
+}
+
 // Journal complet, du plus récent au plus ancien (date puis createdAt).
 export async function listLog(): Promise<GardenLogEntry[]> {
   const all = await db.log.toArray()

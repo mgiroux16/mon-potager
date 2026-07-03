@@ -258,6 +258,42 @@ describe('QuickAddPage avec brouillon vocal', () => {
   })
 })
 
+describe('QuickAddPage en mode edition (editEntry)', () => {
+  it('ouvre EntryForm prerempli et met a jour la meme entree sans doublon', async () => {
+    await db.parcels.add({ id: '1', name: 'Parcelle A' })
+    const { addLogEntry } = await import('../services/logService')
+    const id = await addLogEntry({ type: 'arrosage', date: '2026-06-24', volumeLiters: 30, parcelId: '1' })
+    await addLogEntry({ type: 'recolte', date: '2026-06-24', quantityKg: 2 })
+
+    const user = userEvent.setup()
+    render(
+      <MemoryRouter
+        initialEntries={[
+          { pathname: '/ajouter', state: { editEntry: (await listLog()).find((e) => e.id === id) } },
+        ]}
+      >
+        <QuickAddPage />
+      </MemoryRouter>,
+    )
+
+    expect(await screen.findByRole('heading', { name: /Modifier.*Arrosage/ })).toBeInTheDocument()
+    expect(screen.getByLabelText('Volume (litres)')).toHaveValue(30)
+
+    await user.clear(screen.getByLabelText('Volume (litres)'))
+    await user.type(screen.getByLabelText('Volume (litres)'), '45')
+    await user.click(screen.getByRole('button', { name: 'Enregistrer les modifications' }))
+
+    await waitFor(async () => {
+      const all = await listLog()
+      expect(all).toHaveLength(2)
+      const edited = all.find((e) => e.id === id)!
+      expect(edited.volumeLiters).toBe(45)
+      const other = all.find((e) => e.id !== id)!
+      expect(other.quantityKg).toBe(2)
+    })
+  })
+})
+
 describe('QuickAddPage avec selecteur de variete', () => {
   it('enregistre la varietyId choisie sur une récolte', async () => {
     await db.catalog.add({ id: '3', vegetable: 'Courgette', family: 'cucurbitacees' })

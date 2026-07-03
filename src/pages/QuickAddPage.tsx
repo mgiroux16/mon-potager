@@ -4,8 +4,8 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { ArrowLeft, Euro, MoreHorizontal } from 'lucide-react'
 import { db } from '../data/db'
-import type { LogEntryType } from '../data/model'
-import { addLogEntry, type NewLogEntry } from '../services/logService'
+import type { GardenLogEntry, LogEntryType } from '../data/model'
+import { addLogEntry, updateLogEntry, type NewLogEntry } from '../services/logService'
 import { findOrCreateVariety } from '../services/varietyService'
 import { fetchTodaySnapshot } from '../services/weatherService'
 import { getSettings } from '../services/settingsService'
@@ -84,9 +84,11 @@ function visibleTargets(config: FormConfig, initial?: Partial<NewLogEntry>): Set
   return s
 }
 
-export function EntryForm({ config, initial, onSaved, onCancel }: {
+export function EntryForm({ config, initial, editId, onSaved, onCancel }: {
   config: FormConfig
   initial?: Partial<NewLogEntry>
+  // Present en mode edition : la validation met a jour cette entree au lieu d'en creer une.
+  editId?: string
   onSaved: () => void
   onCancel: () => void
 }) {
@@ -196,7 +198,11 @@ export function EntryForm({ config, initial, onSaved, onCancel }: {
       if (snap) entry.weather = snap
     }
 
-    await addLogEntry(entry)
+    if (editId) {
+      await updateLogEntry(editId, entry)
+    } else {
+      await addLogEntry(entry)
+    }
     onSaved()
   }
 
@@ -213,7 +219,10 @@ export function EntryForm({ config, initial, onSaved, onCancel }: {
         <ArrowLeft className="size-4" /> Retour
       </button>
 
-      <h1 className="text-xl font-semibold text-green-950">{LOG_TYPE_LABELS[config.type]}</h1>
+      <h1 className="text-xl font-semibold text-green-950">
+        {editId ? 'Modifier : ' : ''}
+        {LOG_TYPE_LABELS[config.type]}
+      </h1>
 
       {initial?.sourcePhrase && (
         <blockquote className="rounded-lg border-l-4 border-green-300 bg-green-50 px-3 py-2 text-sm italic text-green-900">
@@ -470,7 +479,7 @@ export function EntryForm({ config, initial, onSaved, onCancel }: {
         type="submit"
         className="rounded-lg bg-green-600 px-4 py-2.5 text-sm font-medium text-white"
       >
-        Valider
+        {editId ? 'Enregistrer les modifications' : 'Valider'}
       </button>
     </form>
   )
@@ -480,23 +489,31 @@ export function QuickAddPage() {
   const location = useLocation()
   const navigate = useNavigate()
   const voiceDraft = (location.state as { voiceDraft?: Partial<NewLogEntry> } | null)?.voiceDraft
+  const editEntry = (location.state as { editEntry?: GardenLogEntry } | null)?.editEntry
 
-  // Brouillon consomme une seule fois : on capture a l'init, puis on nettoie le router state
-  // pour qu'un retour arriere ou un rafraichissement ne rouvre pas le formulaire prerempli.
+  // Brouillon/entree a editer consomme une seule fois : on capture a l'init, puis on
+  // nettoie le router state pour qu'un retour arriere ou un rafraichissement ne rouvre
+  // pas le formulaire prerempli.
   const initialDraft = useRef(voiceDraft).current
-  const [view, setView] = useState<View>(() =>
-    initialDraft ? configForType(initialDraft.type ?? 'note') : 'grid',
-  )
-  const [draft, setDraft] = useState<Partial<NewLogEntry> | undefined>(initialDraft)
+  const initialEdit = useRef(editEntry).current
+  const [view, setView] = useState<View>(() => {
+    if (initialEdit) return configForType(initialEdit.type)
+    return initialDraft ? configForType(initialDraft.type ?? 'note') : 'grid'
+  })
+  const [draft, setDraft] = useState<Partial<NewLogEntry> | undefined>(initialEdit ?? initialDraft)
   const [confirmation, setConfirmation] = useState<string | null>(null)
 
   useEffect(() => {
-    if (voiceDraft) {
+    if (voiceDraft || editEntry) {
       navigate(location.pathname, { replace: true, state: null })
     }
     // On ne veut nettoyer qu'une fois, a l'arrivee du brouillon.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  function backToJournal() {
+    navigate('/carnet/journal')
+  }
 
   function backToGrid() {
     setDraft(undefined)
@@ -563,11 +580,16 @@ export function QuickAddPage() {
       <EntryForm
         config={view}
         initial={draft}
+        editId={initialEdit?.id}
         onSaved={() => {
-          setConfirmation('Entrée ajoutée au journal.')
-          backToGrid()
+          if (initialEdit) {
+            backToJournal()
+          } else {
+            setConfirmation('Entrée ajoutée au journal.')
+            backToGrid()
+          }
         }}
-        onCancel={backToGrid}
+        onCancel={initialEdit ? backToJournal : backToGrid}
       />
     )
   }

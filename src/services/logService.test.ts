@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { db } from '../data/db'
-import { addLogEntry, listLog, listLogByType } from './logService'
+import { addLogEntry, listLog, listLogByType, updateLogEntry } from './logService'
 
 beforeEach(async () => {
   await Promise.all(db.tables.map((t) => t.clear()))
@@ -57,5 +57,39 @@ describe('logService', () => {
     await addLogEntry({ type: 'note', date: '2026-06-25', status: 'brouillon' })
     const [entry] = await listLog()
     expect(entry.status).toBe('brouillon')
+  })
+
+  it('updateLogEntry met a jour la meme entree (pas de doublon), les autres restent intactes', async () => {
+    const id = await addLogEntry({ type: 'arrosage', date: '2026-06-24', volumeLiters: 30 })
+    await addLogEntry({ type: 'recolte', date: '2026-06-24', quantityKg: 2 })
+
+    await updateLogEntry(id, { type: 'arrosage', date: '2026-06-25', volumeLiters: 45 })
+
+    const all = await listLog()
+    expect(all).toHaveLength(2)
+    const edited = all.find((e) => e.id === id)!
+    expect(edited.date).toBe('2026-06-25')
+    expect(edited.volumeLiters).toBe(45)
+    const other = all.find((e) => e.id !== id)!
+    expect(other.quantityKg).toBe(2)
+  })
+
+  it('updateLogEntry preserve createdAt, weather et sourcePhrase non fournis', async () => {
+    const id = await addLogEntry({
+      type: 'observation',
+      date: '2026-06-24',
+      description: 'feuilles jaunes',
+      sourcePhrase: 'Les tomates ont des feuilles jaunes',
+    })
+    const [before] = await listLog()
+    await db.log.update(id, { weather: { capturedAt: 1, source: 'open-meteo', tempC: 30 } })
+
+    await updateLogEntry(id, { type: 'observation', date: '2026-06-24', description: 'feuilles tachées' })
+
+    const [after] = await listLog()
+    expect(after.description).toBe('feuilles tachées')
+    expect(after.createdAt).toBe(before.createdAt)
+    expect(after.sourcePhrase).toBe('Les tomates ont des feuilles jaunes')
+    expect(after.weather?.tempC).toBe(30)
   })
 })

@@ -6,6 +6,12 @@ import { db, newId } from '../data/db'
 import { addLogEntry } from '../services/logService'
 import { JournalPage } from './JournalPage'
 
+const mockNavigate = vi.fn()
+vi.mock('react-router-dom', async () => {
+  const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom')
+  return { ...actual, useNavigate: () => mockNavigate }
+})
+
 vi.mock('../services/weatherService', () => ({
   fetchDailyHistory: vi.fn(async () => [
     { date: '2026-06-23', tempMaxC: 43.3, tempMinC: 26.1, rainMm: 0 },
@@ -25,6 +31,7 @@ vi.mock('../services/geminiService', () => ({
 
 beforeEach(async () => {
   await Promise.all(db.tables.map((t) => t.clear()))
+  mockNavigate.mockClear()
 })
 
 function renderJournal() {
@@ -85,6 +92,20 @@ describe('JournalPage', () => {
 
     await waitFor(() => expect(screen.queryByText('30 L')).not.toBeInTheDocument())
     expect(screen.getByText('2 kg')).toBeInTheDocument()
+  })
+
+  it('Modifier navigue vers /ajouter avec l entree a editer dans le state', async () => {
+    await addLogEntry({ type: 'arrosage', date: '2026-06-24', volumeLiters: 30 })
+    renderJournal()
+    await waitFor(() => expect(screen.getByText('30 L')).toBeInTheDocument())
+
+    const user = userEvent.setup()
+    const item = screen.getByText('30 L').closest('li') as HTMLElement
+    await user.click(within(item).getByRole('button', { name: 'Modifier cette entrée' }))
+
+    expect(mockNavigate).toHaveBeenCalledWith('/ajouter', {
+      state: { editEntry: expect.objectContaining({ type: 'arrosage', volumeLiters: 30 }) },
+    })
   })
 
   it('la recherche restreint la liste affichée', async () => {

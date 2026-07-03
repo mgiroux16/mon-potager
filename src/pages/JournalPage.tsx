@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { Link } from 'react-router-dom'
-import { NotebookPen, Trash2 } from 'lucide-react'
+import { Link, useNavigate } from 'react-router-dom'
+import { NotebookPen, Pencil, Trash2 } from 'lucide-react'
 import { db } from '../data/db'
 import { softDelete } from '../data/syncHooks'
 import { listLog } from '../services/logService'
@@ -136,6 +136,7 @@ function DiagnoseButton({
 }
 
 export function JournalPage() {
+  const navigate = useNavigate()
   const entries = useLiveQuery(() => listLog(), [], [])
   const parcels = useLiveQuery(() => db.parcels.toArray(), [], [])
   const crops = useLiveQuery(() => db.crops.toArray(), [], [])
@@ -211,6 +212,10 @@ export function JournalPage() {
     await softDelete('log', entry.id as string)
   }
 
+  function handleEdit(entry: GardenLogEntry) {
+    navigate('/ajouter', { state: { editEntry: entry } })
+  }
+
   return (
     <section className="flex flex-col gap-4">
       <h1 className="text-xl font-semibold text-green-950">Journal</h1>
@@ -280,14 +285,24 @@ export function JournalPage() {
                     {formatSnapshotTemp(entry.weather)}
                   </span>
                 )}
-                <button
-                  type="button"
-                  onClick={() => handleDelete(entry)}
-                  aria-label="Supprimer cette entrée"
-                  className="rounded p-1 text-green-700/40 hover:bg-red-50 hover:text-red-600"
-                >
-                  <Trash2 className="size-4" />
-                </button>
+                <div className="flex gap-1">
+                  <button
+                    type="button"
+                    onClick={() => handleEdit(entry)}
+                    aria-label="Modifier cette entrée"
+                    className="rounded p-1 text-green-700/40 hover:bg-green-50 hover:text-green-700"
+                  >
+                    <Pencil className="size-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(entry)}
+                    aria-label="Supprimer cette entrée"
+                    className="rounded p-1 text-green-700/40 hover:bg-red-50 hover:text-red-600"
+                  >
+                    <Trash2 className="size-4" />
+                  </button>
+                </div>
               </div>
             </li>
           )
