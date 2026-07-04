@@ -65,6 +65,29 @@ export async function dedupeGardenData(): Promise<DedupeSummary> {
     db.diagnostics.toArray(),
   ])
 
+  // DEBUG TEMPORAIRE (diagnostic doublons non detectes) : a retirer une fois la
+  // cause confirmee. Log le nom brut (JSON.stringify pour reveler espaces/caracteres
+  // invisibles), sa forme NFC, et la cle de regroupement calculee.
+  for (const [label, items] of [
+    ['parcelles', parcels],
+    ['cultures', crops],
+  ] as const) {
+    console.group(`[dedupe][debug] ${label}`)
+    for (const item of items) {
+      const raw = (item as { name?: string }).name ?? ''
+      console.log({
+        id: (item as { id?: string }).id,
+        raw,
+        rawJSON: JSON.stringify(raw),
+        rawLength: raw.length,
+        nfc: raw.normalize('NFC'),
+        nfcEqualsRaw: raw.normalize('NFC') === raw,
+        key: normalizeName(raw),
+      })
+    }
+    console.groupEnd()
+  }
+
   const parcelIdMap = planMerge(parcels as (Parcel & { id: string })[])
   const cropIdMap = planMerge(crops as (Crop & { id: string })[])
 
