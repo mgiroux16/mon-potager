@@ -66,16 +66,17 @@ export async function dedupeGardenData(): Promise<DedupeSummary> {
   ])
 
   // DEBUG TEMPORAIRE (diagnostic doublons non detectes) : a retirer une fois la
-  // cause confirmee. Log le nom brut (JSON.stringify pour reveler espaces/caracteres
-  // invisibles), sa forme NFC, et la cle de regroupement calculee.
+  // cause confirmee. console.table plutot que console.log(objet) : tout est deja
+  // deplie a l'affichage, pas besoin de cliquer sur chaque ligne. Colonne "raw" tronquee
+  // par Chrome si trop longue : rawJSON reste la reference fiable (espaces/caracteres
+  // invisibles visibles), la longueur de rawJSON revele tout ecart meme invisible a l'oeil.
   for (const [label, items] of [
     ['parcelles', parcels],
     ['cultures', crops],
   ] as const) {
-    console.group(`[dedupe][debug] ${label}`)
-    for (const item of items) {
+    const rows = items.map((item) => {
       const raw = (item as { name?: string }).name ?? ''
-      console.log({
+      return {
         id: (item as { id?: string }).id,
         raw,
         rawJSON: JSON.stringify(raw),
@@ -83,9 +84,10 @@ export async function dedupeGardenData(): Promise<DedupeSummary> {
         nfc: raw.normalize('NFC'),
         nfcEqualsRaw: raw.normalize('NFC') === raw,
         key: normalizeName(raw),
-      })
-    }
-    console.groupEnd()
+      }
+    })
+    console.log(`[dedupe][debug] ${label}`)
+    console.table(rows)
   }
 
   const parcelIdMap = planMerge(parcels as (Parcel & { id: string })[])
