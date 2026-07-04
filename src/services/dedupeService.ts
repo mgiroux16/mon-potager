@@ -66,28 +66,34 @@ export async function dedupeGardenData(): Promise<DedupeSummary> {
   ])
 
   // DEBUG TEMPORAIRE (diagnostic doublons non detectes) : a retirer une fois la
-  // cause confirmee. console.table plutot que console.log(objet) : tout est deja
-  // deplie a l'affichage, pas besoin de cliquer sur chaque ligne. Colonne "raw" tronquee
-  // par Chrome si trop longue : rawJSON reste la reference fiable (espaces/caracteres
-  // invisibles visibles), la longueur de rawJSON revele tout ecart meme invisible a l'oeil.
+  // cause confirmee. Reproduit exactement le regroupement de planMerge (meme
+  // normalizeName) et n'affiche QUE les groupes de 2+ : console.log ligne par ligne
+  // en JSON.stringify (jamais tronque par une colonne de table, contrairement a
+  // console.table) pour voir si les noms qui semblent identiques a l'ecran le sont
+  // vraiment caractere pour caractere.
   for (const [label, items] of [
     ['parcelles', parcels],
     ['cultures', crops],
   ] as const) {
-    const rows = items.map((item) => {
-      const raw = (item as { name?: string }).name ?? ''
-      return {
-        id: (item as { id?: string }).id,
-        raw,
-        rawJSON: JSON.stringify(raw),
-        rawLength: raw.length,
-        nfc: raw.normalize('NFC'),
-        nfcEqualsRaw: raw.normalize('NFC') === raw,
-        key: normalizeName(raw),
+    const groups = new Map<string, { id?: string; name?: string }[]>()
+    for (const item of items) {
+      const it = item as { id?: string; name?: string }
+      if (it.id == null) continue
+      const key = normalizeName(it.name ?? '')
+      const list = groups.get(key) ?? []
+      list.push(it)
+      groups.set(key, list)
+    }
+    const dupGroups = [...groups.entries()].filter(([, list]) => list.length > 1)
+    console.log(
+      `[dedupe][debug] ${label} : ${items.length} lignes, ${groups.size} cles distinctes, ${dupGroups.length} groupe(s) en doublon`,
+    )
+    for (const [key, list] of dupGroups) {
+      console.log(`  groupe cle=${JSON.stringify(key)} (${list.length} membres)`)
+      for (const it of list) {
+        console.log(`    id=${it.id} name=${JSON.stringify(it.name)}`)
       }
-    })
-    console.log(`[dedupe][debug] ${label}`)
-    console.table(rows)
+    }
   }
 
   const parcelIdMap = planMerge(parcels as (Parcel & { id: string })[])
