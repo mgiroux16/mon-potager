@@ -63,8 +63,15 @@ export default defineConfig({
         // Le HTML n'est plus précaché : il est servi par la route NetworkFirst
         // ci-dessous pour toujours charger la dernière version quand le réseau est là.
         globPatterns: ['**/*.{js,css,svg,png,ico}'],
+        // Désactive le fallback de navigation par défaut de vite-plugin-pwa
+        // (navigateFallback: 'index.html' → createHandlerBoundToURL('index.html')).
+        // index.html n'étant plus précaché, ce handler levait `non-precached-url`.
+        // La navigation passe entièrement par la route NetworkFirst ci-dessous.
+        navigateFallback: null,
         runtimeCaching: [
           {
+            // NetworkFirst : online → dernière version servie ; offline → repli sur
+            // la réponse HTML mise en cache lors d'un précédent chargement en ligne.
             urlPattern: ({ request }) => request.mode === 'navigate',
             handler: 'NetworkFirst',
             options: {
