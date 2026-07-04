@@ -82,8 +82,34 @@ describe('AuthGate', () => {
     expect(setSyncUid).toHaveBeenCalledWith('abc')
     expect(purgeOldTombstones).toHaveBeenCalled()
     await waitFor(() => expect(runInitialSync).toHaveBeenCalledWith('abc'))
-    await waitFor(() => expect(dedupeReferenceTables).toHaveBeenCalled())
     await waitFor(() => expect(startRealtimeSync).toHaveBeenCalledWith('abc'))
+    // Le dedoublonnage n'est plus dans la chaine auto (bouton manuel seulement).
+    expect(dedupeReferenceTables).not.toHaveBeenCalled()
+  })
+
+  it('ne relance pas la chaine si onAuthStateChanged ré-émet le meme uid', async () => {
+    let emit: (user: User | null) => void = () => {}
+    mockOnAuthChange.mockImplementation((cb: (user: User | null) => void) => {
+      emit = cb
+      return () => {}
+    })
+    render(
+      <AuthGate>
+        <div>Contenu protege</div>
+      </AuthGate>,
+    )
+    // Premiere emission : demarre la synchro.
+    emit({ uid: 'abc', email: 'a@b.com' } as User)
+    await waitFor(() => expect(runInitialSync).toHaveBeenCalledWith('abc'))
+
+    // Refresh de token : nouvel objet User, meme uid. Ne doit rien relancer.
+    emit({ uid: 'abc', email: 'a@b.com' } as User)
+    emit({ uid: 'abc', email: 'a@b.com' } as User)
+    await waitFor(() => expect(startRealtimeSync).toHaveBeenCalled())
+
+    expect(runInitialSync).toHaveBeenCalledTimes(1)
+    expect(purgeOldTombstones).toHaveBeenCalledTimes(1)
+    expect(startRealtimeSync).toHaveBeenCalledTimes(1)
   })
 
   it("arrete la synchro quand l'utilisateur se deconnecte", () => {
