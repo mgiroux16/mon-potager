@@ -7,6 +7,7 @@ import { signOutUser } from '../services/authService'
 import { getSyncStatus, resetSyncCursors, runInitialSync } from '../services/syncService'
 import type { SyncStatus } from '../services/syncService'
 import { auth } from '../data/firebase'
+import { fetchPublishedVersion, type PublishedVersion } from '../services/versionService'
 import { ExportButton } from '../components/ExportButton'
 import { ImportButton } from '../components/ImportButton'
 import { CsvExportPanel } from '../components/CsvExportPanel'
@@ -51,9 +52,11 @@ export function SettingsPage() {
   const [saved, setSaved] = useState(false)
   const [test, setTest] = useState<TestState>({ status: 'idle' })
   const [resyncState, setResyncState] = useState<'idle' | 'syncing' | 'done' | 'erreur'>('idle')
+  const [published, setPublished] = useState<PublishedVersion | null>(null)
 
   useEffect(() => {
     void getSettings().then(setSettings)
+    void fetchPublishedVersion().then(setPublished)
   }, [])
 
   if (!settings) {
@@ -270,7 +273,15 @@ export function SettingsPage() {
       </section>
 
       <p className="text-xs text-green-600">
-        Version {__APP_BUILD_HASH__} · {new Date(__APP_BUILD_TIME__).toLocaleString('fr-FR')}
+        Version installée : {__APP_BUILD_HASH__} ·{' '}
+        {new Date(__APP_BUILD_TIME__).toLocaleString('fr-FR')}
+        {published !== null && (
+          <>
+            <br />
+            Dernière publiée : {published.hash}
+            {published.hash === __APP_BUILD_HASH__ ? ' · à jour ✓' : ' · mise à jour disponible'}
+          </>
+        )}
       </p>
     </form>
   )

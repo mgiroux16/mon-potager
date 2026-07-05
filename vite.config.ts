@@ -1,5 +1,7 @@
 import { execSync } from 'node:child_process'
-import { defineConfig } from 'vite'
+import { mkdirSync, writeFileSync } from 'node:fs'
+import { resolve } from 'node:path'
+import { defineConfig, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { VitePWA } from 'vite-plugin-pwa'
@@ -19,6 +21,27 @@ function gitShortHash(): string {
   }
 }
 
+// Écrit version.json à la racine du build : la référence « dernière version publiée »,
+// lue par UpdateBanner et Réglages avec cache: no-store. Volontairement hors des
+// globPatterns du service worker (pas un .js/.css/...) pour ne jamais être caché.
+function versionJson(): Plugin {
+  let outDir = 'dist'
+  return {
+    name: 'version-json',
+    apply: 'build',
+    configResolved(config) {
+      outDir = config.build.outDir
+    },
+    closeBundle() {
+      mkdirSync(outDir, { recursive: true })
+      writeFileSync(
+        resolve(outDir, 'version.json'),
+        JSON.stringify({ hash: gitShortHash(), builtAt: new Date().toISOString() }),
+      )
+    },
+  }
+}
+
 // https://vite.dev/config/
 export default defineConfig({
   // Servi depuis un sous-dossier sur GitHub Pages (https://mgiroux16.github.io/mon-potager/).
@@ -32,6 +55,7 @@ export default defineConfig({
     ...httpsForPhone,
     react(),
     tailwindcss(),
+    versionJson(),
     VitePWA({
       registerType: 'autoUpdate',
       // Enregistrement piloté à la main (src/registerServiceWorker.ts) pour brancher

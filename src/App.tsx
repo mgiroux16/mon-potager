@@ -1,5 +1,6 @@
 import { HashRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { AuthGate } from './components/AuthGate'
+import { UpdateBanner } from './components/UpdateBanner'
 import { Layout } from './components/Layout'
 import { DashboardPage } from './pages/DashboardPage'
 import { JournalPage } from './pages/JournalPage'
@@ -22,7 +23,10 @@ import { ReconciliationDevPage } from './pages/ReconciliationDevPage'
 
 function App() {
   return (
-    <AuthGate>
+    <>
+      {/* Hors AuthGate : la mise à jour doit être proposée même sur l'écran de connexion. */}
+      <UpdateBanner />
+      <AuthGate>
       <HashRouter>
         <Routes>
           <Route element={<Layout />}>
@@ -77,7 +81,8 @@ function App() {
           </Route>
         </Routes>
       </HashRouter>
-    </AuthGate>
+      </AuthGate>
+    </>
   )
 }
 
