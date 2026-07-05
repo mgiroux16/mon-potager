@@ -8,6 +8,7 @@ import { getSyncStatus, resetSyncCursors, runInitialSync } from '../services/syn
 import type { SyncStatus } from '../services/syncService'
 import { auth } from '../data/firebase'
 import { fetchPublishedVersion, type PublishedVersion } from '../services/versionService'
+import { isTripped, resetWriteGuard, sessionWriteCount } from '../data/writeGuard'
 import { ExportButton } from '../components/ExportButton'
 import { ImportButton } from '../components/ImportButton'
 import { CsvExportPanel } from '../components/CsvExportPanel'
@@ -53,6 +54,7 @@ export function SettingsPage() {
   const [test, setTest] = useState<TestState>({ status: 'idle' })
   const [resyncState, setResyncState] = useState<'idle' | 'syncing' | 'done' | 'erreur'>('idle')
   const [published, setPublished] = useState<PublishedVersion | null>(null)
+  const [guardTripped, setGuardTripped] = useState(() => isTripped())
 
   useEffect(() => {
     void getSettings().then(setSettings)
@@ -249,6 +251,28 @@ export function SettingsPage() {
           <p className="text-sm text-green-700">{auth.currentUser.email}</p>
         )}
         <SyncStatusIndicator />
+        {guardTripped ? (
+          <>
+            <p className="text-sm text-red-600">
+              Synchronisation suspendue : trop d'écritures aujourd'hui (protection du quota).
+              Elle reprendra demain.
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                resetWriteGuard()
+                setGuardTripped(false)
+              }}
+              className="rounded-lg border border-red-300 px-4 py-2 text-sm font-medium text-red-700"
+            >
+              Réactiver maintenant
+            </button>
+          </>
+        ) : (
+          <p className="text-xs text-green-600">
+            Écritures cloud cette session : {sessionWriteCount()}
+          </p>
+        )}
         <button
           type="button"
           onClick={() => void handleResync()}

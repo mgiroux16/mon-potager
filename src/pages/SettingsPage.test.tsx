@@ -18,6 +18,7 @@ import { getSyncStatus } from '../services/syncService'
 beforeEach(async () => {
   await Promise.all(db.tables.map((t) => t.clear()))
   vi.clearAllMocks()
+  localStorage.removeItem('writeGuard:trippedOn')
 })
 
 describe('SettingsPage', () => {
@@ -108,5 +109,28 @@ describe('SettingsPage', () => {
     vi.mocked(getSyncStatus).mockReturnValue('error')
     render(<SettingsPage />)
     await waitFor(() => expect(screen.getByText('Erreur de synchronisation')).toBeInTheDocument())
+  })
+
+  it('affiche la suspension quota et rearme via le bouton quand le disjoncteur est declenche', async () => {
+    localStorage.setItem('writeGuard:trippedOn', new Date().toISOString().slice(0, 10))
+    render(<SettingsPage />)
+    await waitFor(() =>
+      expect(screen.getByText(/Synchronisation suspendue/)).toBeInTheDocument(),
+    )
+
+    const user = userEvent.setup()
+    await user.click(screen.getByRole('button', { name: 'Réactiver maintenant' }))
+
+    expect(screen.queryByText(/Synchronisation suspendue/)).not.toBeInTheDocument()
+    expect(localStorage.getItem('writeGuard:trippedOn')).toBeNull()
+    expect(screen.getByText(/Écritures cloud cette session/)).toBeInTheDocument()
+  })
+
+  it("affiche le compteur d'ecritures quand le disjoncteur est au repos", async () => {
+    render(<SettingsPage />)
+    await waitFor(() =>
+      expect(screen.getByText(/Écritures cloud cette session : \d+/)).toBeInTheDocument(),
+    )
+    expect(screen.queryByText(/Synchronisation suspendue/)).not.toBeInTheDocument()
   })
 })

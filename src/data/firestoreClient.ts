@@ -11,9 +11,21 @@ import {
 } from 'firebase/firestore'
 import { firestore } from './firebase'
 import type { TableName } from './syncHooks'
+import { canWrite, registerWrites } from './writeGuard'
 
 export function tableCollectionPath(uid: string, table: TableName): string {
   return `users/${uid}/${table}`
+}
+
+// Ecriture brute, sans disjoncteur : reservee au repli de pushRecords (les
+// ecritures du lot sont deja comptees, un repli ne doit pas double-compter).
+async function pushRecordRaw(
+  uid: string,
+  table: TableName,
+  id: string,
+  data: Record<string, unknown>,
+): Promise<void> {
+  await setDoc(doc(firestore, tableCollectionPath(uid, table), id), data, { merge: true })
 }
 
 export async function pushRecord(
@@ -22,7 +34,9 @@ export async function pushRecord(
   id: string,
   data: Record<string, unknown>,
 ): Promise<void> {
-  await setDoc(doc(firestore, tableCollectionPath(uid, table), id), data, { merge: true })
+  if (!canWrite()) return
+  registerWrites(1)
+  await pushRecordRaw(uid, table, id, data)
 }
 
 const BATCH_SIZE = 500
@@ -32,7 +46,11 @@ export async function pushRecords(
   table: TableName,
   items: { id: string; data: Record<string, unknown> }[],
 ): Promise<void> {
+  if (!canWrite()) return
   if (items.length === 0) return
+  // On compte AVANT l'envoi, volontairement : une ecriture partie vers la file
+  // du SDK est une ecriture engagee, meme si le batch echoue ensuite.
+  registerWrites(items.length)
   for (let i = 0; i < items.length; i += BATCH_SIZE) {
     const chunk = items.slice(i, i + BATCH_SIZE)
     const batch = writeBatch(firestore)
@@ -45,7 +63,7 @@ export async function pushRecords(
       // Batch failed (ex : doc > 1 Mo) : retomber sur les pushes individuels
       for (const { id, data } of chunk) {
         try {
-          await pushRecord(uid, table, id, data)
+          await pushRecordRaw(uid, table, id, data)
         } catch (err) {
           console.error(`[sync] enregistrement ignore ${table}/${id}`, err)
         }
