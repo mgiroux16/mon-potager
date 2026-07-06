@@ -1,7 +1,20 @@
-import { describe, it, expect, beforeEach } from 'vitest'
-import { db } from '../data/db'
-import { getCropNote, getParcelNote, setCropNote, setParcelNote, getTreeNote, setTreeNote } from './seasonNotesService'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import type { SeasonNote } from '../data/model'
+
+const cloudPutMock = vi.fn()
+const cloudAddMock = vi.fn(() => 'new-id')
+const cloudDeleteMock = vi.fn()
+vi.mock('../data/firestoreWrites', () => ({
+  cloudPut: (...args: unknown[]) => cloudPutMock(...args),
+  cloudAdd: (...args: unknown[]) => cloudAddMock(...args),
+  cloudDelete: (...args: unknown[]) => cloudDeleteMock(...args),
+}))
+
+import { getCropNote, getParcelNote, setCropNote, setParcelNote, getTreeNote, setTreeNote } from './seasonNotesService'
+
+beforeEach(() => {
+  vi.clearAllMocks()
+})
 
 describe('getCropNote', () => {
   it('retourne le texte de la note correspondant à la culture et l année', () => {
@@ -34,54 +47,50 @@ describe('getParcelNote', () => {
   })
 })
 
-beforeEach(async () => {
-  await db.seasonNotes.clear()
-})
-
 describe('setCropNote', () => {
-  it('crée une nouvelle note si aucune n existe pour cette culture et cette année', async () => {
-    await setCropNote('5', 2026, 'Trop dense, espacer davantage')
-    const rows = await db.seasonNotes.toArray()
-    expect(rows).toHaveLength(1)
-    expect(rows[0]).toMatchObject({ cropId: '5', year: 2026, text: 'Trop dense, espacer davantage' })
+  it('crée une nouvelle note si aucune n existe pour cette culture et cette année', () => {
+    setCropNote([], '5', 2026, 'Trop dense, espacer davantage')
+    expect(cloudAddMock).toHaveBeenCalledWith('seasonNotes', {
+      cropId: '5',
+      year: 2026,
+      text: 'Trop dense, espacer davantage',
+    })
   })
 
-  it('met à jour la note existante au lieu d en créer une seconde', async () => {
-    await setCropNote('5', 2026, 'premier texte')
-    await setCropNote('5', 2026, 'texte corrigé')
-    const rows = await db.seasonNotes.toArray()
-    expect(rows).toHaveLength(1)
-    expect(rows[0].text).toBe('texte corrigé')
+  it('met à jour la note existante au lieu d en créer une seconde', () => {
+    const notes: SeasonNote[] = [{ id: 'n1', cropId: '5', year: 2026, text: 'premier texte' }]
+    setCropNote(notes, '5', 2026, 'texte corrigé')
+    expect(cloudPutMock).toHaveBeenCalledWith('seasonNotes', 'n1', { text: 'texte corrigé' })
+    expect(cloudAddMock).not.toHaveBeenCalled()
   })
 
-  it('supprime la note existante si le texte devient vide', async () => {
-    await setCropNote('5', 2026, 'un texte')
-    await setCropNote('5', 2026, '')
-    const rows = await db.seasonNotes.toArray()
-    expect(rows).toHaveLength(0)
+  it('supprime la note existante si le texte devient vide', () => {
+    const notes: SeasonNote[] = [{ id: 'n1', cropId: '5', year: 2026, text: 'un texte' }]
+    setCropNote(notes, '5', 2026, '')
+    expect(cloudDeleteMock).toHaveBeenCalledWith('seasonNotes', 'n1')
   })
 
-  it('ne crée rien si le texte est vide et qu aucune note n existait', async () => {
-    await setCropNote('5', 2026, '')
-    const rows = await db.seasonNotes.toArray()
-    expect(rows).toHaveLength(0)
+  it('ne crée rien si le texte est vide et qu aucune note n existait', () => {
+    setCropNote([], '5', 2026, '')
+    expect(cloudAddMock).not.toHaveBeenCalled()
+    expect(cloudPutMock).not.toHaveBeenCalled()
   })
 })
 
 describe('setParcelNote', () => {
-  it('crée une nouvelle note si aucune n existe pour cette parcelle et cette année', async () => {
-    await setParcelNote('2', 2026, 'Sécheresse en juillet')
-    const rows = await db.seasonNotes.toArray()
-    expect(rows).toHaveLength(1)
-    expect(rows[0]).toMatchObject({ parcelId: '2', year: 2026, text: 'Sécheresse en juillet' })
+  it('crée une nouvelle note si aucune n existe pour cette parcelle et cette année', () => {
+    setParcelNote([], '2', 2026, 'Sécheresse en juillet')
+    expect(cloudAddMock).toHaveBeenCalledWith('seasonNotes', {
+      parcelId: '2',
+      year: 2026,
+      text: 'Sécheresse en juillet',
+    })
   })
 
-  it('met à jour la note existante au lieu d en créer une seconde', async () => {
-    await setParcelNote('2', 2026, 'premier texte')
-    await setParcelNote('2', 2026, 'texte corrigé')
-    const rows = await db.seasonNotes.toArray()
-    expect(rows).toHaveLength(1)
-    expect(rows[0].text).toBe('texte corrigé')
+  it('met à jour la note existante au lieu d en créer une seconde', () => {
+    const notes: SeasonNote[] = [{ id: 'n1', parcelId: '2', year: 2026, text: 'premier texte' }]
+    setParcelNote(notes, '2', 2026, 'texte corrigé')
+    expect(cloudPutMock).toHaveBeenCalledWith('seasonNotes', 'n1', { text: 'texte corrigé' })
   })
 })
 
@@ -97,17 +106,18 @@ describe('getTreeNote', () => {
 })
 
 describe('setTreeNote', () => {
-  it('cree une note pour l arbre et l annee donnes', async () => {
-    await setTreeNote('tree1', 2026, 'fruits abimes par la grele')
-    const notes = await db.seasonNotes.toArray()
-    expect(notes).toHaveLength(1)
-    expect(notes[0]).toMatchObject({ treeId: 'tree1', year: 2026, text: 'fruits abimes par la grele' })
+  it('cree une note pour l arbre et l annee donnes', () => {
+    setTreeNote([], 'tree1', 2026, 'fruits abimes par la grele')
+    expect(cloudAddMock).toHaveBeenCalledWith('seasonNotes', {
+      treeId: 'tree1',
+      year: 2026,
+      text: 'fruits abimes par la grele',
+    })
   })
 
-  it('supprime la note si le texte redevient vide', async () => {
-    await setTreeNote('tree1', 2026, 'note')
-    await setTreeNote('tree1', 2026, '   ')
-    const notes = await db.seasonNotes.toArray()
-    expect(notes).toHaveLength(0)
+  it('supprime la note si le texte redevient vide', () => {
+    const notes: SeasonNote[] = [{ id: 'n1', treeId: 'tree1', year: 2026, text: 'note' }]
+    setTreeNote(notes, 'tree1', 2026, '   ')
+    expect(cloudDeleteMock).toHaveBeenCalledWith('seasonNotes', 'n1')
   })
 })

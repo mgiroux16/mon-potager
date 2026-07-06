@@ -1,7 +1,5 @@
 import { useState } from 'react'
 import { ChevronDown, ChevronUp, Trash2 } from 'lucide-react'
-import { useLiveQuery } from 'dexie-react-hooks'
-import { db } from '../data/db'
 import { cloudDelete, cloudPut } from '../data/firestoreWrites'
 import { useCollection } from '../data/firestoreHooks'
 import type { FruitTree, GardenLogEntry, Parcel, SeasonNote, WaterNeed } from '../data/model'
@@ -21,7 +19,7 @@ const WATER_NEED_LABELS: Record<WaterNeed, string> = {
 export function TreeCard({ tree }: TreeCardProps) {
   const { data: parcels } = useCollection<Parcel>('parcels')
   const { data: log } = useCollection<GardenLogEntry>('log')
-  const seasonNotes = useLiveQuery(() => db.seasonNotes.toArray(), [], [])
+  const { data: seasonNotes } = useCollection<SeasonNote>('seasonNotes')
 
   const [renaming, setRenaming] = useState(false)
   const [name, setName] = useState(tree.name)
@@ -32,12 +30,12 @@ export function TreeCard({ tree }: TreeCardProps) {
   const [expanded, setExpanded] = useState(false)
   const currentYear = new Date().getFullYear()
   const [qualityYear, setQualityYear] = useState(currentYear)
-  const qualityNote = getTreeNote(seasonNotes as SeasonNote[], tree.id ?? '', qualityYear)
+  const qualityNote = getTreeNote(seasonNotes, tree.id ?? '', qualityYear)
   const [qualityText, setQualityText] = useState(qualityNote)
 
-  async function saveQualityNote() {
+  function saveQualityNote() {
     if (tree.id == null) return
-    await setTreeNote(tree.id, qualityYear, qualityText)
+    setTreeNote(seasonNotes, tree.id, qualityYear, qualityText)
   }
 
   async function saveName() {
@@ -258,7 +256,7 @@ export function TreeCard({ tree }: TreeCardProps) {
                 onChange={(e) => {
                   const year = Number(e.target.value)
                   setQualityYear(year)
-                  setQualityText(getTreeNote(seasonNotes as SeasonNote[], tree.id ?? '', year))
+                  setQualityText(getTreeNote(seasonNotes, tree.id ?? '', year))
                 }}
                 className="rounded border border-green-300 bg-white px-1 text-sm"
               >

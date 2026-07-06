@@ -9,16 +9,10 @@ import { fetchAllRecords, pushRecords } from './firestoreClient'
 // verite affichee partout, ceci ne fait que garantir que Firestore contient une copie
 // complete du local avant de lui faire confiance.
 
-// Miroir de TABLE_NAMES (src/data/syncHooks.ts). Duplique ici plutot qu'exporte depuis
-// syncHooks.ts : hors perimetre de cette etape, qui ne touche pas au sync maison. A tenir
-// a jour si une table rejoint/quitte la synchro. auditLog est volontairement absente : elle
-// n'est pas synchronisee (voir syncHooks.ts).
-export const SYNCED_TABLES: TableName[] = [
-  'expenses',
-  'soil',
-  'seasonNotes',
-  'diagnostics',
-]
+// Toutes les tables sont passees en cloud-first : plus aucune n'est synchronisee via
+// la couche maison (voir syncService.ts TABLE_NAMES). Page /dev/reconciliation devenue
+// inerte jusqu'a son demontage (Lot 5).
+export const SYNCED_TABLES: TableName[] = []
 
 type Row = Record<string, unknown> & { id: string }
 

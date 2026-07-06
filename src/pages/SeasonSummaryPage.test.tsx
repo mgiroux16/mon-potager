@@ -1,16 +1,18 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
-import { db, newId } from '../data/db'
+import { newId } from '../data/db'
 import { setCollectionData, getCollectionData, clearCollectionData } from '../test/firestoreHooksMock'
 import { SeasonSummaryPage } from './SeasonSummaryPage'
 
 vi.mock('../data/firestoreHooks', async () => {
   return (await import('../test/firestoreHooksMock')).firestoreHooksMock
 })
+vi.mock('../data/firestoreWrites', async () => {
+  return (await import('../test/firestoreHooksMock')).firestoreWritesMock
+})
 
-beforeEach(async () => {
-  await Promise.all(db.tables.map((t) => t.clear()))
+beforeEach(() => {
   clearCollectionData()
 })
 
@@ -82,8 +84,8 @@ describe('SeasonSummaryPage', () => {
     fireEvent.change(parcelNoteField, { target: { value: 'Sécheresse en juillet' } })
     fireEvent.blur(parcelNoteField)
 
-    await waitFor(async () => {
-      const rows = await db.seasonNotes.toArray()
+    await waitFor(() => {
+      const rows = getCollectionData('seasonNotes')
       expect(rows).toHaveLength(2)
       expect(rows.find((r) => r.cropId === cropId)?.text).toBe('Espacer davantage les plants')
       expect(rows.find((r) => r.parcelId === parcelId)?.text).toBe('Sécheresse en juillet')

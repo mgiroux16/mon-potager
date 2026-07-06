@@ -1,4 +1,4 @@
-import { db, newId } from '../data/db'
+import { cloudAdd, cloudGetAll, cloudPut } from '../data/firestoreWrites'
 import type { Diagnostic, DiagnosticHypothesis, GardenLogEntry, HypothesisConfidence } from '../data/model'
 
 const VALID_CONFIDENCES: HypothesisConfidence[] = ['faible', 'moyen', 'eleve']
@@ -121,6 +121,11 @@ export interface CreateDiagnosticInput {
   hypotheses: DiagnosticHypothesis[]
 }
 
+export async function getDiagnosticForEntry(problemEntryId: string): Promise<Diagnostic | undefined> {
+  const rows = (await cloudGetAll('diagnostics')) as unknown as Diagnostic[]
+  return rows.find((d) => d.problemEntryId === problemEntryId)
+}
+
 /**
  * Cree un Diagnostic ouvert pour une entree probleme, sauf s il en existe deja un : un seul
  * diagnostic par entree probleme (voir spec section 4).
@@ -129,9 +134,7 @@ export async function createDiagnostic(input: CreateDiagnosticInput): Promise<st
   const existing = await getDiagnosticForEntry(input.problemEntryId)
   if (existing) return existing.id as string
 
-  const id = newId()
-  const diagnostic: Diagnostic = {
-    id,
+  return cloudAdd('diagnostics', {
     problemEntryId: input.problemEntryId,
     cropId: input.cropId,
     parcelId: input.parcelId,
@@ -139,13 +142,7 @@ export async function createDiagnostic(input: CreateDiagnosticInput): Promise<st
     createdAt: Date.now(),
     hypotheses: input.hypotheses,
     status: 'ouvert',
-  }
-  await db.diagnostics.add(diagnostic)
-  return id
-}
-
-export async function getDiagnosticForEntry(problemEntryId: string): Promise<Diagnostic | undefined> {
-  return db.diagnostics.toCollection().filter((d) => d.problemEntryId === problemEntryId).first()
+  })
 }
 
 export interface DiagnosticOutcome {
@@ -159,9 +156,9 @@ export interface DiagnosticOutcome {
  * 'clos' des que resultat ET conclusion sont non vides (cf. spec section 4) ; reste 'ouvert'
  * sinon, y compris si l un des deux redevient vide apres une correction.
  */
-export async function updateDiagnosticOutcome(id: string, outcome: DiagnosticOutcome): Promise<void> {
+export function updateDiagnosticOutcome(id: string, outcome: DiagnosticOutcome): void {
   const closed = (outcome.result ?? '').trim() !== '' && (outcome.conclusion ?? '').trim() !== ''
-  await db.diagnostics.update(id, {
+  cloudPut('diagnostics', id, {
     chosenAction: outcome.chosenAction,
     result: outcome.result,
     conclusion: outcome.conclusion,

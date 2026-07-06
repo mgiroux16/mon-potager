@@ -1,8 +1,6 @@
 import { useState } from 'react'
-import { useLiveQuery } from 'dexie-react-hooks'
 import { Link } from 'react-router-dom'
 import { Euro } from 'lucide-react'
-import { db } from '../data/db'
 import { useSettings } from '../services/settingsService'
 import {
   summarizeCropSeason,
@@ -36,8 +34,8 @@ function CropNoteField({
 }) {
   const [value, setValue] = useState(getCropNote(notes, row.cropId, year))
 
-  async function save() {
-    await setCropNote(row.cropId, year, value)
+  function save() {
+    setCropNote(notes, row.cropId, year, value)
   }
 
   return (
@@ -66,8 +64,8 @@ function ParcelNoteField({
 }) {
   const [value, setValue] = useState(getParcelNote(notes, row.parcelId, year))
 
-  async function save() {
-    await setParcelNote(row.parcelId, year, value)
+  function save() {
+    setParcelNote(notes, row.parcelId, year, value)
   }
 
   return (
@@ -154,8 +152,8 @@ export function SeasonSummaryPage() {
   const { data: crops } = useCollection<Crop>('crops')
   const { data: varieties } = useCollection<Variety>('varieties')
   const { data: parcels } = useCollection<Parcel>('parcels')
-  const expenses = useLiveQuery(() => db.expenses.toArray(), [], [])
-  const notes = useLiveQuery(() => db.seasonNotes.toArray(), [], [])
+  const { data: expenses } = useCollection<Expense>('expenses')
+  const { data: notes } = useCollection<SeasonNote>('seasonNotes')
 
   if (!settings) {
     return <p className="text-sm text-green-700">Chargement…</p>

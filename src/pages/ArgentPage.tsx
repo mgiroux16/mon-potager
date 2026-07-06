@@ -1,7 +1,6 @@
 import { useState } from 'react'
-import { useLiveQuery } from 'dexie-react-hooks'
 import { Trash2 } from 'lucide-react'
-import { db } from '../data/db'
+import { cloudDelete } from '../data/firestoreWrites'
 import { useCollection } from '../data/firestoreHooks'
 import type { Crop, Expense, GardenLogEntry } from '../data/model'
 import { ExpenseForm } from '../components/ExpenseForm'
@@ -22,8 +21,8 @@ function formatEuros(value: number): string {
 }
 
 function ExpenseRow({ expense, children }: { expense: Expense; children?: React.ReactNode }) {
-  async function remove() {
-    if (expense.id) await db.expenses.delete(expense.id)
+  function remove() {
+    if (expense.id) cloudDelete('expenses', expense.id)
   }
   return (
     <li className="flex items-center justify-between gap-2 rounded-lg bg-indigo-50/50 px-3 py-2 text-sm">
@@ -51,18 +50,18 @@ export function ArgentPage() {
   const [year, setYear] = useState(currentYear)
   const [tab, setTab] = useState<Tab>('variables')
 
-  const expenses = useLiveQuery(() => db.expenses.toArray(), [], [])
+  const { data: expenses } = useCollection<Expense>('expenses')
   const { data: crops } = useCollection<Crop>('crops')
   const { data: log } = useCollection<GardenLogEntry>('log')
 
-  const harvestRows = summarizeHarvests(log ?? [], crops ?? [])
-  const yearExpenses = (expenses ?? []).filter((e) => e.date.startsWith(String(year)))
+  const harvestRows = summarizeHarvests(log, crops)
+  const yearExpenses = expenses.filter((e) => e.date.startsWith(String(year)))
 
   const fixes = yearExpenses.filter((e) => bucketOf(e) === 'fixe')
   const variables = yearExpenses.filter((e) => bucketOf(e) === 'variable')
   const amortissements = yearExpenses.filter((e) => bucketOf(e) === 'amortissement')
 
-  const summary = seasonExpenseSummary(expenses ?? [], year)
+  const summary = seasonExpenseSummary(expenses, year)
 
   const TABS: { id: Tab; label: string; count: number }[] = [
     { id: 'fixes', label: 'Fixes', count: fixes.length },
@@ -86,7 +85,7 @@ export function ArgentPage() {
         </select>
       </div>
 
-      <EconomicBalanceBanner expenses={expenses ?? []} harvestRows={harvestRows} year={year} />
+      <EconomicBalanceBanner expenses={expenses} harvestRows={harvestRows} year={year} />
 
       {/* Onglets */}
       <nav className="flex gap-1 border-b border-indigo-100">

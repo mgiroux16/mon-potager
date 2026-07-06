@@ -1,5 +1,4 @@
-import { db, newId } from '../data/db'
-import { softDelete } from '../data/syncHooks'
+import { cloudAdd, cloudDelete, cloudPut } from '../data/firestoreWrites'
 import type { SeasonNote } from '../data/model'
 
 export function getCropNote(notes: SeasonNote[], cropId: string, year: number): string {
@@ -14,47 +13,50 @@ export function getTreeNote(notes: SeasonNote[], treeId: string, year: number): 
   return notes.find((n) => n.treeId === treeId && n.year === year)?.text ?? ''
 }
 
-async function upsertNote(
+function upsertNote(
+  notes: SeasonNote[],
   match: (n: SeasonNote) => boolean,
   build: () => Omit<SeasonNote, 'id'>,
   text: string,
-): Promise<void> {
-  const all = await db.seasonNotes.toArray()
-  const existing = all.find(match)
+): void {
+  const existing = notes.find(match)
   const trimmed = text.trim()
 
   if (existing) {
     if (trimmed === '') {
-      await softDelete('seasonNotes', existing.id as string)
+      cloudDelete('seasonNotes', existing.id as string)
     } else {
-      await db.seasonNotes.update(existing.id as string, { text: trimmed })
+      cloudPut('seasonNotes', existing.id as string, { text: trimmed })
     }
     return
   }
 
   if (trimmed !== '') {
-    await db.seasonNotes.add({ ...build(), id: newId() })
+    cloudAdd('seasonNotes', build())
   }
 }
 
-export async function setCropNote(cropId: string, year: number, text: string): Promise<void> {
-  await upsertNote(
+export function setCropNote(notes: SeasonNote[], cropId: string, year: number, text: string): void {
+  upsertNote(
+    notes,
     (n) => n.cropId === cropId && n.year === year,
     () => ({ cropId, year, text: text.trim() }),
     text,
   )
 }
 
-export async function setParcelNote(parcelId: string, year: number, text: string): Promise<void> {
-  await upsertNote(
+export function setParcelNote(notes: SeasonNote[], parcelId: string, year: number, text: string): void {
+  upsertNote(
+    notes,
     (n) => n.parcelId === parcelId && n.year === year,
     () => ({ parcelId, year, text: text.trim() }),
     text,
   )
 }
 
-export async function setTreeNote(treeId: string, year: number, text: string): Promise<void> {
-  await upsertNote(
+export function setTreeNote(notes: SeasonNote[], treeId: string, year: number, text: string): void {
+  upsertNote(
+    notes,
     (n) => n.treeId === treeId && n.year === year,
     () => ({ treeId, year, text: text.trim() }),
     text,

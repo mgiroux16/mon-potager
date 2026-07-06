@@ -10,11 +10,10 @@ import {
 } from '../data/firestoreClient'
 import { resolveMerge } from './syncMerge'
 
-export const TABLE_NAMES: TableName[] = [
-  'expenses',
-  'soil',
-  'seasonNotes',
-]
+// Toutes les tables sont passees en cloud-first (lectures useCollection, ecritures
+// firestoreWrites) : plus rien a synchroniser via la couche maison. Le module est
+// laisse en place jusqu'a son demontage complet (Lot 5, voir docs/superpowers/plans/).
+export const TABLE_NAMES: TableName[] = []
 
 // Recouvrement pour absorber les décalages d'horloge entre appareils.
 // La requête incrémentale part de (cursor - buffer) au lieu de cursor.

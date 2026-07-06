@@ -1,16 +1,19 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import { db, newId } from '../data/db'
-import { setCollectionData, clearCollectionData } from '../test/firestoreHooksMock'
+import { setCollectionData, getCollectionData, clearCollectionData, firestoreWritesMock } from '../test/firestoreHooksMock'
 import { DiagnosticsPage } from './DiagnosticsPage'
 
 vi.mock('../data/firestoreHooks', async () => {
   return (await import('../test/firestoreHooksMock')).firestoreHooksMock
 })
+vi.mock('../data/firestoreWrites', async () => {
+  return (await import('../test/firestoreHooksMock')).firestoreWritesMock
+})
 
-beforeEach(async () => {
-  await Promise.all(db.tables.map((t) => t.clear()))
+beforeEach(() => {
   clearCollectionData()
+  vi.clearAllMocks()
+  void firestoreWritesMock
 })
 
 describe('DiagnosticsPage', () => {
@@ -23,13 +26,15 @@ describe('DiagnosticsPage', () => {
     setCollectionData('log', [
       { id: 'entry1', type: 'probleme', date: '2026-06-20', description: 'feuilles jaunes', createdAt: 1 },
     ])
-    await db.diagnostics.add({
-      id: newId(),
-      problemEntryId: 'entry1',
-      createdAt: 1,
-      hypotheses: [{ text: 'Stress hydrique', indices: 'Peu de pluie', confidence: 'eleve' }],
-      status: 'ouvert',
-    })
+    setCollectionData('diagnostics', [
+      {
+        id: 'd0',
+        problemEntryId: 'entry1',
+        createdAt: 1,
+        hypotheses: [{ text: 'Stress hydrique', indices: 'Peu de pluie', confidence: 'eleve' }],
+        status: 'ouvert',
+      },
+    ])
 
     render(<DiagnosticsPage />)
 
@@ -45,8 +50,8 @@ describe('DiagnosticsPage', () => {
     fireEvent.change(conclusionField, { target: { value: 'Arroser plus tot l an prochain' } })
     fireEvent.blur(conclusionField)
 
-    await waitFor(async () => {
-      const rows = await db.diagnostics.toArray()
+    await waitFor(() => {
+      const rows = getCollectionData('diagnostics')
       expect(rows[0].status).toBe('clos')
     })
   })
@@ -55,15 +60,17 @@ describe('DiagnosticsPage', () => {
     setCollectionData('log', [
       { id: 'p1', type: 'probleme', date: '2026-06-20', description: 'taches', createdAt: 1 },
     ])
-    await db.diagnostics.add({
-      id: 'd1',
-      problemEntryId: 'p1',
-      createdAt: 1,
-      status: 'ouvert',
-      hypotheses: [
-        { text: 'mildiou', indices: 'taches', confidence: 'moyen', suggestedTreatment: 'bouillie bordelaise' },
-      ],
-    })
+    setCollectionData('diagnostics', [
+      {
+        id: 'd1',
+        problemEntryId: 'p1',
+        createdAt: 1,
+        status: 'ouvert',
+        hypotheses: [
+          { text: 'mildiou', indices: 'taches', confidence: 'moyen', suggestedTreatment: 'bouillie bordelaise' },
+        ],
+      },
+    ])
     render(<DiagnosticsPage />)
     expect(await screen.findByText('bouillie bordelaise')).toBeInTheDocument()
   })
@@ -72,13 +79,15 @@ describe('DiagnosticsPage', () => {
     setCollectionData('log', [
       { id: 'p2', type: 'probleme', date: '2026-06-21', description: 'fletrissement', createdAt: 1 },
     ])
-    await db.diagnostics.add({
-      id: 'd2',
-      problemEntryId: 'p2',
-      createdAt: 1,
-      status: 'ouvert',
-      hypotheses: [{ text: 'manque d eau', indices: 'sol sec', confidence: 'faible' }],
-    })
+    setCollectionData('diagnostics', [
+      {
+        id: 'd2',
+        problemEntryId: 'p2',
+        createdAt: 1,
+        status: 'ouvert',
+        hypotheses: [{ text: 'manque d eau', indices: 'sol sec', confidence: 'faible' }],
+      },
+    ])
     render(<DiagnosticsPage />)
     expect(await screen.findByText('manque d eau')).toBeInTheDocument()
     expect(screen.queryByText('Traitement suggéré :')).not.toBeInTheDocument()

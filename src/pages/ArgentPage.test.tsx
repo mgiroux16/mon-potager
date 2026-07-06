@@ -1,10 +1,17 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen, waitFor, fireEvent } from '@testing-library/react'
-import { db, newId } from '../data/db'
+import { setCollectionData, clearCollectionData } from '../test/firestoreHooksMock'
 import { ArgentPage } from './ArgentPage'
 
-beforeEach(async () => {
-  await Promise.all(db.tables.map((t) => t.clear()))
+vi.mock('../data/firestoreHooks', async () => {
+  return (await import('../test/firestoreHooksMock')).firestoreHooksMock
+})
+vi.mock('../data/firestoreWrites', async () => {
+  return (await import('../test/firestoreHooksMock')).firestoreWritesMock
+})
+
+beforeEach(() => {
+  clearCollectionData()
 })
 
 const YEAR = new Date().getFullYear()
@@ -18,15 +25,17 @@ describe('ArgentPage', () => {
   })
 
   it('affiche une bâche durable à 16 €/an dans l’onglet Amortissements', async () => {
-    await db.expenses.add({
-      id: newId(),
-      label: 'Bâche',
-      amountEuros: 80,
-      date: `${YEAR}-04-01`,
-      amortization: 'durable',
-      lifespanYears: 5,
-      recurrence: 'ponctuelle',
-    })
+    setCollectionData('expenses', [
+      {
+        id: 'e1',
+        label: 'Bâche',
+        amountEuros: 80,
+        date: `${YEAR}-04-01`,
+        amortization: 'durable',
+        lifespanYears: 5,
+        recurrence: 'ponctuelle',
+      },
+    ])
 
     render(<ArgentPage />)
 

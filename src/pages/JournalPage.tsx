@@ -1,8 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useLiveQuery } from 'dexie-react-hooks'
 import { Link, useNavigate } from 'react-router-dom'
 import { NotebookPen, Pencil, Trash2 } from 'lucide-react'
-import { db } from '../data/db'
 import { useCollection } from '../data/firestoreHooks'
 import { cloudDelete } from '../data/firestoreWrites'
 import { sortLog } from '../services/logService'
@@ -147,8 +145,8 @@ export function JournalPage() {
   const [filter, setFilter] = useState<LogEntryType | 'tout'>('tout')
   const [query, setQuery] = useState('')
   const settings = useSettings()
-  const seasonNotes = useLiveQuery(() => db.seasonNotes.toArray(), [], [])
-  const diagnostics = useLiveQuery(() => db.diagnostics.toArray(), [], [])
+  const { data: seasonNotes } = useCollection<SeasonNote>('seasonNotes')
+  const { data: diagnostics } = useCollection<Diagnostic>('diagnostics')
   const [history, setHistory] = useState<DailyWeather[] | null>(null)
 
   useEffect(() => {

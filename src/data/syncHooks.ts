@@ -1,7 +1,7 @@
 import { db } from './db'
 import { pushRecord } from './firestoreClient'
 
-const TABLE_NAMES = [
+export const TABLE_NAMES = [
   'log',
   'parcels',
   'crops',

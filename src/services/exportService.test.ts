@@ -1,5 +1,27 @@
-import { describe, it, expect, beforeEach } from 'vitest'
-import { db, newId } from '../data/db'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { db } from '../data/db'
+import { TABLE_NAMES } from '../data/syncHooks'
+
+let store: Record<string, Record<string, unknown>[]> = {}
+const cloudGetAllMock = vi.fn(async (table: string) => store[table] ?? [])
+const cloudBatchWriteMock = vi.fn(async (ops: { type: string; table: string; id: string; data?: Record<string, unknown> }[]) => {
+  for (const op of ops) {
+    const rows = store[op.table] ?? []
+    if (op.type === 'delete') {
+      store[op.table] = rows.filter((r) => r.id !== op.id)
+    } else {
+      const exists = rows.some((r) => r.id === op.id)
+      store[op.table] = exists
+        ? rows.map((r) => (r.id === op.id ? { ...r, ...op.data } : r))
+        : [...rows, { id: op.id, ...op.data }]
+    }
+  }
+})
+vi.mock('../data/firestoreWrites', () => ({
+  cloudGetAll: (...args: [string]) => cloudGetAllMock(...args),
+  cloudBatchWrite: (...args: [unknown[]]) => cloudBatchWriteMock(...args),
+}))
+
 import {
   exportAll,
   exportCropsCsv,
@@ -10,8 +32,14 @@ import {
   logAudit,
 } from './exportService'
 
+function seed(table: string, rows: Record<string, unknown>[]): void {
+  store[table] = rows
+}
+
 beforeEach(async () => {
-  await Promise.all(db.tables.map((t) => t.clear()))
+  store = {}
+  vi.clearAllMocks()
+  await db.auditLog.clear()
 })
 
 function jsonFile(content: unknown): File {
@@ -20,17 +48,16 @@ function jsonFile(content: unknown): File {
 
 describe('exportService', () => {
   it('exporte toutes les tables avec un en-tête de version', async () => {
-    await db.log.add({ id: newId(), type: 'note', date: '2026-06-25', title: 'test', createdAt: 1 })
-    await db.varieties.add({ id: newId(), name: 'Agata', vegetable: 'Pomme de terre' })
+    seed('log', [{ id: 'l1', type: 'note', date: '2026-06-25', title: 'test', createdAt: 1 }])
+    seed('varieties', [{ id: 'v1', name: 'Agata', vegetable: 'Pomme de terre' }])
     const dump = await exportAll()
-    // version = db.verno courant ; on évite de figer le numéro (monte à chaque migration).
     expect(dump.version).toBe(db.verno)
     expect(dump.version).toBeGreaterThanOrEqual(11)
     expect(typeof dump.exportedAt).toBe('number')
     expect(dump.tables.log).toHaveLength(1)
     expect(dump.tables.varieties).toHaveLength(1)
-    // toutes les tables de la base sont présentes
-    expect(Object.keys(dump.tables).sort()).toEqual(db.tables.map((t) => t.name).sort())
+    // toutes les tables cloud + auditLog sont presentes
+    expect(Object.keys(dump.tables).sort()).toEqual([...TABLE_NAMES, 'auditLog'].sort())
   })
 
   it('logAudit ajoute une entrée dans auditLog', async () => {
@@ -42,7 +69,7 @@ describe('exportService', () => {
   })
 
   it('exportAll trace une entrée export-json dans auditLog', async () => {
-    await db.parcels.add({ id: newId(), name: 'Parcelle test' })
+    seed('parcels', [{ id: 'p1', name: 'Parcelle test' }])
     await exportAll()
     const entries = await db.auditLog.toArray()
     expect(entries).toHaveLength(1)
@@ -50,7 +77,7 @@ describe('exportService', () => {
   })
 
   it('exportParcelsCsv génère un CSV avec en-têtes et échappement', async () => {
-    await db.parcels.add({ id: 'p1', name: 'Carré nord', areaM2: 12, soil: 'argileux; humide' })
+    seed('parcels', [{ id: 'p1', name: 'Carré nord', areaM2: 12, soil: 'argileux; humide' }])
     const csv = await exportParcelsCsv()
     const lines = csv.split('\n')
     expect(lines[0]).toBe('id;name;areaM2;exposure;soil;mulch')
@@ -60,8 +87,10 @@ describe('exportService', () => {
   })
 
   it('exportCropsCsv filtre par saison et trace l\'audit', async () => {
-    await db.crops.add({ id: 'c1', name: 'Tomate', status: 'en_place', plantingDate: '2025-05-01' })
-    await db.crops.add({ id: 'c2', name: 'Poireau', status: 'en_place', plantingDate: '2026-03-01' })
+    seed('crops', [
+      { id: 'c1', name: 'Tomate', status: 'en_place', plantingDate: '2025-05-01' },
+      { id: 'c2', name: 'Poireau', status: 'en_place', plantingDate: '2026-03-01' },
+    ])
     const csv = await exportCropsCsv(2025)
     const lines = csv.split('\n')
     expect(lines).toHaveLength(2)
@@ -71,39 +100,47 @@ describe('exportService', () => {
   })
 
   it('exportCropsCsv sans filtre exporte toutes les cultures', async () => {
-    await db.crops.add({ id: 'c1', name: 'Tomate', status: 'en_place', plantingDate: '2025-05-01' })
-    await db.crops.add({ id: 'c2', name: 'Poireau', status: 'en_place', plantingDate: '2026-03-01' })
+    seed('crops', [
+      { id: 'c1', name: 'Tomate', status: 'en_place', plantingDate: '2025-05-01' },
+      { id: 'c2', name: 'Poireau', status: 'en_place', plantingDate: '2026-03-01' },
+    ])
     const csv = await exportCropsCsv()
     expect(csv.split('\n')).toHaveLength(3)
   })
 
   it('exportLogCsv filtre par saison et par parcelle', async () => {
-    await db.log.add({ id: 'l1', type: 'arrosage', date: '2025-06-01', parcelId: 'p1', createdAt: 1 })
-    await db.log.add({ id: 'l2', type: 'arrosage', date: '2025-06-02', parcelId: 'p2', createdAt: 2 })
-    await db.log.add({ id: 'l3', type: 'arrosage', date: '2026-06-02', parcelId: 'p1', createdAt: 3 })
+    seed('log', [
+      { id: 'l1', type: 'arrosage', date: '2025-06-01', parcelId: 'p1', createdAt: 1 },
+      { id: 'l2', type: 'arrosage', date: '2025-06-02', parcelId: 'p2', createdAt: 2 },
+      { id: 'l3', type: 'arrosage', date: '2026-06-02', parcelId: 'p1', createdAt: 3 },
+    ])
     const csv = await exportLogCsv({ season: 2025, parcelId: 'p1' })
     expect(csv.split('\n')).toHaveLength(2)
     expect(csv).toContain('l1')
   })
 
   it('exportLogCsv sans filtre exporte toutes les entrées', async () => {
-    await db.log.add({ id: 'l1', type: 'arrosage', date: '2025-06-01', createdAt: 1 })
+    seed('log', [{ id: 'l1', type: 'arrosage', date: '2025-06-01', createdAt: 1 }])
     const csv = await exportLogCsv()
     expect(csv.split('\n')).toHaveLength(2)
   })
 
   it('exportHarvestsCsv ne garde que les entrées de type recolte, filtrées par saison', async () => {
-    await db.log.add({ id: 'l1', type: 'recolte', date: '2025-07-01', quantityKg: 3, createdAt: 1 })
-    await db.log.add({ id: 'l2', type: 'arrosage', date: '2025-07-02', createdAt: 2 })
-    await db.log.add({ id: 'l3', type: 'recolte', date: '2026-07-02', quantityKg: 2, createdAt: 3 })
+    seed('log', [
+      { id: 'l1', type: 'recolte', date: '2025-07-01', quantityKg: 3, createdAt: 1 },
+      { id: 'l2', type: 'arrosage', date: '2025-07-02', createdAt: 2 },
+      { id: 'l3', type: 'recolte', date: '2026-07-02', quantityKg: 2, createdAt: 3 },
+    ])
     const csv = await exportHarvestsCsv(2025)
     expect(csv.split('\n')).toHaveLength(2)
     expect(csv).toContain('l1')
   })
 
   it('importAll fusionne par id, le fichier importé gagne toujours', async () => {
-    await db.parcels.add({ id: 'p1', name: 'Ancien nom' })
-    await db.parcels.add({ id: 'p2', name: 'Inchangée' })
+    seed('parcels', [
+      { id: 'p1', name: 'Ancien nom' },
+      { id: 'p2', name: 'Inchangée' },
+    ])
     const result = await importAll(
       jsonFile({
         version: 11,
@@ -111,10 +148,9 @@ describe('exportService', () => {
         tables: { parcels: [{ id: 'p1', name: 'Nouveau nom' }] },
       }),
     )
-    const p1 = await db.parcels.get('p1')
-    const p2 = await db.parcels.get('p2')
-    expect(p1?.name).toBe('Nouveau nom')
-    expect(p2?.name).toBe('Inchangée')
+    const rows = store.parcels
+    expect(rows.find((r) => r.id === 'p1')?.name).toBe('Nouveau nom')
+    expect(rows.find((r) => r.id === 'p2')?.name).toBe('Inchangée')
     expect(result).toEqual({ tablesImported: ['parcels'], totalRecords: 1 })
   })
 

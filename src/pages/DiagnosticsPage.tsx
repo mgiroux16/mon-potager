@@ -1,7 +1,5 @@
 import { useState } from 'react'
-import { useLiveQuery } from 'dexie-react-hooks'
 import { Stethoscope } from 'lucide-react'
-import { db } from '../data/db'
 import { useCollection } from '../data/firestoreHooks'
 import { updateDiagnosticOutcome } from '../services/diagnosticService'
 import type { Diagnostic, GardenLogEntry, HypothesisConfidence } from '../data/model'
@@ -17,8 +15,8 @@ function OutcomeFields({ diagnostic }: { diagnostic: Diagnostic }) {
   const [result, setResult] = useState(diagnostic.result ?? '')
   const [conclusion, setConclusion] = useState(diagnostic.conclusion ?? '')
 
-  async function save(next: { chosenAction?: string; result?: string; conclusion?: string }) {
-    await updateDiagnosticOutcome(diagnostic.id as string, {
+  function save(next: { chosenAction?: string; result?: string; conclusion?: string }) {
+    updateDiagnosticOutcome(diagnostic.id as string, {
       chosenAction: action,
       result,
       conclusion,
@@ -97,7 +95,7 @@ function DiagnosticCard({ diagnostic, problem }: { diagnostic: Diagnostic; probl
 }
 
 export function DiagnosticsPage() {
-  const diagnostics = useLiveQuery(() => db.diagnostics.toArray(), [], [])
+  const { data: diagnostics } = useCollection<Diagnostic>('diagnostics')
   const { data: entries } = useCollection<GardenLogEntry>('log')
   const entryById = new Map(entries.map((e) => [e.id, e] as [string | undefined, GardenLogEntry]))
 

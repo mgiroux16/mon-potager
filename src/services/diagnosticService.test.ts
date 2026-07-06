@@ -1,5 +1,22 @@
-import { describe, it, expect, beforeEach } from 'vitest'
-import { db } from '../data/db'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
+import type { GardenLogEntry } from '../data/model'
+
+let store: Record<string, unknown>[] = []
+const cloudAddMock = vi.fn((_table: string, data: Record<string, unknown>) => {
+  const id = crypto.randomUUID()
+  store.push({ id, ...data })
+  return id
+})
+const cloudPutMock = vi.fn((_table: string, id: string, data: Record<string, unknown>) => {
+  store = store.map((row) => (row.id === id ? { ...row, ...data } : row))
+})
+const cloudGetAllMock = vi.fn(async () => store)
+vi.mock('../data/firestoreWrites', () => ({
+  cloudAdd: (...args: [string, Record<string, unknown>]) => cloudAddMock(...args),
+  cloudPut: (...args: [string, string, Record<string, unknown>]) => cloudPutMock(...args),
+  cloudGetAll: (...args: [string]) => cloudGetAllMock(...args),
+}))
+
 import {
   buildDiagnosticPrompt,
   parseDiagnosticResponse,
@@ -8,7 +25,6 @@ import {
   updateDiagnosticOutcome,
   parseDataUrl,
 } from './diagnosticService'
-import type { GardenLogEntry } from '../data/model'
 
 describe('parseDataUrl', () => {
   it('extrait le mimeType et les donnees base64 d un data URL', () => {
@@ -96,8 +112,9 @@ describe('parseDiagnosticResponse', () => {
 })
 
 describe('createDiagnostic / getDiagnosticForEntry', () => {
-  beforeEach(async () => {
-    await Promise.all(db.tables.map((t) => t.clear()))
+  beforeEach(() => {
+    store = []
+    vi.clearAllMocks()
   })
 
   it('cree un diagnostic ouvert lie a l entree probleme', async () => {
@@ -113,8 +130,7 @@ describe('createDiagnostic / getDiagnosticForEntry', () => {
   it('renvoie le diagnostic existant plutot que d en creer un second pour la meme entree', async () => {
     const hypotheses = [{ text: 'A', indices: 'B', confidence: 'moyen' as const }]
     const firstId = await createDiagnostic({ problemEntryId: 'p2', hypotheses })
-    const all = await db.diagnostics.toArray()
-    expect(all).toHaveLength(1)
+    expect(store).toHaveLength(1)
 
     const again = await getDiagnosticForEntry('p2')
     expect(again?.id).toBe(firstId)
@@ -122,25 +138,26 @@ describe('createDiagnostic / getDiagnosticForEntry', () => {
 })
 
 describe('updateDiagnosticOutcome', () => {
-  beforeEach(async () => {
-    await Promise.all(db.tables.map((t) => t.clear()))
+  beforeEach(() => {
+    store = []
+    vi.clearAllMocks()
   })
 
   it('reste ouvert si seul le resultat est rempli', async () => {
     const id = await createDiagnostic({ problemEntryId: 'p3', hypotheses: [] })
-    await updateDiagnosticOutcome(id, { chosenAction: 'Arrosage augmente', result: 'Feuilles reverdies' })
-    const row = await db.diagnostics.get(id)
+    updateDiagnosticOutcome(id, { chosenAction: 'Arrosage augmente', result: 'Feuilles reverdies' })
+    const row = store.find((r) => r.id === id)
     expect(row?.status).toBe('ouvert')
   })
 
   it('passe a clos quand resultat et conclusion sont tous les deux remplis', async () => {
     const id = await createDiagnostic({ problemEntryId: 'p4', hypotheses: [] })
-    await updateDiagnosticOutcome(id, {
+    updateDiagnosticOutcome(id, {
       chosenAction: 'Arrosage augmente',
       result: 'Feuilles reverdies',
       conclusion: 'Surveiller l arrosage plus tot l an prochain',
     })
-    const row = await db.diagnostics.get(id)
+    const row = store.find((r) => r.id === id)
     expect(row?.status).toBe('clos')
   })
 })

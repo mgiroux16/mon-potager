@@ -1,5 +1,7 @@
 import { db, newId } from '../data/db'
-import type { AuditLogType, Crop, GardenLogEntry } from '../data/model'
+import { cloudBatchWrite, cloudGetAll, type CloudBatchOp } from '../data/firestoreWrites'
+import { TABLE_NAMES, type TableName } from '../data/syncHooks'
+import type { AuditLogType, Crop, GardenLogEntry, Parcel } from '../data/model'
 import { entryParcelIds } from './logView'
 
 export interface PotagerExport {
@@ -31,7 +33,7 @@ function toCsv(headers: string[], rows: unknown[][]): string {
 }
 
 export async function exportParcelsCsv(): Promise<string> {
-  const parcels = await db.parcels.toArray()
+  const parcels = (await cloudGetAll('parcels')) as unknown as Parcel[]
   const csv = toCsv(
     ['id', 'name', 'areaM2', 'exposure', 'soil', 'mulch'],
     parcels.map((p) => [p.id, p.name, p.areaM2, p.exposure, p.soil, p.mulch]),
@@ -46,7 +48,7 @@ function cropYear(crop: Crop): number | undefined {
 }
 
 export async function exportCropsCsv(season?: number): Promise<string> {
-  let crops = await db.crops.toArray()
+  let crops = (await cloudGetAll('crops')) as unknown as Crop[]
   if (season !== undefined) crops = crops.filter((c) => cropYear(c) === season)
   const csv = toCsv(
     ['id', 'name', 'variety', 'parcelId', 'status', 'sowingDate', 'plantingDate', 'harvestDate'],
@@ -73,7 +75,7 @@ function entryYear(entry: GardenLogEntry): number {
 export async function exportLogCsv(
   filters: { season?: number; parcelId?: string } = {},
 ): Promise<string> {
-  let entries = await db.log.toArray()
+  let entries = (await cloudGetAll('log')) as unknown as GardenLogEntry[]
   if (filters.season !== undefined) entries = entries.filter((e) => entryYear(e) === filters.season)
   if (filters.parcelId !== undefined) {
     entries = entries.filter((e) => entryParcelIds(e).includes(filters.parcelId as string))
@@ -97,7 +99,7 @@ export async function exportLogCsv(
 }
 
 export async function exportHarvestsCsv(season?: number): Promise<string> {
-  let entries = (await db.log.toArray()).filter((e) => e.type === 'recolte')
+  let entries = ((await cloudGetAll('log')) as unknown as GardenLogEntry[]).filter((e) => e.type === 'recolte')
   if (season !== undefined) entries = entries.filter((e) => entryYear(e) === season)
   const csv = toCsv(
     ['id', 'date', 'title', 'parcelId', 'cropId', 'quantityKg'],
@@ -108,11 +110,15 @@ export async function exportHarvestsCsv(season?: number): Promise<string> {
   return csv
 }
 
+/** Tables cloud-first + auditLog (seule table restee locale, cf. syncHooks.ts). */
+const ALL_TABLES: readonly string[] = [...TABLE_NAMES, 'auditLog']
+
 export async function exportAll(): Promise<PotagerExport> {
   const tables: Record<string, unknown[]> = {}
-  for (const table of db.tables) {
-    tables[table.name] = await table.toArray()
+  for (const table of TABLE_NAMES) {
+    tables[table] = await cloudGetAll(table)
   }
+  tables.auditLog = await db.auditLog.toArray()
   const totalRecords = Object.values(tables).reduce((sum, rows) => sum + rows.length, 0)
   await logAudit({ type: 'export-json', label: 'Export JSON complet', recordCount: totalRecords })
   return { version: db.verno, exportedAt: Date.now(), tables }
@@ -135,16 +141,26 @@ function readFileText(file: File): Promise<string> {
 export async function importAll(file: File): Promise<ImportResult> {
   const text = await readFileText(file)
   const parsed = JSON.parse(text) as PotagerExport
-  const knownTables = new Set(db.tables.map((t) => t.name))
+  const knownTables = new Set(ALL_TABLES)
   const tablesImported: string[] = []
   let totalRecords = 0
+  const ops: CloudBatchOp[] = []
 
   for (const [name, records] of Object.entries(parsed.tables ?? {})) {
     if (!knownTables.has(name) || !Array.isArray(records) || records.length === 0) continue
-    await db.table(name).bulkPut(records)
+
+    if (name === 'auditLog') {
+      await db.auditLog.bulkPut(records as never[])
+    } else {
+      for (const record of records as Record<string, unknown>[]) {
+        ops.push({ type: 'set', table: name as TableName, id: record.id as string, data: record })
+      }
+    }
     tablesImported.push(name)
     totalRecords += records.length
   }
+
+  if (ops.length > 0) await cloudBatchWrite(ops)
 
   await logAudit({ type: 'import', label: 'Import (fusion)', recordCount: totalRecords })
   return { tablesImported, totalRecords }

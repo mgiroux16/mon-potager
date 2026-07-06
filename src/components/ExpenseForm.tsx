@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { db, newId } from '../data/db'
+import { cloudAdd } from '../data/firestoreWrites'
 import { useCollection } from '../data/firestoreHooks'
 import type { Crop, Expense, ExpenseAmortization, ExpenseRecurrence, ExpensePeriodicity, Parcel } from '../data/model'
 
@@ -50,8 +50,7 @@ export function ExpenseForm({ onSaved }: { onSaved?: () => void }) {
       return
     }
 
-    const expense: Expense = {
-      id: newId(),
+    const expense: Omit<Expense, 'id'> = {
       label: label.trim() || 'Dépense',
       amountEuros,
       date: date || todayISO(),
@@ -65,7 +64,7 @@ export function ExpenseForm({ onSaved }: { onSaved?: () => void }) {
     if (parcelId) expense.parcelId = parcelId
     if (cropId) expense.cropId = cropId
 
-    await db.expenses.add(expense)
+    cloudAdd('expenses', expense)
 
     setLabel('')
     setAmount('')
