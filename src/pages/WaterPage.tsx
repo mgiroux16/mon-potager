@@ -2,12 +2,13 @@ import { useEffect, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../data/db'
 import { useCollection } from '../data/firestoreHooks'
+import { cloudPut } from '../data/firestoreWrites'
 import type { GardenLogEntry, WaterTank } from '../data/model'
 import { summarizeWaterUsage } from '../services/waterUsageService'
 import { summarizeTankAutonomy } from '../services/tankAutonomyService'
 import { resolveRainMm, compareWateringToRain } from '../services/wateringComparisonService'
 import { fetchDailyHistory, type DailyWeather } from '../services/weatherService'
-import { getSettings } from '../services/settingsService'
+import { useSettings } from '../services/settingsService'
 
 function todayISO(): string {
   return new Date().toISOString().slice(0, 10)
@@ -21,7 +22,7 @@ function TankLevelInput({ tank }: { tank: WaterTank }) {
   async function save() {
     const parsed = value.trim() === '' ? undefined : Number(value.replace(',', '.'))
     if (tank.id != null && parsed != null && !Number.isNaN(parsed)) {
-      await db.tanks.update(tank.id, { estimatedLiters: parsed })
+      cloudPut('tanks', tank.id, { estimatedLiters: parsed })
     }
   }
 
@@ -47,8 +48,8 @@ function TankLevelInput({ tank }: { tank: WaterTank }) {
 export function WaterPage() {
   const { data: entries } = useCollection<GardenLogEntry>('log')
   const parcels = useLiveQuery(() => db.parcels.toArray(), [], [])
-  const tanks = useLiveQuery(() => db.tanks.toArray(), [], [])
-  const settings = useLiveQuery(() => getSettings(), [], undefined)
+  const { data: tanks } = useCollection<WaterTank>('tanks')
+  const settings = useSettings()
   const [history, setHistory] = useState<DailyWeather[] | null>(null)
 
   useEffect(() => {

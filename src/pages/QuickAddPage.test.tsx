@@ -5,12 +5,15 @@ import { MemoryRouter } from 'react-router-dom'
 import { db, newId } from '../data/db'
 import type { GardenLogEntry } from '../data/model'
 import { sortLog } from '../services/logService'
-import { getCollectionData, clearCollectionData } from '../test/firestoreHooksMock'
+import { getCollectionData, setCollectionData, clearCollectionData } from '../test/firestoreHooksMock'
 import { findOrCreateVariety } from '../services/varietyService'
 import { QuickAddPage } from './QuickAddPage'
 
 vi.mock('../data/firestoreWrites', async () => {
   return (await import('../test/firestoreHooksMock')).firestoreWritesMock
+})
+vi.mock('../data/firestoreHooks', async () => {
+  return (await import('../test/firestoreHooksMock')).firestoreHooksMock
 })
 
 // Equivalent de l'ancien listLog : lit le store cloud mocke, trie comme la page.
@@ -307,10 +310,10 @@ describe('QuickAddPage en mode edition (editEntry)', () => {
 
 describe('QuickAddPage avec selecteur de variete', () => {
   it('enregistre la varietyId choisie sur une récolte', async () => {
-    await db.catalog.add({ id: '3', vegetable: 'Courgette', family: 'cucurbitacees' })
+    setCollectionData('catalog', [{ id: '3', vegetable: 'Courgette', family: 'cucurbitacees' }])
     await db.crops.add({ id: '1', name: 'Courgettes', catalogId: '3', status: 'en_place' })
     await db.parcels.add({ id: '1', name: 'Buttes' })
-    await findOrCreateVariety('Ronde de Nice', 'Courgette')
+    findOrCreateVariety([], 'Ronde de Nice', 'Courgette')
 
     render(
       <MemoryRouter>

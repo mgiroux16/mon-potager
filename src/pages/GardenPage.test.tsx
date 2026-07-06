@@ -21,6 +21,9 @@ beforeEach(async () => {
   await Promise.all(db.tables.map((t) => t.clear()))
   clearCollectionData()
   await seedDatabase(db)
+  // trees et catalog sont cloud-first : on recopie le seed Dexie dans le store mocke.
+  setCollectionData('trees', (await db.trees.toArray()) as unknown as Record<string, unknown>[])
+  setCollectionData('catalog', (await db.catalog.toArray()) as unknown as Record<string, unknown>[])
 })
 
 describe('GardenPage', () => {
@@ -98,7 +101,8 @@ describe('GardenPage', () => {
     })
     render(<GardenPage />, { wrapper: MemoryRouter })
     await waitFor(() => {
-      expect(screen.getByText('Carré test')).toBeInTheDocument()
+      // present aussi comme option du select de rattachement des arbres
+      expect(screen.getAllByText('Carré test').length).toBeGreaterThan(0)
     })
     expect(screen.queryByRole('heading', { name: 'Rappels' })).not.toBeInTheDocument()
   })

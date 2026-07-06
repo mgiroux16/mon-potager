@@ -1,25 +1,21 @@
-import { db, newId } from '../data/db'
+import { cloudAdd } from '../data/firestoreWrites'
 import type { Variety } from '../data/model'
 
 export type NewVariety = Omit<Variety, 'id'>
 
-export async function addVariety(variety: NewVariety): Promise<string> {
-  const id = newId()
-  await db.varieties.add({ ...variety, id })
-  return id
-}
-
-export async function listVarieties(): Promise<Variety[]> {
-  const all = await db.varieties.toArray()
-  return all.sort((a, b) => a.name.localeCompare(b.name, 'fr'))
+export function addVariety(variety: NewVariety): string {
+  return cloudAdd('varieties', { ...variety })
 }
 
 // Réutilise une variété existante (comparaison insensible à la casse sur nom + légume),
-// sinon la crée. Renvoie l'id dans les deux cas.
-export async function findOrCreateVariety(name: string, vegetable: string): Promise<string> {
+// sinon la crée. La liste vient de useCollection('varieties') côté appelant.
+export function findOrCreateVariety(
+  varieties: Variety[],
+  name: string,
+  vegetable: string,
+): string {
   const norm = (s: string) => s.trim().toLowerCase()
-  const all = await db.varieties.toArray()
-  const existing = all.find(
+  const existing = varieties.find(
     (v) => norm(v.name) === norm(name) && norm(v.vegetable) === norm(vegetable),
   )
   if (existing?.id != null) return existing.id

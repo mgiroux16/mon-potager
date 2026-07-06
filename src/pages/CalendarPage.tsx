@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { db } from '../data/db'
+import { useCollection } from '../data/firestoreHooks'
 import type { CatalogItem } from '../data/model'
 import { getMonthPlan, type MonthPlan } from '../services/calendarService'
 
@@ -40,11 +41,10 @@ function Section({ title, items, emptyVerb }: SectionProps) {
 
 export function CalendarPage() {
   const [month, setMonth] = useState(() => new Date().getMonth() + 1)
-  const [catalog, setCatalog] = useState<CatalogItem[]>([])
+  const { data: catalog } = useCollection<CatalogItem>('catalog')
   const [gardenCatalogIds, setGardenCatalogIds] = useState<Set<string>>(new Set())
 
   useEffect(() => {
-    db.catalog.toArray().then(setCatalog)
     db.crops.toArray().then((crops) => {
       const ids = crops
         .filter((crop) => !crop.deletedAt && crop.catalogId)

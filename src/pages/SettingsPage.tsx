@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import type { AppSettings } from '../data/model'
-import { getSettings, saveSettings } from '../services/settingsService'
+import { saveSettings, useSettings } from '../services/settingsService'
 import { testGeminiConnection } from '../services/geminiService'
 import { signOutUser } from '../services/authService'
 import { getSyncStatus, resetSyncCursors, runInitialSync } from '../services/syncService'
@@ -49,6 +49,7 @@ const fieldClass =
   'w-full rounded-lg border border-green-200 bg-white px-3 py-2 text-sm text-green-950'
 
 export function SettingsPage() {
+  const stored = useSettings()
   const [settings, setSettings] = useState<AppSettings | null>(null)
   const [saved, setSaved] = useState(false)
   const [test, setTest] = useState<TestState>({ status: 'idle' })
@@ -56,8 +57,13 @@ export function SettingsPage() {
   const [published, setPublished] = useState<PublishedVersion | null>(null)
   const [guardTripped, setGuardTripped] = useState(() => isTripped())
 
+  // Copie locale editable, initialisee une fois les reglages charges depuis
+  // Firestore ; les frappes en cours ne sont pas ecrasees par un snapshot.
   useEffect(() => {
-    void getSettings().then(setSettings)
+    if (stored) setSettings((prev) => prev ?? stored)
+  }, [stored])
+
+  useEffect(() => {
     void fetchPublishedVersion().then(setPublished)
   }, [])
 
@@ -70,10 +76,10 @@ export function SettingsPage() {
     setSaved(false)
   }
 
-  async function handleSubmit(e: FormEvent) {
+  function handleSubmit(e: FormEvent) {
     e.preventDefault()
     if (!settings) return
-    await saveSettings(settings)
+    saveSettings(settings)
     setSaved(true)
   }
 

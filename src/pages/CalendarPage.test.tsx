@@ -1,7 +1,17 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { render, screen, waitFor, fireEvent } from '@testing-library/react'
+import { vi } from 'vitest'
 import { db, newId } from '../data/db'
+import { setCollectionData, getCollectionData, clearCollectionData } from '../test/firestoreHooksMock'
 import { CalendarPage } from './CalendarPage'
+
+vi.mock('../data/firestoreHooks', async () => {
+  return (await import('../test/firestoreHooksMock')).firestoreHooksMock
+})
+
+function seedCatalog(item: Record<string, unknown>): void {
+  setCollectionData('catalog', [...getCollectionData('catalog'), { id: newId(), ...item }])
+}
 
 const MOIS_FR = [
   'Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin',
@@ -10,6 +20,7 @@ const MOIS_FR = [
 
 beforeEach(async () => {
   await Promise.all(db.tables.map((t) => t.clear()))
+  clearCollectionData()
 })
 
 describe('CalendarPage', () => {
@@ -33,7 +44,7 @@ describe('CalendarPage', () => {
     // sans dependre de la date. La section "a semer" n'est pas filtree sur le jardin
     // (contrairement a "a recolter" depuis la refonte calendrier).
     const currentMonth = new Date().getMonth() + 1
-    await db.catalog.add({
+    seedCatalog({
       id: newId(), vegetable: 'Tomate',
       family: 'solanacees',
       sowingMonths: [currentMonth],
@@ -49,7 +60,7 @@ describe('CalendarPage', () => {
   it('ne montre une recolte que si la culture est au jardin', async () => {
     const currentMonth = new Date().getMonth() + 1
     // Item catalogue recoltable ce mois-ci mais AUCUNE culture plantee -> section vide.
-    await db.catalog.add({
+    seedCatalog({
       id: newId(), vegetable: 'Courgette',
       family: 'cucurbitacees',
       harvestMonths: [currentMonth],

@@ -2,7 +2,9 @@ import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Mic, X } from 'lucide-react'
 import { db } from '../data/db'
-import { getSettings } from '../services/settingsService'
+import { useCollection } from '../data/firestoreHooks'
+import type { FruitTree, Oya } from '../data/model'
+import { useSettings } from '../services/settingsService'
 import { callGeminiAudio } from '../services/geminiService'
 import {
   isRecordingSupported,
@@ -37,13 +39,10 @@ function errorMessage(reason: RecordErrorReason): string {
   }
 }
 
-async function loadCatalog(): Promise<GardenCatalog> {
-  const [parcels, crops, oyas, trees] = await Promise.all([
-    db.parcels.toArray(),
-    db.crops.toArray(),
-    db.oyas.toArray(),
-    db.trees.toArray(),
-  ])
+// oyas/trees viennent de Firestore (hooks du composant) ; parcels/crops restent
+// sur Dexie jusqu'au Lot 3.
+async function loadCatalog(oyas: Oya[], trees: FruitTree[]): Promise<GardenCatalog> {
+  const [parcels, crops] = await Promise.all([db.parcels.toArray(), db.crops.toArray()])
   const pick = <T extends { id?: string; name: string }>(rows: T[]) =>
     rows.filter((r) => r.id != null).map((r) => ({ id: r.id as string, name: r.name }))
   return {
@@ -56,6 +55,9 @@ async function loadCatalog(): Promise<GardenCatalog> {
 
 export function VoiceCapture() {
   const navigate = useNavigate()
+  const settings = useSettings()
+  const { data: oyas } = useCollection<Oya>('oyas')
+  const { data: trees } = useCollection<FruitTree>('trees')
   const sessionRef = useRef<RecordingSession | null>(null)
   // Passe a true quand l'utilisateur ferme l'overlay : un finalize() encore en vol
   // (appel Gemini) ne doit plus naviguer une fois la dictee annulee.
@@ -78,7 +80,6 @@ export function VoiceCapture() {
   async function finalize(audio: { data: string; mimeType: string }) {
     setPhase('processing')
 
-    const settings = await getSettings().catch(() => null)
     const key = settings?.geminiApiKey?.trim()
     if (!key) {
       if (cancelledRef.current) return
@@ -91,7 +92,7 @@ export function VoiceCapture() {
     // a completer a la main plutot que de tout perdre.
     let voiceDrafts: Partial<NewLogEntry>[] = [{ type: 'note' }]
     try {
-      const catalog = await loadCatalog()
+      const catalog = await loadCatalog(oyas, trees)
       const prompt = buildVoiceAudioPrompt(catalog, todayISO())
       const answer = await callGeminiAudio(prompt, audio, key)
       voiceDrafts = parseVoiceDrafts(answer, catalog, '').map((d) => d.draft)

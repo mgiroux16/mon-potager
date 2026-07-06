@@ -3,7 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { Link } from 'react-router-dom'
 import { Euro } from 'lucide-react'
 import { db } from '../data/db'
-import { getSettings } from '../services/settingsService'
+import { useSettings } from '../services/settingsService'
 import {
   summarizeCropSeason,
   summarizeParcelSeason,
@@ -15,11 +15,7 @@ import { getCropNote, getParcelNote, setCropNote, setParcelNote } from '../servi
 import { EconomicBalanceBanner } from '../components/EconomicBalanceBanner'
 import { ListCard } from '../components/ui/ListCard'
 import { useCollection } from '../data/firestoreHooks'
-import type { AppSettings, Expense, GardenLogEntry, SeasonNote } from '../data/model'
-
-function useSettings(): AppSettings | undefined {
-  return useLiveQuery(() => getSettings(), [], undefined)
-}
+import type { Expense, GardenLogEntry, SeasonNote, Variety } from '../data/model'
 
 function formatKg(kg: number): string {
   return `${kg.toLocaleString('fr-FR')} kg`
@@ -156,7 +152,7 @@ export function SeasonSummaryPage() {
   const settings = useSettings()
   const { data: entries } = useCollection<GardenLogEntry>('log')
   const crops = useLiveQuery(() => db.crops.toArray(), [], [])
-  const varieties = useLiveQuery(() => db.varieties.toArray(), [], [])
+  const { data: varieties } = useCollection<Variety>('varieties')
   const parcels = useLiveQuery(() => db.parcels.toArray(), [], [])
   const expenses = useLiveQuery(() => db.expenses.toArray(), [], [])
   const notes = useLiveQuery(() => db.seasonNotes.toArray(), [], [])

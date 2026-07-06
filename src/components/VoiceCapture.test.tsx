@@ -13,7 +13,7 @@ const h = vi.hoisted(() => ({
   handlers: { current: null as Handlers | null },
   session: { stop: vi.fn(), cancel: vi.fn() },
   callGeminiAudio: vi.fn(),
-  getSettings: vi.fn(),
+  settings: { current: null as Record<string, unknown> | null },
 }))
 
 vi.mock('../services/audioRecordService', () => ({
@@ -29,8 +29,12 @@ vi.mock('../services/geminiService', () => ({
 }))
 
 vi.mock('../services/settingsService', () => ({
-  getSettings: h.getSettings,
+  useSettings: () => h.settings.current,
 }))
+
+vi.mock('../data/firestoreHooks', async () => {
+  return (await import('../test/firestoreHooksMock')).firestoreHooksMock
+})
 
 vi.mock('react-router-dom', async (importOriginal) => {
   const actual = await importOriginal<typeof import('react-router-dom')>()
@@ -78,7 +82,7 @@ describe('VoiceCapture', () => {
 
   it('affiche une erreur si aucune cle Gemini n est configuree', async () => {
     mockedSupported.mockReturnValue(true)
-    h.getSettings.mockResolvedValue({ geminiApiKey: '' })
+    h.settings.current = { geminiApiKey: '' }
     const user = userEvent.setup()
     renderCapture()
     await user.click(screen.getByRole('button', { name: 'Dicter une entrée' }))
@@ -93,7 +97,7 @@ describe('VoiceCapture', () => {
 
   it('n ouvre pas le formulaire si on ferme l overlay pendant l appel Gemini', async () => {
     mockedSupported.mockReturnValue(true)
-    h.getSettings.mockResolvedValue({ geminiApiKey: 'fake-key' })
+    h.settings.current = { geminiApiKey: 'fake-key' }
     let resolveGemini: (v: string) => void = () => {}
     h.callGeminiAudio.mockReturnValue(
       new Promise<string>((res) => {
@@ -126,7 +130,7 @@ describe('VoiceCapture', () => {
 
   it('un seul brouillon detecte navigue directement vers /ajouter', async () => {
     mockedSupported.mockReturnValue(true)
-    h.getSettings.mockResolvedValue({ geminiApiKey: 'fake-key' })
+    h.settings.current = { geminiApiKey: 'fake-key' }
     h.callGeminiAudio.mockResolvedValue(
       JSON.stringify([{ type: 'arrosage', volumeLiters: 10 }]),
     )
@@ -146,7 +150,7 @@ describe('VoiceCapture', () => {
 
   it('deux brouillons ou plus naviguent vers la revue vocale', async () => {
     mockedSupported.mockReturnValue(true)
-    h.getSettings.mockResolvedValue({ geminiApiKey: 'fake-key' })
+    h.settings.current = { geminiApiKey: 'fake-key' }
     h.callGeminiAudio.mockResolvedValue(
       JSON.stringify([
         { type: 'recolte', quantityKg: 3 },

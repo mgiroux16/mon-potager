@@ -7,6 +7,13 @@ import { WaterPage } from './WaterPage'
 vi.mock('../data/firestoreHooks', async () => {
   return (await import('../test/firestoreHooksMock')).firestoreHooksMock
 })
+vi.mock('../data/firestoreWrites', async () => {
+  return (await import('../test/firestoreHooksMock')).firestoreWritesMock
+})
+
+function seedTanks(rows: Record<string, unknown>[]): void {
+  setCollectionData('tanks', rows.map((r) => ({ id: newId(), ...r })))
+}
 
 function seedLog(entry: Record<string, unknown>): void {
   setCollectionData('log', [...getCollectionData('log'), { id: newId(), createdAt: Date.now(), ...entry }])
@@ -57,9 +64,9 @@ describe('WaterPage', () => {
   })
 
   it('affiche la reserve totale et l autonomie en jours', async () => {
-    await db.tanks.bulkAdd([
-      { id: newId(), name: 'Cuve 1', capacityLiters: 500, estimatedLiters: 300 },
-      { id: newId(), name: 'Cuve 2', capacityLiters: 500, estimatedLiters: 200 },
+    seedTanks([
+      { name: 'Cuve 1', capacityLiters: 500, estimatedLiters: 300 },
+      { name: 'Cuve 2', capacityLiters: 500, estimatedLiters: 200 },
     ])
     const parcelId = await db.parcels.add({ id: newId(), name: 'Carrés du fond' })
     const today = new Date().toISOString().slice(0, 10)
@@ -73,7 +80,7 @@ describe('WaterPage', () => {
   })
 
   it('affiche autonomie illimitee sans consommation recente', async () => {
-    await db.tanks.bulkAdd([{ id: newId(), name: 'Cuve 1', capacityLiters: 500, estimatedLiters: 300 }])
+    seedTanks([{ name: 'Cuve 1', capacityLiters: 500, estimatedLiters: 300 }])
 
     render(<WaterPage />)
     await waitFor(() => {
@@ -82,15 +89,15 @@ describe('WaterPage', () => {
   })
 
   it('permet d editer le niveau d une cuve et persiste la valeur', async () => {
-    const tankId = await db.tanks.add({ id: newId(), name: 'Cuve 1', capacityLiters: 500, estimatedLiters: 300 })
+    seedTanks([{ name: 'Cuve 1', capacityLiters: 500, estimatedLiters: 300 }])
 
     render(<WaterPage />)
     const input = await screen.findByLabelText('Niveau de Cuve 1 en litres')
     fireEvent.change(input, { target: { value: '450' } })
     fireEvent.blur(input)
 
-    await waitFor(async () => {
-      const updated = await db.tanks.get(tankId)
+    await waitFor(() => {
+      const updated = getCollectionData('tanks')[0]
       expect(updated?.estimatedLiters).toBe(450)
     })
   })

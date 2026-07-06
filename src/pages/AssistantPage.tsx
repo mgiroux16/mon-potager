@@ -4,8 +4,8 @@ import { Link } from 'react-router-dom'
 import { Info, Loader2, Send } from 'lucide-react'
 import { db } from '../data/db'
 import { useCollection } from '../data/firestoreHooks'
-import type { GardenLogEntry } from '../data/model'
-import { getSettings } from '../services/settingsService'
+import type { FruitTree, GardenLogEntry, Oya, Variety } from '../data/model'
+import { useSettings } from '../services/settingsService'
 import { callGemini } from '../services/geminiService'
 import { summarizeHarvests } from '../services/harvestService'
 import { summarizeCropSeason, summarizeParcelSeason } from '../services/seasonSummaryService'
@@ -31,13 +31,13 @@ function todayISO(): string {
 }
 
 export function AssistantPage() {
-  const settings = useLiveQuery(() => getSettings(), [], undefined)
+  const settings = useSettings()
   const { data: entries } = useCollection<GardenLogEntry>('log')
   const crops = useLiveQuery(() => db.crops.toArray(), [], [])
   const parcels = useLiveQuery(() => db.parcels.toArray(), [], [])
-  const oyas = useLiveQuery(() => db.oyas.toArray(), [], [])
-  const trees = useLiveQuery(() => db.trees.toArray(), [], [])
-  const varieties = useLiveQuery(() => db.varieties.toArray(), [], [])
+  const { data: oyas } = useCollection<Oya>('oyas')
+  const { data: trees } = useCollection<FruitTree>('trees')
+  const { data: varieties } = useCollection<Variety>('varieties')
   const expenses = useLiveQuery(() => db.expenses.toArray(), [], [])
 
   const currentYear = new Date().getFullYear()

@@ -1,37 +1,43 @@
-import { describe, it, expect, beforeEach } from 'vitest'
-import { db } from '../data/db'
-import { addVariety, listVarieties, findOrCreateVariety } from './varietyService'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
+import {
+  clearCollectionData,
+  getCollectionData,
+} from '../test/firestoreHooksMock'
+import { addVariety, findOrCreateVariety } from './varietyService'
+import type { Variety } from '../data/model'
 
-beforeEach(async () => {
-  await Promise.all(db.tables.map((t) => t.clear()))
+vi.mock('../data/firestoreWrites', async () => {
+  return (await import('../test/firestoreHooksMock')).firestoreWritesMock
 })
 
+beforeEach(() => {
+  clearCollectionData()
+})
+
+function storedVarieties(): Variety[] {
+  return getCollectionData('varieties') as unknown as Variety[]
+}
+
 describe('varietyService', () => {
-  it('ajoute une variété et renvoie son id', async () => {
-    const id = await addVariety({ name: 'Saint-Pierre', vegetable: 'Tomate' })
+  it('ajoute une variété et renvoie son id', () => {
+    const id = addVariety({ name: 'Saint-Pierre', vegetable: 'Tomate' })
     expect(typeof id).toBe('string')
-    const all = await listVarieties()
+    const all = storedVarieties()
     expect(all).toHaveLength(1)
     expect(all[0].name).toBe('Saint-Pierre')
+    expect(all[0].id).toBe(id)
   })
 
-  it('liste les variétés par ordre alphabétique', async () => {
-    await addVariety({ name: 'Roma', vegetable: 'Tomate' })
-    await addVariety({ name: 'Cornue des Andes', vegetable: 'Tomate' })
-    const all = await listVarieties()
-    expect(all.map((v) => v.name)).toEqual(['Cornue des Andes', 'Roma'])
-  })
-
-  it('findOrCreateVariety réutilise une variété existante (même nom + légume)', async () => {
-    const first = await findOrCreateVariety('Agata', 'Pomme de terre')
-    const second = await findOrCreateVariety('agata', 'Pomme de terre')
+  it('findOrCreateVariety réutilise une variété existante (même nom + légume)', () => {
+    const first = findOrCreateVariety([], 'Agata', 'Pomme de terre')
+    const second = findOrCreateVariety(storedVarieties(), 'agata', 'Pomme de terre')
     expect(second).toBe(first)
-    expect(await listVarieties()).toHaveLength(1)
+    expect(storedVarieties()).toHaveLength(1)
   })
 
-  it('findOrCreateVariety crée si le nom diffère', async () => {
-    await findOrCreateVariety('Agata', 'Pomme de terre')
-    await findOrCreateVariety('Charlotte', 'Pomme de terre')
-    expect(await listVarieties()).toHaveLength(2)
+  it('findOrCreateVariety crée si le nom diffère', () => {
+    findOrCreateVariety([], 'Agata', 'Pomme de terre')
+    findOrCreateVariety(storedVarieties(), 'Charlotte', 'Pomme de terre')
+    expect(storedVarieties()).toHaveLength(2)
   })
 })

@@ -1,4 +1,4 @@
-import { deleteDoc, doc, serverTimestamp, setDoc } from 'firebase/firestore'
+import { deleteDoc, deleteField, doc, serverTimestamp, setDoc } from 'firebase/firestore'
 import { auth, firestore } from './firebase'
 import type { TableName } from './syncHooks'
 import { canWrite, registerWrites } from './writeGuard'
@@ -20,6 +20,17 @@ function ref(uid: string, table: TableName, id: string) {
   return doc(firestore, `users/${uid}/${table}`, id)
 }
 
+// Firestore rejette la valeur `undefined`. Les appelants s'en servent pour
+// effacer un champ (ex: variete d'arbre videe) : en merge, deleteField()
+// supprime reellement le champ du document.
+function sanitize(data: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {}
+  for (const [key, value] of Object.entries(data)) {
+    out[key] = value === undefined ? deleteField() : value
+  }
+  return out
+}
+
 /** Cree ou met a jour partiellement un document (merge). */
 export function cloudPut(table: TableName, id: string, data: Record<string, unknown>): void {
   const uid = uidOrNull()
@@ -29,7 +40,7 @@ export function cloudPut(table: TableName, id: string, data: Record<string, unkn
   }
   if (!canWrite()) return
   registerWrites(1)
-  void setDoc(ref(uid, table, id), { ...data, updatedAt: serverTimestamp() }, { merge: true }).catch(
+  void setDoc(ref(uid, table, id), { ...sanitize(data), updatedAt: serverTimestamp() }, { merge: true }).catch(
     (err: unknown) => console.error(`[cloud] echec setDoc ${table}/${id}`, err),
   )
 }

@@ -2,8 +2,15 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { db } from '../data/db'
-import { getSettings } from '../services/settingsService'
+import { clearCollectionData, getCollectionData } from '../test/firestoreHooksMock'
 import { SettingsPage } from './SettingsPage'
+
+vi.mock('../data/firestoreHooks', async () => {
+  return (await import('../test/firestoreHooksMock')).firestoreHooksMock
+})
+vi.mock('../data/firestoreWrites', async () => {
+  return (await import('../test/firestoreHooksMock')).firestoreWritesMock
+})
 
 vi.mock('../services/geminiService', () => ({
   testGeminiConnection: vi.fn(),
@@ -17,6 +24,7 @@ import { getSyncStatus } from '../services/syncService'
 
 beforeEach(async () => {
   await Promise.all(db.tables.map((t) => t.clear()))
+  clearCollectionData()
   vi.clearAllMocks()
   localStorage.removeItem('writeGuard:trippedOn')
 })
@@ -40,9 +48,9 @@ describe('SettingsPage', () => {
     await user.type(champ, 'Mon jardin')
     await user.click(screen.getByRole('button', { name: 'Enregistrer' }))
 
-    await waitFor(async () => {
-      const s = await getSettings()
-      expect(s.locationName).toBe('Mon jardin')
+    await waitFor(() => {
+      const s = getCollectionData('settings')[0]
+      expect(s?.locationName).toBe('Mon jardin')
     })
   })
 
@@ -80,8 +88,8 @@ describe('SettingsPage', () => {
     await user.selectOptions(endInput, '10')
     await user.click(screen.getByRole('button', { name: 'Enregistrer' }))
 
-    await waitFor(async () => {
-      const saved = await db.settings.get('settings')
+    await waitFor(() => {
+      const saved = getCollectionData('settings')[0]
       expect(saved?.seasonStartMonth).toBe(4)
       expect(saved?.seasonEndMonth).toBe(10)
     })

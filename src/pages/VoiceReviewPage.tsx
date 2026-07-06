@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../data/db'
+import { useCollection } from '../data/firestoreHooks'
+import type { FruitTree, Oya } from '../data/model'
 import { addLogEntry, type NewLogEntry } from '../services/logService'
 import { LOG_TYPE_LABELS, resolveDetail, resolveTargetName, type LogRefs } from '../services/logView'
 import { LOG_TYPE_ICONS } from '../components/logTypeIcons'
@@ -25,8 +27,8 @@ export function VoiceReviewPage() {
   const navigate = useNavigate()
   const parcels = useLiveQuery(() => db.parcels.toArray(), [], [])
   const crops = useLiveQuery(() => db.crops.toArray(), [], [])
-  const oyas = useLiveQuery(() => db.oyas.toArray(), [], [])
-  const trees = useLiveQuery(() => db.trees.toArray(), [], [])
+  const { data: oyas } = useCollection<Oya>('oyas')
+  const { data: trees } = useCollection<FruitTree>('trees')
 
   const voiceDrafts = (location.state as { voiceDrafts?: Partial<NewLogEntry>[] } | null)
     ?.voiceDrafts

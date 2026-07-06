@@ -4,11 +4,12 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { ArrowLeft, Euro, MoreHorizontal } from 'lucide-react'
 import { db } from '../data/db'
-import type { GardenLogEntry, LogEntryType } from '../data/model'
+import { useCollection } from '../data/firestoreHooks'
+import type { CatalogItem, FruitTree, GardenLogEntry, LogEntryType, Oya, Variety } from '../data/model'
 import { addLogEntry, updateLogEntry, type NewLogEntry } from '../services/logService'
 import { findOrCreateVariety } from '../services/varietyService'
 import { fetchTodaySnapshot } from '../services/weatherService'
-import { getSettings } from '../services/settingsService'
+import { useSettings } from '../services/settingsService'
 import { LOG_TYPE_LABELS, entryParcelIds } from '../services/logView'
 import { LOG_TYPE_ICONS } from '../components/logTypeIcons'
 import { PhotoInput } from '../components/PhotoInput'
@@ -94,10 +95,11 @@ export function EntryForm({ config, initial, editId, onSaved, onCancel }: {
 }) {
   const parcels = useLiveQuery(() => db.parcels.toArray(), [], [])
   const crops = useLiveQuery(() => db.crops.toArray(), [], [])
-  const oyas = useLiveQuery(() => db.oyas.toArray(), [], [])
-  const trees = useLiveQuery(() => db.trees.toArray(), [], [])
-  const varieties = useLiveQuery(() => db.varieties.toArray(), [], [])
-  const catalog = useLiveQuery(() => db.catalog.toArray(), [], [])
+  const { data: oyas } = useCollection<Oya>('oyas')
+  const { data: trees } = useCollection<FruitTree>('trees')
+  const { data: varieties } = useCollection<Variety>('varieties')
+  const { data: catalog } = useCollection<CatalogItem>('catalog')
+  const settings = useSettings()
 
   const [date, setDate] = useState(initial?.date ?? todayISO())
   const [time, setTime] = useState(initial?.time ?? nowHM())
@@ -182,7 +184,7 @@ export function EntryForm({ config, initial, editId, onSaved, onCancel }: {
     // Variété : id existant, ou création à la volée si « + Nouvelle variété… »
     if (entry.cropId != null) {
       if (varietyId === '__new' && newVarietyName.trim()) {
-        entry.varietyId = await findOrCreateVariety(newVarietyName, cropVegetable || 'Inconnu')
+        entry.varietyId = findOrCreateVariety(varieties, newVarietyName, cropVegetable || 'Inconnu')
       } else if (varietyId && varietyId !== '__new') {
         entry.varietyId = varietyId
       }
@@ -192,8 +194,7 @@ export function EntryForm({ config, initial, editId, onSaved, onCancel }: {
     if (initial?.sourcePhrase) entry.sourcePhrase = initial.sourcePhrase
 
     // Snapshot météo figé, seulement pour une saisie datée d'aujourd'hui. Jamais bloquant.
-    if (date === todayISO()) {
-      const settings = await getSettings()
+    if (date === todayISO() && settings) {
       const snap = await fetchTodaySnapshot(settings.latitude, settings.longitude)
       if (snap) entry.weather = snap
     }

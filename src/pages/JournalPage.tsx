@@ -21,7 +21,7 @@ import {
   describeWeatherContext,
   countArrosagesBetween,
 } from '../services/weatherSummary'
-import { getSettings } from '../services/settingsService'
+import { useSettings } from '../services/settingsService'
 import { callGemini, callGeminiVision } from '../services/geminiService'
 import {
   buildDiagnosticPrompt,
@@ -33,7 +33,7 @@ import { buildSeasonHistoryLines } from '../services/diagnosticContext'
 import { LOG_TYPE_ICONS } from '../components/logTypeIcons'
 import { PhotoThumbs } from '../components/PhotoThumbs'
 import { WeatherContextBanner } from '../components/WeatherContextBanner'
-import type { Diagnostic, GardenLogEntry, LogEntryType, SeasonNote } from '../data/model'
+import type { Diagnostic, FruitTree, GardenLogEntry, LogEntryType, Oya, SeasonNote } from '../data/model'
 
 function chipClass(active: boolean): string {
   return [
@@ -142,11 +142,11 @@ export function JournalPage() {
   const entries = useMemo(() => sortLog(rawLog), [rawLog])
   const parcels = useLiveQuery(() => db.parcels.toArray(), [], [])
   const crops = useLiveQuery(() => db.crops.toArray(), [], [])
-  const oyas = useLiveQuery(() => db.oyas.toArray(), [], [])
-  const trees = useLiveQuery(() => db.trees.toArray(), [], [])
+  const { data: oyas } = useCollection<Oya>('oyas')
+  const { data: trees } = useCollection<FruitTree>('trees')
   const [filter, setFilter] = useState<LogEntryType | 'tout'>('tout')
   const [query, setQuery] = useState('')
-  const settings = useLiveQuery(() => getSettings(), [], undefined)
+  const settings = useSettings()
   const seasonNotes = useLiveQuery(() => db.seasonNotes.toArray(), [], [])
   const diagnostics = useLiveQuery(() => db.diagnostics.toArray(), [], [])
   const [history, setHistory] = useState<DailyWeather[] | null>(null)

@@ -177,7 +177,7 @@ describe('JournalPage', () => {
   it('envoie la photo a callGeminiVision si l entree probleme en a une', async () => {
     callGemini.mockClear()
     callGeminiVision.mockClear()
-    await db.settings.put({ id: 'settings', geminiApiKey: 'AIza-x' } as never)
+    setCollectionData('settings', [{ id: 'settings', geminiApiKey: 'AIza-x' }])
     seedLog({
       type: 'probleme',
       date: '2026-06-24',

@@ -17,8 +17,8 @@ import {
 } from 'lucide-react'
 import { db } from '../data/db'
 import { useCollection } from '../data/firestoreHooks'
-import type { GardenLogEntry } from '../data/model'
-import { getSettings } from '../services/settingsService'
+import type { CatalogItem, GardenLogEntry, WaterTank } from '../data/model'
+import { useSettings } from '../services/settingsService'
 import {
   fetchCurrentDetail,
   fetchDailyHistory,
@@ -132,7 +132,7 @@ function WeatherCondensed({
 
 function ForecastDetail() {
   const [forecast, setForecast] = useState<DailyWeatherDetail[] | null>(null)
-  const settings = useLiveQuery(() => getSettings(), [], undefined)
+  const settings = useSettings()
 
   useEffect(() => {
     if (!settings) return
@@ -171,11 +171,11 @@ export function DashboardPage() {
   const navigate = useNavigate()
 
   // Données locales
-  const settings = useLiveQuery(() => getSettings(), [], undefined)
+  const settings = useSettings()
   const parcels = useLiveQuery(() => db.parcels.toArray(), [], [])
   const crops = useLiveQuery(() => db.crops.toArray(), [], [])
-  const catalog = useLiveQuery(() => db.catalog.toArray(), [], [])
-  const tanks = useLiveQuery(() => db.tanks.toArray(), [], [])
+  const { data: catalog } = useCollection<CatalogItem>('catalog')
+  const { data: tanks } = useCollection<WaterTank>('tanks')
   const { data: log } = useCollection<GardenLogEntry>('log')
 
   // Données météo (async, peuvent être null si hors-ligne)

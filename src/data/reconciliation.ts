@@ -16,14 +16,8 @@ import { fetchAllRecords, pushRecords } from './firestoreClient'
 export const SYNCED_TABLES: TableName[] = [
   'parcels',
   'crops',
-  'oyas',
-  'trees',
-  'tanks',
-  'catalog',
   'expenses',
   'soil',
-  'settings',
-  'varieties',
   'seasonNotes',
   'diagnostics',
 ]

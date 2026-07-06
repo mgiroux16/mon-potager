@@ -5,7 +5,8 @@ import { Link } from 'react-router-dom'
 import { db, newId } from '../data/db'
 import { softDelete } from '../data/syncHooks'
 import { useCollection } from '../data/firestoreHooks'
-import type { Crop, GardenLogEntry, VegetableFamily } from '../data/model'
+import { cloudAdd } from '../data/firestoreWrites'
+import type { CatalogItem, Crop, FruitTree, GardenLogEntry, VegetableFamily } from '../data/model'
 import { getInactiveParcels, getHarvestReminders, getRotationReminders } from '../services/reminderService'
 import { ParcelCard } from '../components/ParcelCard'
 import { TreeCard } from '../components/TreeCard'
@@ -74,9 +75,9 @@ function CropPrice({ crop }: { crop: Crop }) {
 export function GardenPage() {
   const parcels = useLiveQuery(() => db.parcels.toArray(), [], [])
   const crops = useLiveQuery(() => db.crops.toArray(), [], [])
-  const trees = useLiveQuery(() => db.trees.toArray(), [], [])
+  const { data: trees } = useCollection<FruitTree>('trees')
   const { data: log } = useCollection<GardenLogEntry>('log')
-  const catalog = useLiveQuery(() => db.catalog.toArray(), [], [])
+  const { data: catalog } = useCollection<CatalogItem>('catalog')
 
   const [creatingParcel, setCreatingParcel] = useState(false)
   const [newParcelName, setNewParcelName] = useState('')
@@ -233,7 +234,7 @@ export function GardenPage() {
               e.preventDefault()
               const trimmed = newTreeName.trim()
               if (trimmed) {
-                await db.trees.add({ id: newId(), name: trimmed })
+                cloudAdd('trees', { name: trimmed })
               }
               setNewTreeName('')
               setCreatingTree(false)

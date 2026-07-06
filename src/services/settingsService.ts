@@ -1,4 +1,5 @@
-import { db } from '../data/db'
+import { useDoc } from '../data/firestoreHooks'
+import { cloudPut } from '../data/firestoreWrites'
 import type { AppSettings } from '../data/model'
 
 const SETTINGS_ID = 'settings'
@@ -18,11 +19,15 @@ export const DEFAULT_SETTINGS: AppSettings = {
   seasonEndMonth: 11,
 }
 
-export async function getSettings(): Promise<AppSettings> {
-  const stored = await db.settings.get(SETTINGS_ID)
-  return stored ? { ...DEFAULT_SETTINGS, ...stored } : { ...DEFAULT_SETTINGS }
+// Réglages en lecture temps réel depuis Firestore (document unique).
+// undefined pendant le chargement (même contrat que l'ancien useLiveQuery),
+// puis les défauts complètent tout champ manquant d'un enregistrement ancien.
+export function useSettings(): AppSettings | undefined {
+  const { data, loading } = useDoc<AppSettings>('settings', SETTINGS_ID)
+  if (loading) return undefined
+  return data ? { ...DEFAULT_SETTINGS, ...data } : { ...DEFAULT_SETTINGS }
 }
 
-export async function saveSettings(settings: AppSettings): Promise<void> {
-  await db.settings.put({ ...settings, id: SETTINGS_ID })
+export function saveSettings(settings: AppSettings): void {
+  cloudPut('settings', SETTINGS_ID, { ...settings, id: SETTINGS_ID })
 }

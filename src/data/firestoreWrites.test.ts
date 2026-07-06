@@ -3,6 +3,7 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 const setDocMock = vi.fn(() => Promise.resolve())
 const deleteDocMock = vi.fn(() => Promise.resolve())
 const SERVER_TS = { __serverTimestamp: true }
+const DELETE_FIELD = { __deleteField: true }
 
 // uid mutable pour tester le cas deconnecte sans second fichier de test
 const authState: { currentUser: { uid: string } | null } = {
@@ -14,6 +15,7 @@ vi.mock('firebase/firestore', () => ({
   setDoc: (...args: unknown[]) => setDocMock(...args),
   deleteDoc: (...args: unknown[]) => deleteDocMock(...args),
   serverTimestamp: () => SERVER_TS,
+  deleteField: () => DELETE_FIELD,
 }))
 vi.mock('./firebase', () => ({
   firestore: {},
@@ -58,6 +60,15 @@ describe('firestoreWrites', () => {
     expect(setDocMock).toHaveBeenCalledWith(
       { path: `users/uid-test/log/${id}` },
       { type: 'note', id, updatedAt: SERVER_TS },
+      { merge: true },
+    )
+  })
+
+  it('cloudPut traduit undefined en deleteField (efface le champ en merge)', () => {
+    cloudPut('trees', 't1', { variety: undefined, name: 'Poirier' })
+    expect(setDocMock).toHaveBeenCalledWith(
+      { path: 'users/uid-test/trees/t1' },
+      { variety: DELETE_FIELD, name: 'Poirier', updatedAt: SERVER_TS },
       { merge: true },
     )
   })

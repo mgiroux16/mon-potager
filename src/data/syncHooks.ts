@@ -22,7 +22,15 @@ export type TableName = (typeof TABLE_NAMES)[number]
 // Tables passees en cloud-first (lectures useCollection, ecritures firestoreWrites) :
 // plus de hooks Dexie, plus aucun push depuis la copie locale (devenue passive
 // jusqu'au demontage du Lot 5). TABLE_NAMES reste la source du type TableName.
-const CLOUD_FIRST_TABLES: readonly TableName[] = ['log']
+const CLOUD_FIRST_TABLES: readonly TableName[] = [
+  'log',
+  'settings',
+  'tanks',
+  'catalog',
+  'varieties',
+  'trees',
+  'oyas',
+]
 
 let installed = false
 let activeUid: string | null = null

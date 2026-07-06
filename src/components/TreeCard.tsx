@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { ChevronDown, ChevronUp, Trash2 } from 'lucide-react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../data/db'
-import { softDelete } from '../data/syncHooks'
+import { cloudDelete, cloudPut } from '../data/firestoreWrites'
 import { useCollection } from '../data/firestoreHooks'
 import type { FruitTree, GardenLogEntry, SeasonNote, WaterNeed } from '../data/model'
 import { summarizeTreeHarvests } from '../services/treeHarvestService'
@@ -44,7 +44,7 @@ export function TreeCard({ tree }: TreeCardProps) {
     setRenaming(false)
     const trimmed = name.trim()
     if (tree.id != null && trimmed && trimmed !== tree.name) {
-      await db.trees.update(tree.id, { name: trimmed })
+      cloudPut('trees', tree.id, { name: trimmed })
     } else {
       setName(tree.name)
     }
@@ -54,30 +54,30 @@ export function TreeCard({ tree }: TreeCardProps) {
     setEditingVariety(false)
     if (tree.id == null) return
     const trimmed = variety.trim()
-    await db.trees.update(tree.id, { variety: trimmed || undefined })
+    cloudPut('trees', tree.id, { variety: trimmed || undefined })
   }
 
   async function saveNotes() {
     setEditingNotes(false)
     if (tree.id == null) return
     const trimmed = notes.trim()
-    await db.trees.update(tree.id, { notes: trimmed || undefined })
+    cloudPut('trees', tree.id, { notes: trimmed || undefined })
   }
 
   async function saveWaterNeed(value: string) {
     if (tree.id == null) return
-    await db.trees.update(tree.id, { waterNeed: (value || undefined) as WaterNeed | undefined })
+    cloudPut('trees', tree.id, { waterNeed: (value || undefined) as WaterNeed | undefined })
   }
 
   async function saveParcel(value: string) {
     if (tree.id == null) return
-    await db.trees.update(tree.id, { parcelId: value || undefined })
+    cloudPut('trees', tree.id, { parcelId: value || undefined })
   }
 
   async function removeTree() {
     if (tree.id == null) return
     if (window.confirm(`Supprimer l'arbre "${tree.name}" ?`)) {
-      await softDelete('trees', tree.id)
+      cloudDelete('trees', tree.id)
     }
   }
 
