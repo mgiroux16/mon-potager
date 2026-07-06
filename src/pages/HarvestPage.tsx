@@ -15,14 +15,15 @@ function groupByCrop(rows: HarvestRow[]): Map<string, HarvestRow[]> {
 function HarvestBarChart({ rows }: { rows: HarvestRow[] }) {
   const maxKg = Math.max(...rows.map((r) => r.totalKg))
   return (
-    <div className="mt-2 flex items-end gap-2" style={{ height: 80 }}>
+    <div className="mt-3 flex items-end gap-2">
       {rows.map((row) => (
         <div key={row.year} className="flex flex-col items-center" style={{ width: 32 }}>
-          <span className="text-xs text-gray-500">{row.totalKg} kg</span>
-          <div
-            className="w-full rounded-t bg-green-500"
-            style={{ height: `${(row.totalKg / maxKg) * 56}px` }}
-          />
+          <div className="flex h-14 w-full items-end">
+            <div
+              className="w-full rounded-t bg-green-500"
+              style={{ height: `${Math.max((row.totalKg / maxKg) * 56, 2)}px` }}
+            />
+          </div>
           <span className="mt-1 text-xs text-gray-400">{row.year}</span>
         </div>
       ))}
