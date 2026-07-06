@@ -1,5 +1,12 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { callGemini, callGeminiAudio, callGeminiVision, testGeminiConnection, GEMINI_MODEL } from './geminiService'
+import {
+  callGemini,
+  callGeminiAudio,
+  callGeminiChat,
+  callGeminiVision,
+  testGeminiConnection,
+  GEMINI_MODEL,
+} from './geminiService'
 
 function mockFetchOnce(impl: () => Response | Promise<Response>) {
   vi.stubGlobal('fetch', vi.fn(impl))
@@ -95,6 +102,43 @@ describe('callGeminiVision', () => {
     })
     vi.stubGlobal('fetch', fetchMock)
     await callGeminiVision('p', { data: 'QUJD', mimeType: 'image/jpeg' }, 'AIza-x')
+  })
+})
+
+describe('callGeminiChat', () => {
+  it('renvoie le texte extrait de la réponse Gemini', async () => {
+    mockFetchOnce(() => geminiOk('Bien sûr'))
+    const out = await callGeminiChat(
+      [
+        { role: 'user', text: 'Comment va mon jardin ?' },
+        { role: 'model', text: 'Plutôt bien.' },
+        { role: 'user', text: 'Et mes tomates ?' },
+      ],
+      'AIza-x',
+    )
+    expect(out).toBe('Bien sûr')
+  })
+
+  it('envoie tous les tours précédents avec les bons rôles dans le corps', async () => {
+    const fetchMock = vi.fn((_url: RequestInfo | URL, init?: RequestInit) => {
+      const body = JSON.parse(String(init?.body))
+      expect(body.contents).toEqual([
+        { role: 'user', parts: [{ text: 'Comment va mon jardin ?' }] },
+        { role: 'model', parts: [{ text: 'Plutôt bien.' }] },
+        { role: 'user', parts: [{ text: 'Et mes tomates ?' }] },
+      ])
+      return geminiOk('OK')
+    })
+    vi.stubGlobal('fetch', fetchMock)
+    await callGeminiChat(
+      [
+        { role: 'user', text: 'Comment va mon jardin ?' },
+        { role: 'model', text: 'Plutôt bien.' },
+        { role: 'user', text: 'Et mes tomates ?' },
+      ],
+      'AIza-x',
+    )
+    expect(fetchMock).toHaveBeenCalledOnce()
   })
 })
 

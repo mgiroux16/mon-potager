@@ -1,10 +1,10 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Info, Loader2, Send } from 'lucide-react'
 import { useCollection } from '../data/firestoreHooks'
 import type { Crop, Expense, FruitTree, GardenLogEntry, Oya, Parcel, Variety } from '../data/model'
 import { useSettings } from '../services/settingsService'
-import { callGemini } from '../services/geminiService'
+import { callGeminiChat } from '../services/geminiService'
 import { summarizeHarvests } from '../services/harvestService'
 import { summarizeCropSeason, summarizeParcelSeason } from '../services/seasonSummaryService'
 import {
@@ -16,7 +16,7 @@ import {
 } from '../services/assistantContext'
 import type { LogRefs } from '../services/logView'
 
-type ChatMessage = { role: 'user' | 'assistant'; text: string }
+type ChatMessage = { role: 'user' | 'assistant'; text: string; sentText?: string }
 
 function isoDaysAgo(days: number): string {
   const d = new Date()
@@ -57,6 +57,8 @@ export function AssistantPage() {
 
   const [cropOn, setCropOn] = useState(false)
   const [cropId, setCropId] = useState('')
+
+  const lastAttachedKey = useRef<string | null>(null)
 
   if (!settings) {
     return <p className="text-sm text-green-700">Chargement…</p>
@@ -118,23 +120,39 @@ export function AssistantPage() {
     return attachments
   }
 
+  function buildAttachedKey(): string {
+    return [
+      journalOn ? `journal:${journalFrom}:${journalTo}` : '',
+      seasonOn ? `saison:${seasonYear}` : '',
+      expensesOn ? `depenses:${expensesYear}` : '',
+      cropOn && cropId ? `culture:${cropId}` : '',
+    ].join('|')
+  }
+
   async function handleSend() {
     if (!apiKey || !question.trim() || sending) return
     setError(null)
     setSending(true)
 
-    const attachments = buildSelectedAttachments()
-    const attachedText = attachments.map((a) => `--- ${a.label} ---\n${a.text}`).join('\n\n')
-    const prompt = attachedText
-      ? `${attachedText}\n\n--- Question ---\n${question}`
-      : question
+    const attachedKey = buildAttachedKey()
+    let prompt = question
+    if (attachedKey !== lastAttachedKey.current) {
+      const attachments = buildSelectedAttachments()
+      const attachedText = attachments.map((a) => `--- ${a.label} ---\n${a.text}`).join('\n\n')
+      prompt = attachedText ? `${attachedText}\n\n--- Question ---\n${question}` : question
+      lastAttachedKey.current = attachedKey
+    }
 
-    const userMessage: ChatMessage = { role: 'user', text: question }
+    const userMessage: ChatMessage = { role: 'user', text: question, sentText: prompt }
+    const history = [...messages, userMessage].map((m) => ({
+      role: m.role === 'assistant' ? ('model' as const) : ('user' as const),
+      text: m.sentText ?? m.text,
+    }))
     setMessages((prev) => [...prev, userMessage])
     setQuestion('')
 
     try {
-      const response = await callGemini(prompt, apiKey)
+      const response = await callGeminiChat(history, apiKey)
       setMessages((prev) => [...prev, { role: 'assistant', text: response }])
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))

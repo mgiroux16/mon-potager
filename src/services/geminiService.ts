@@ -13,16 +13,20 @@ interface GeminiResponse {
 // Un morceau de contenu envoyé à Gemini : du texte ou de l'audio encodé en base64.
 type GeminiPart = { text: string } | { inlineData: { data: string; mimeType: string } }
 
+type GeminiContent = { role: 'user' | 'model'; parts: GeminiPart[] }
+
+export type GeminiChatTurn = { role: 'user' | 'model'; text: string }
+
 /**
- * Cœur d'appel partagé : poste des `parts` (texte et/ou audio) et renvoie le texte
+ * Cœur d'appel partagé : poste des `contents` (un ou plusieurs tours) et renvoie le texte
  * de la réponse. La clé n'est jamais journalisée ; lève une erreur lisible en cas d'échec.
  */
-async function postGemini(parts: GeminiPart[], apiKey: string): Promise<string> {
+async function postGemini(contents: GeminiContent[], apiKey: string): Promise<string> {
   const url = `${ENDPOINT}/${GEMINI_MODEL}:generateContent?key=${apiKey}`
   const response = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ contents: [{ parts }] }),
+    body: JSON.stringify({ contents }),
   })
 
   const data = (await response.json().catch(() => ({}))) as GeminiResponse
@@ -43,7 +47,18 @@ async function postGemini(parts: GeminiPart[], apiKey: string): Promise<string> 
  * Appelle l'API Gemini avec un prompt texte et renvoie le texte de la réponse.
  */
 export async function callGemini(prompt: string, apiKey: string): Promise<string> {
-  return postGemini([{ text: prompt }], apiKey)
+  return postGemini([{ role: 'user', parts: [{ text: prompt }] }], apiKey)
+}
+
+/**
+ * Appelle Gemini avec l'historique complet de la conversation (tours user/model)
+ * pour que le modèle garde le fil d'un échange à l'autre.
+ */
+export async function callGeminiChat(history: GeminiChatTurn[], apiKey: string): Promise<string> {
+  return postGemini(
+    history.map((t) => ({ role: t.role, parts: [{ text: t.text }] })),
+    apiKey,
+  )
 }
 
 /**
@@ -56,7 +71,7 @@ export async function callGeminiAudio(
   audio: { data: string; mimeType: string },
   apiKey: string,
 ): Promise<string> {
-  return postGemini([{ text: prompt }, { inlineData: audio }], apiKey)
+  return postGemini([{ role: 'user', parts: [{ text: prompt }, { inlineData: audio }] }], apiKey)
 }
 
 /**
@@ -68,7 +83,7 @@ export async function callGeminiVision(
   image: { data: string; mimeType: string },
   apiKey: string,
 ): Promise<string> {
-  return postGemini([{ text: prompt }, { inlineData: image }], apiKey)
+  return postGemini([{ role: 'user', parts: [{ text: prompt }, { inlineData: image }] }], apiKey)
 }
 
 export type ConnectionResult = { ok: true } | { ok: false; error: string }
