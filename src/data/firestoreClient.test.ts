@@ -67,3 +67,30 @@ describe('disjoncteur des pushes', () => {
     expect(setDocMock).toHaveBeenCalledTimes(WRITE_GUARD_LIMIT + 1)
   })
 })
+
+describe('garde hors-ligne des pushes', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    localStorage.clear()
+    resetWriteGuard()
+    setOnLine(true)
+  })
+
+  it('pushRecord ne fait rien hors-ligne (pas de mutation empilée)', async () => {
+    setOnLine(false)
+    await pushRecord('uid1', 'log', 'e1', { id: 'e1' })
+    expect(setDocMock).not.toHaveBeenCalled()
+  })
+
+  it('pushRecord pousse normalement en ligne', async () => {
+    await pushRecord('uid1', 'log', 'e1', { id: 'e1' })
+    expect(setDocMock).toHaveBeenCalledTimes(1)
+  })
+
+  it('pushRecords ne fait rien hors-ligne', async () => {
+    setOnLine(false)
+    await pushRecords('uid1', 'log', [{ id: 'e1', data: { id: 'e1' } }])
+    expect(batchCommitMock).not.toHaveBeenCalled()
+    expect(setDocMock).not.toHaveBeenCalled()
+  })
+})

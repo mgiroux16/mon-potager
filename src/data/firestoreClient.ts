@@ -17,6 +17,14 @@ export function tableCollectionPath(uid: string, table: TableName): string {
   return `users/${uid}/${table}`
 }
 
+// Hors-ligne, un setDoc s'empile dans la file persistante du SDK et rejoue au
+// prochain demarrage (backlog du 04/07 : ~10 k mutations rejouees a l'ouverture,
+// quota brule). On ne pousse qu'en ligne : runInitialSync re-derive les ecarts
+// depuis les curseurs updatedAt au prochain lancement connecte, rien n'est perdu.
+function isOffline(): boolean {
+  return typeof navigator !== 'undefined' && navigator.onLine === false
+}
+
 // Ecriture brute, sans disjoncteur : reservee au repli de pushRecords (les
 // ecritures du lot sont deja comptees, un repli ne doit pas double-compter).
 async function pushRecordRaw(
@@ -34,6 +42,7 @@ export async function pushRecord(
   id: string,
   data: Record<string, unknown>,
 ): Promise<void> {
+  if (isOffline()) return
   if (!canWrite()) return
   registerWrites(1)
   await pushRecordRaw(uid, table, id, data)
@@ -46,6 +55,7 @@ export async function pushRecords(
   table: TableName,
   items: { id: string; data: Record<string, unknown> }[],
 ): Promise<void> {
+  if (isOffline()) return
   if (!canWrite()) return
   if (items.length === 0) return
   // On compte AVANT l'envoi, volontairement : une ecriture partie vers la file
