@@ -14,7 +14,6 @@ import { fetchAllRecords, pushRecords } from './firestoreClient'
 // a jour si une table rejoint/quitte la synchro. auditLog est volontairement absente : elle
 // n'est pas synchronisee (voir syncHooks.ts).
 export const SYNCED_TABLES: TableName[] = [
-  'log',
   'parcels',
   'crops',
   'oyas',

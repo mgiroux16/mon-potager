@@ -187,6 +187,9 @@ describe('JournalPage', () => {
     renderJournal()
     const user = userEvent.setup()
     await waitFor(() => expect(screen.getByText('taches sur les feuilles')).toBeInTheDocument())
+    // La banniere meteo n'apparait qu'une fois les reglages charges : attendre
+    // qu'elle soit la garantit que la cle Gemini est disponible avant le clic.
+    await screen.findByText(/forte chaleur/)
     await user.click(screen.getByRole('button', { name: 'Diagnostiquer' }))
 
     await waitFor(() => expect(callGeminiVision).toHaveBeenCalledTimes(1))

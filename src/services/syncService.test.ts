@@ -97,7 +97,7 @@ describe('runInitialSync', () => {
 
   it('continue a synchroniser les autres tables si une table echoue', async () => {
     vi.spyOn(firestoreClient, 'fetchAllRecords').mockImplementation(async (_uid, table) => {
-      if (table === 'log') throw new Error('quota exceeded')
+      if (table === 'parcels') throw new Error('quota exceeded')
       return []
     })
     vi.spyOn(firestoreClient, 'pushRecords').mockResolvedValue()
@@ -109,7 +109,7 @@ describe('runInitialSync', () => {
 
   it('ne reste pas bloque indefiniment si une table ne repond jamais (getDocs pendu)', async () => {
     vi.spyOn(firestoreClient, 'fetchAllRecords').mockImplementation(async (_uid, table) => {
-      if (table === 'log') return new Promise(() => {}) // ne resout et ne rejette jamais
+      if (table === 'parcels') return new Promise(() => {}) // ne resout et ne rejette jamais
       return []
     })
     vi.spyOn(firestoreClient, 'pushRecords').mockResolvedValue()

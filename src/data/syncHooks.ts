@@ -19,6 +19,11 @@ const TABLE_NAMES = [
 
 export type TableName = (typeof TABLE_NAMES)[number]
 
+// Tables passees en cloud-first (lectures useCollection, ecritures firestoreWrites) :
+// plus de hooks Dexie, plus aucun push depuis la copie locale (devenue passive
+// jusqu'au demontage du Lot 5). TABLE_NAMES reste la source du type TableName.
+const CLOUD_FIRST_TABLES: readonly TableName[] = ['log']
+
 let installed = false
 let activeUid: string | null = null
 // Compteur (et non booleen) : la sync lance des lectures maintenance en parallele
@@ -63,6 +68,7 @@ export function installSyncHooks(): void {
   installed = true
 
   for (const name of TABLE_NAMES) {
+    if (CLOUD_FIRST_TABLES.includes(name)) continue
     const table = db.table(name)
 
     table.hook('creating', (_primKey, obj) => {
