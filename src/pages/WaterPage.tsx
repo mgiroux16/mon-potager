@@ -1,9 +1,7 @@
 import { useEffect, useState } from 'react'
-import { useLiveQuery } from 'dexie-react-hooks'
-import { db } from '../data/db'
 import { useCollection } from '../data/firestoreHooks'
 import { cloudPut } from '../data/firestoreWrites'
-import type { GardenLogEntry, WaterTank } from '../data/model'
+import type { GardenLogEntry, Parcel, WaterTank } from '../data/model'
 import { summarizeWaterUsage } from '../services/waterUsageService'
 import { summarizeTankAutonomy } from '../services/tankAutonomyService'
 import { resolveRainMm, compareWateringToRain } from '../services/wateringComparisonService'
@@ -47,7 +45,7 @@ function TankLevelInput({ tank }: { tank: WaterTank }) {
 
 export function WaterPage() {
   const { data: entries } = useCollection<GardenLogEntry>('log')
-  const parcels = useLiveQuery(() => db.parcels.toArray(), [], [])
+  const { data: parcels } = useCollection<Parcel>('parcels')
   const { data: tanks } = useCollection<WaterTank>('tanks')
   const settings = useSettings()
   const [history, setHistory] = useState<DailyWeather[] | null>(null)

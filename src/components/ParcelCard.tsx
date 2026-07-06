@@ -2,8 +2,8 @@ import { useState } from 'react'
 import type { MouseEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Camera, Copy, Pencil, Trash2 } from 'lucide-react'
-import { db, newId } from '../data/db'
-import { softDelete } from '../data/syncHooks'
+import { useCollection } from '../data/firestoreHooks'
+import { cloudAdd, cloudDelete, cloudPut } from '../data/firestoreWrites'
 import type { Parcel } from '../data/model'
 import { compressImage } from '../services/imageService'
 import { isPointInPolygon } from '../services/geometry'
@@ -16,6 +16,7 @@ interface ParcelCardProps {
 
 export function ParcelCard({ parcel }: ParcelCardProps) {
   const navigate = useNavigate()
+  const { data: allParcels } = useCollection<Parcel>('parcels')
   const [renaming, setRenaming] = useState(false)
   const [name, setName] = useState(parcel.name)
   const [editingPhoto, setEditingPhoto] = useState(false)
@@ -30,7 +31,7 @@ export function ParcelCard({ parcel }: ParcelCardProps) {
     setRenaming(false)
     const trimmed = name.trim()
     if (parcel.id != null && trimmed && trimmed !== parcel.name) {
-      await db.parcels.update(parcel.id, { name: trimmed })
+      cloudPut('parcels', parcel.id, { name: trimmed })
     } else {
       setName(parcel.name)
     }
@@ -41,22 +42,20 @@ export function ParcelCard({ parcel }: ParcelCardProps) {
     const trimmed = area.trim()
     if (parcel.id == null) return
     if (trimmed === '') {
-      await db.parcels.update(parcel.id, { areaM2: undefined })
+      cloudPut('parcels', parcel.id, { areaM2: undefined })
       return
     }
     const parsed = Number(trimmed.replace(',', '.'))
     if (!Number.isNaN(parsed) && parsed >= 0) {
-      await db.parcels.update(parcel.id, { areaM2: parsed })
+      cloudPut('parcels', parcel.id, { areaM2: parsed })
     } else {
       setArea(parcel.areaM2 != null ? String(parcel.areaM2) : '')
     }
   }
 
-  async function duplicateParcel() {
-    const all = await db.parcels.toArray()
-    const slot = nextFreeMapSlot(all)
-    await db.parcels.add({
-      id: newId(),
+  function duplicateParcel() {
+    const slot = nextFreeMapSlot(allParcels)
+    cloudAdd('parcels', {
       name: `${parcel.name} (copie)`,
       areaM2: parcel.areaM2,
       exposure: parcel.exposure,
@@ -76,7 +75,7 @@ export function ParcelCard({ parcel }: ParcelCardProps) {
   async function removeParcel() {
     if (parcel.id == null) return
     if (window.confirm(`Supprimer la parcelle "${parcel.name}" ?`)) {
-      await softDelete('parcels', parcel.id)
+      cloudDelete('parcels', parcel.id)
     }
   }
 
@@ -89,7 +88,7 @@ export function ParcelCard({ parcel }: ParcelCardProps) {
 
   async function handlePolygonValidated(polygon: { x: number; y: number }[]) {
     if (parcel.id == null) return
-    await db.parcels.update(parcel.id, {
+    cloudPut('parcels', parcel.id, {
       photoUrl: pendingPhotoUrl ?? parcel.photoUrl,
       polygon,
     })

@@ -3,7 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { Trash2 } from 'lucide-react'
 import { db } from '../data/db'
 import { useCollection } from '../data/firestoreHooks'
-import type { Expense, GardenLogEntry } from '../data/model'
+import type { Crop, Expense, GardenLogEntry } from '../data/model'
 import { ExpenseForm } from '../components/ExpenseForm'
 import { EconomicBalanceBanner } from '../components/EconomicBalanceBanner'
 import { ListCard } from '../components/ui/ListCard'
@@ -52,7 +52,7 @@ export function ArgentPage() {
   const [tab, setTab] = useState<Tab>('variables')
 
   const expenses = useLiveQuery(() => db.expenses.toArray(), [], [])
-  const crops = useLiveQuery(() => db.crops.toArray(), [], [])
+  const { data: crops } = useCollection<Crop>('crops')
   const { data: log } = useCollection<GardenLogEntry>('log')
 
   const harvestRows = summarizeHarvests(log ?? [], crops ?? [])

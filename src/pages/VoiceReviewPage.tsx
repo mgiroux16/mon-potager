@@ -1,9 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { useLiveQuery } from 'dexie-react-hooks'
-import { db } from '../data/db'
 import { useCollection } from '../data/firestoreHooks'
-import type { FruitTree, Oya } from '../data/model'
+import type { Crop, FruitTree, Oya, Parcel } from '../data/model'
 import { addLogEntry, type NewLogEntry } from '../services/logService'
 import { LOG_TYPE_LABELS, resolveDetail, resolveTargetName, type LogRefs } from '../services/logView'
 import { LOG_TYPE_ICONS } from '../components/logTypeIcons'
@@ -25,8 +23,8 @@ const actionButtonClass =
 export function VoiceReviewPage() {
   const location = useLocation()
   const navigate = useNavigate()
-  const parcels = useLiveQuery(() => db.parcels.toArray(), [], [])
-  const crops = useLiveQuery(() => db.crops.toArray(), [], [])
+  const { data: parcels } = useCollection<Parcel>('parcels')
+  const { data: crops } = useCollection<Crop>('crops')
   const { data: oyas } = useCollection<Oya>('oyas')
   const { data: trees } = useCollection<FruitTree>('trees')
 

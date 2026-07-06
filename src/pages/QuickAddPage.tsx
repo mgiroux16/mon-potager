@@ -1,11 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { useLiveQuery } from 'dexie-react-hooks'
 import { ArrowLeft, Euro, MoreHorizontal } from 'lucide-react'
-import { db } from '../data/db'
 import { useCollection } from '../data/firestoreHooks'
-import type { CatalogItem, FruitTree, GardenLogEntry, LogEntryType, Oya, Variety } from '../data/model'
+import type { CatalogItem, Crop, FruitTree, GardenLogEntry, LogEntryType, Oya, Parcel, Variety } from '../data/model'
 import { addLogEntry, updateLogEntry, type NewLogEntry } from '../services/logService'
 import { findOrCreateVariety } from '../services/varietyService'
 import { fetchTodaySnapshot } from '../services/weatherService'
@@ -93,8 +91,8 @@ export function EntryForm({ config, initial, editId, onSaved, onCancel }: {
   onSaved: () => void
   onCancel: () => void
 }) {
-  const parcels = useLiveQuery(() => db.parcels.toArray(), [], [])
-  const crops = useLiveQuery(() => db.crops.toArray(), [], [])
+  const { data: parcels } = useCollection<Parcel>('parcels')
+  const { data: crops } = useCollection<Crop>('crops')
   const { data: oyas } = useCollection<Oya>('oyas')
   const { data: trees } = useCollection<FruitTree>('trees')
   const { data: varieties } = useCollection<Variety>('varieties')

@@ -1,9 +1,8 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { MouseEvent as ReactMouseEvent, WheelEvent as ReactWheelEvent, TouchEvent as ReactTouchEvent } from 'react'
-import { useLiveQuery } from 'dexie-react-hooks'
 import { useNavigate } from 'react-router-dom'
-import { db, newId } from '../data/db'
-import { softDelete } from '../data/syncHooks'
+import { useCollection } from '../data/firestoreHooks'
+import { cloudAdd, cloudDelete, cloudPut } from '../data/firestoreWrites'
 import type { Parcel } from '../data/model'
 import { nextFreeMapSlot } from '../services/mapLayout'
 
@@ -76,7 +75,7 @@ interface ResizeState {
 
 export function GardenMapPage() {
   const navigate = useNavigate()
-  const parcels = useLiveQuery(() => db.parcels.toArray(), [], [])
+  const { data: parcels } = useCollection<Parcel>('parcels')
   const [scale, setScale] = useState(1)
   const gridCols = Math.round(TOTAL_WIDTH_M / scale)
   const gridRows = Math.round(TOTAL_HEIGHT_M / scale)
@@ -106,25 +105,24 @@ export function GardenMapPage() {
   async function placeParcel(parcel: Parcel) {
     if (parcel.id == null) return
     const slot = nextFreeMapSlot(parcels)
-    await db.parcels.update(parcel.id, { mapX: slot.x, mapY: slot.y, mapWidth: 2, mapHeight: 2, mapRotation: 0 })
+    cloudPut('parcels', parcel.id, { mapX: slot.x, mapY: slot.y, mapWidth: 2, mapHeight: 2, mapRotation: 0 })
   }
 
-  async function addParcel() {
+  function addParcel() {
     const slot = nextFreeMapSlot(parcels)
-    await db.parcels.add({ id: newId(), name: 'Nouvelle zone', mapX: slot.x, mapY: slot.y, mapWidth: 2, mapHeight: 2, mapRotation: 0 })
+    cloudAdd('parcels', { name: 'Nouvelle zone', mapX: slot.x, mapY: slot.y, mapWidth: 2, mapHeight: 2, mapRotation: 0 })
   }
 
   async function rotateParcel(parcel: Parcel) {
     if (parcel.id == null) return
     const current = parcel.mapRotation ?? 0
     const next = ((current + 90) % 360) as 0 | 90 | 180 | 270
-    await db.parcels.update(parcel.id, { mapRotation: next })
+    cloudPut('parcels', parcel.id, { mapRotation: next })
   }
 
-  async function duplicateParcel(parcel: Parcel) {
+  function duplicateParcel(parcel: Parcel) {
     const slot = nextFreeMapSlot(parcels)
-    await db.parcels.add({
-      id: newId(),
+    cloudAdd('parcels', {
       name: `${parcel.name} (copie)`,
       mapX: slot.x,
       mapY: slot.y,
@@ -138,7 +136,7 @@ export function GardenMapPage() {
   async function deleteParcel(parcel: Parcel) {
     if (parcel.id == null) return
     if (window.confirm(`Supprimer la parcelle "${parcel.name}" ?`)) {
-      await softDelete('parcels', parcel.id)
+      cloudDelete('parcels', parcel.id)
       setSelectedId(null)
     }
   }
@@ -152,7 +150,7 @@ export function GardenMapPage() {
   async function saveRename() {
     if (renamingId == null) return
     const trimmed = renameValue.trim()
-    if (trimmed) await db.parcels.update(renamingId, { name: trimmed })
+    if (trimmed) cloudPut('parcels', renamingId, { name: trimmed })
     setRenamingId(null)
   }
 
@@ -203,7 +201,7 @@ export function GardenMapPage() {
       if (live) {
         const snappedX = Math.max(0, Math.round(live.x / scale) * scale)
         const snappedY = Math.max(0, Math.round(live.y / scale) * scale)
-        await db.parcels.update(d.id, { mapX: snappedX, mapY: snappedY })
+        cloudPut('parcels', d.id, { mapX: snappedX, mapY: snappedY })
         setLivePositions((prev) => {
           const next = { ...prev }
           delete next[d.id]
@@ -219,7 +217,7 @@ export function GardenMapPage() {
       if (live) {
         const snappedW = Math.max(scale, Math.round(live.w / scale) * scale)
         const snappedH = Math.max(scale, Math.round(live.h / scale) * scale)
-        await db.parcels.update(r.id, { mapWidth: snappedW, mapHeight: snappedH })
+        cloudPut('parcels', r.id, { mapWidth: snappedW, mapHeight: snappedH })
         setLiveSizes((prev) => {
           const next = { ...prev }
           delete next[r.id]

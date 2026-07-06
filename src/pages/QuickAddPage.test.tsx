@@ -36,9 +36,16 @@ beforeEach(async () => {
   clearCollectionData()
 })
 
+
+function seedRow(table: string, row: Record<string, unknown>): string {
+  const id = (row.id as string | undefined) ?? newId()
+  setCollectionData(table, [...getCollectionData(table), { ...row, id }])
+  return id
+}
+
 describe('QuickAddPage', () => {
   it('ajoute un arrosage via la tuile dédiée', async () => {
-    await db.parcels.add({ id: newId(), name: 'Planche test' })
+    seedRow('parcels', { id: newId(), name: 'Planche test' })
     render(
       <MemoryRouter>
         <QuickAddPage />
@@ -63,8 +70,8 @@ describe('QuickAddPage', () => {
   })
 
   it('permet de tracer un arrosage sur plusieurs parcelles (goutte-à-goutte commun), sans volume', async () => {
-    await db.parcels.add({ id: newId(), name: 'Planche A' })
-    await db.parcels.add({ id: newId(), name: 'Planche B' })
+    seedRow('parcels', { id: newId(), name: 'Planche A' })
+    seedRow('parcels', { id: newId(), name: 'Planche B' })
     render(
       <MemoryRouter>
         <QuickAddPage />
@@ -90,7 +97,7 @@ describe('QuickAddPage', () => {
   })
 
   it('enregistre durationMinutes independamment du volume sur une entree arrosage', async () => {
-    await db.parcels.add({ id: newId(), name: 'Planche test' })
+    seedRow('parcels', { id: newId(), name: 'Planche test' })
     render(
       <MemoryRouter>
         <QuickAddPage />
@@ -115,7 +122,7 @@ describe('QuickAddPage', () => {
   })
 
   it('permet de saisir la duree seule, sans volume', async () => {
-    await db.parcels.add({ id: newId(), name: 'Planche test' })
+    seedRow('parcels', { id: newId(), name: 'Planche test' })
     render(
       <MemoryRouter>
         <QuickAddPage />
@@ -184,8 +191,8 @@ describe('QuickAddPage', () => {
 
 describe('QuickAddPage avec brouillon vocal', () => {
   async function seedVoice() {
-    await db.parcels.add({ id: '1', name: 'Parcelle A' })
-    await db.crops.add({ id: '10', name: 'Tomates', status: 'en_place' })
+    seedRow('parcels', { id: '1', name: 'Parcelle A' })
+    seedRow('crops', { id: '10', name: 'Tomates', status: 'en_place' })
   }
 
   it('ouvre EntryForm prerempli (type + volume) depuis le router state', async () => {
@@ -274,7 +281,7 @@ describe('QuickAddPage avec brouillon vocal', () => {
 
 describe('QuickAddPage en mode edition (editEntry)', () => {
   it('ouvre EntryForm prerempli et met a jour la meme entree sans doublon', async () => {
-    await db.parcels.add({ id: '1', name: 'Parcelle A' })
+    seedRow('parcels', { id: '1', name: 'Parcelle A' })
     const { addLogEntry } = await import('../services/logService')
     const id = await addLogEntry({ type: 'arrosage', date: '2026-06-24', volumeLiters: 30, parcelId: '1' })
     await addLogEntry({ type: 'recolte', date: '2026-06-24', quantityKg: 2 })
@@ -311,8 +318,8 @@ describe('QuickAddPage en mode edition (editEntry)', () => {
 describe('QuickAddPage avec selecteur de variete', () => {
   it('enregistre la varietyId choisie sur une récolte', async () => {
     setCollectionData('catalog', [{ id: '3', vegetable: 'Courgette', family: 'cucurbitacees' }])
-    await db.crops.add({ id: '1', name: 'Courgettes', catalogId: '3', status: 'en_place' })
-    await db.parcels.add({ id: '1', name: 'Buttes' })
+    seedRow('crops', { id: '1', name: 'Courgettes', catalogId: '3', status: 'en_place' })
+    seedRow('parcels', { id: '1', name: 'Buttes' })
     findOrCreateVariety([], 'Ronde de Nice', 'Courgette')
 
     render(

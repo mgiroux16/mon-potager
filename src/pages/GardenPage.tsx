@@ -1,13 +1,11 @@
 import { useState } from 'react'
-import { useLiveQuery } from 'dexie-react-hooks'
 import { Sprout, Trees, MapPin, Pencil, Bell, Trash2 } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { db, newId } from '../data/db'
-import { softDelete } from '../data/syncHooks'
 import { useCollection } from '../data/firestoreHooks'
-import { cloudAdd } from '../data/firestoreWrites'
-import type { CatalogItem, Crop, FruitTree, GardenLogEntry, VegetableFamily } from '../data/model'
+import { cloudAdd, cloudDelete, cloudPut } from '../data/firestoreWrites'
+import type { CatalogItem, Crop, FruitTree, GardenLogEntry, Parcel, VegetableFamily } from '../data/model'
 import { getInactiveParcels, getHarvestReminders, getRotationReminders } from '../services/reminderService'
+import { executeDedupe, planDedupe } from '../services/dedupeService'
 import { ParcelCard } from '../components/ParcelCard'
 import { TreeCard } from '../components/TreeCard'
 import { nextFreeMapSlot, DEFAULT_MAP_SIZE_M } from '../services/mapLayout'
@@ -40,7 +38,7 @@ function CropPrice({ crop }: { crop: Crop }) {
     setEditing(false)
     const parsed = value.trim() === '' ? undefined : Number(value.replace(',', '.'))
     if (crop.id != null && parsed != null && !Number.isNaN(parsed)) {
-      await db.crops.update(crop.id, { pricePerKg: parsed })
+      cloudPut('crops', crop.id, { pricePerKg: parsed })
     }
   }
 
@@ -73,8 +71,8 @@ function CropPrice({ crop }: { crop: Crop }) {
 }
 
 export function GardenPage() {
-  const parcels = useLiveQuery(() => db.parcels.toArray(), [], [])
-  const crops = useLiveQuery(() => db.crops.toArray(), [], [])
+  const { data: parcels } = useCollection<Parcel>('parcels')
+  const { data: crops } = useCollection<Crop>('crops')
   const { data: trees } = useCollection<FruitTree>('trees')
   const { data: log } = useCollection<GardenLogEntry>('log')
   const { data: catalog } = useCollection<CatalogItem>('catalog')
@@ -83,6 +81,31 @@ export function GardenPage() {
   const [newParcelName, setNewParcelName] = useState('')
   const [creatingTree, setCreatingTree] = useState(false)
   const [newTreeName, setNewTreeName] = useState('')
+  const [deduping, setDeduping] = useState(false)
+
+  // Fusion des doublons, version cloud one-shot : plan d'abord (aucune ecriture),
+  // confirmation avec le nombre d'ecritures prevues, puis writeBatch par lots de 500.
+  async function handleDedupe() {
+    setDeduping(true)
+    try {
+      const plan = await planDedupe()
+      if (plan.ops.length === 0) {
+        window.alert('Aucun doublon détecté.')
+        return
+      }
+      const ok = window.confirm(
+        `Fusionner ${plan.parcelIdMap.size} parcelle(s) et ${plan.cropIdMap.size} culture(s) en doublon ? ${plan.ops.length} écriture(s) Firestore seront faites.`,
+      )
+      if (!ok) return
+      const summary = await executeDedupe(plan)
+      window.alert(`Fusion terminée : ${summary.parcelsMerged} parcelle(s), ${summary.cropsMerged} culture(s).`)
+    } catch (err) {
+      console.error('[dedupe] echec', err)
+      window.alert('La fusion a échoué (voir la console). Aucune donnée perdue : relance quand tu es en ligne.')
+    } finally {
+      setDeduping(false)
+    }
+  }
 
   const today = todayISO()
   const inactiveParcels = getInactiveParcels(parcels, log, crops, today)
@@ -95,6 +118,14 @@ export function GardenPage() {
     <div className="space-y-6 p-4 lg:grid lg:grid-cols-3 lg:gap-6 lg:space-y-0 lg:p-0">
       <div className="flex items-center justify-between lg:col-span-3">
         <h1 className="text-xl font-bold text-green-800">Mon jardin</h1>
+        <button
+          type="button"
+          onClick={handleDedupe}
+          disabled={deduping}
+          className="rounded-lg border border-green-300 px-3 py-1.5 text-sm text-green-700 disabled:opacity-50"
+        >
+          {deduping ? 'Fusion…' : 'Fusionner les doublons'}
+        </button>
       </div>
 
       {hasReminders ? (
@@ -144,8 +175,7 @@ export function GardenPage() {
               const trimmed = newParcelName.trim()
               if (trimmed) {
                 const slot = nextFreeMapSlot(parcels)
-                await db.parcels.add({
-                  id: newId(),
+                cloudAdd('parcels', {
                   name: trimmed,
                   mapX: slot.x,
                   mapY: slot.y,
@@ -193,7 +223,7 @@ export function GardenPage() {
                 type="button"
                 onClick={async () => {
                   if (c.id != null && window.confirm(`Supprimer la culture "${c.name}" ?`)) {
-                    await softDelete('crops', c.id)
+                    cloudDelete('crops', c.id)
                   }
                 }}
                 aria-label={`Supprimer la culture ${c.name}`}

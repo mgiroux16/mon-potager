@@ -15,7 +15,7 @@ import { getCropNote, getParcelNote, setCropNote, setParcelNote } from '../servi
 import { EconomicBalanceBanner } from '../components/EconomicBalanceBanner'
 import { ListCard } from '../components/ui/ListCard'
 import { useCollection } from '../data/firestoreHooks'
-import type { Expense, GardenLogEntry, SeasonNote, Variety } from '../data/model'
+import type { Crop, Expense, GardenLogEntry, Parcel, SeasonNote, Variety } from '../data/model'
 
 function formatKg(kg: number): string {
   return `${kg.toLocaleString('fr-FR')} kg`
@@ -151,9 +151,9 @@ export function SeasonSummaryPage() {
   const [year, setYear] = useState(currentYear)
   const settings = useSettings()
   const { data: entries } = useCollection<GardenLogEntry>('log')
-  const crops = useLiveQuery(() => db.crops.toArray(), [], [])
+  const { data: crops } = useCollection<Crop>('crops')
   const { data: varieties } = useCollection<Variety>('varieties')
-  const parcels = useLiveQuery(() => db.parcels.toArray(), [], [])
+  const { data: parcels } = useCollection<Parcel>('parcels')
   const expenses = useLiveQuery(() => db.expenses.toArray(), [], [])
   const notes = useLiveQuery(() => db.seasonNotes.toArray(), [], [])
 

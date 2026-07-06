@@ -1,8 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
-import { db } from '../data/db'
 import { useCollection } from '../data/firestoreHooks'
-import type { CatalogItem } from '../data/model'
+import type { CatalogItem, Crop } from '../data/model'
 import { getMonthPlan, type MonthPlan } from '../services/calendarService'
 
 const MOIS_FR = [
@@ -42,16 +41,11 @@ function Section({ title, items, emptyVerb }: SectionProps) {
 export function CalendarPage() {
   const [month, setMonth] = useState(() => new Date().getMonth() + 1)
   const { data: catalog } = useCollection<CatalogItem>('catalog')
-  const [gardenCatalogIds, setGardenCatalogIds] = useState<Set<string>>(new Set())
-
-  useEffect(() => {
-    db.crops.toArray().then((crops) => {
-      const ids = crops
-        .filter((crop) => !crop.deletedAt && crop.catalogId)
-        .map((crop) => crop.catalogId as string)
-      setGardenCatalogIds(new Set(ids))
-    })
-  }, [])
+  const { data: crops } = useCollection<Crop>('crops')
+  const gardenCatalogIds = useMemo(
+    () => new Set(crops.filter((crop) => crop.catalogId).map((crop) => crop.catalogId as string)),
+    [crops],
+  )
 
   const plan: MonthPlan = getMonthPlan(catalog, month, gardenCatalogIds)
 

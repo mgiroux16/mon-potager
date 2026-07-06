@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom'
 import { Info, Loader2, Send } from 'lucide-react'
 import { db } from '../data/db'
 import { useCollection } from '../data/firestoreHooks'
-import type { FruitTree, GardenLogEntry, Oya, Variety } from '../data/model'
+import type { Crop, FruitTree, GardenLogEntry, Oya, Parcel, Variety } from '../data/model'
 import { useSettings } from '../services/settingsService'
 import { callGemini } from '../services/geminiService'
 import { summarizeHarvests } from '../services/harvestService'
@@ -33,8 +33,8 @@ function todayISO(): string {
 export function AssistantPage() {
   const settings = useSettings()
   const { data: entries } = useCollection<GardenLogEntry>('log')
-  const crops = useLiveQuery(() => db.crops.toArray(), [], [])
-  const parcels = useLiveQuery(() => db.parcels.toArray(), [], [])
+  const { data: crops } = useCollection<Crop>('crops')
+  const { data: parcels } = useCollection<Parcel>('parcels')
   const { data: oyas } = useCollection<Oya>('oyas')
   const { data: trees } = useCollection<FruitTree>('trees')
   const { data: varieties } = useCollection<Variety>('varieties')

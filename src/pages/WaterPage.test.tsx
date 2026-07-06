@@ -24,6 +24,13 @@ beforeEach(async () => {
   clearCollectionData()
 })
 
+
+function seedRow(table: string, row: Record<string, unknown>): string {
+  const id = (row.id as string | undefined) ?? newId()
+  setCollectionData(table, [...getCollectionData(table), { ...row, id }])
+  return id
+}
+
 describe('WaterPage', () => {
   it('affiche un message si aucun arrosage chiffré', async () => {
     render(<WaterPage />)
@@ -33,7 +40,7 @@ describe('WaterPage', () => {
   })
 
   it('affiche le cumul par parcelle pour les fenetres glissantes et l annee', async () => {
-    const parcelId = await db.parcels.add({ id: newId(), name: 'Carrés du fond' })
+    const parcelId = seedRow('parcels', { id: newId(), name: 'Carrés du fond' })
     seedLog({
       type: 'arrosage',
       date: new Date().toISOString().slice(0, 10),
@@ -51,8 +58,8 @@ describe('WaterPage', () => {
 
   it('affiche plusieurs parcelles', async () => {
     const today = new Date().toISOString().slice(0, 10)
-    const p1 = await db.parcels.add({ id: newId(), name: 'Carrés du fond' })
-    const p2 = await db.parcels.add({ id: newId(), name: 'Allée' })
+    const p1 = seedRow('parcels', { id: newId(), name: 'Carrés du fond' })
+    const p2 = seedRow('parcels', { id: newId(), name: 'Allée' })
     seedLog({ type: 'arrosage', date: today, parcelId: p1, volumeLiters: 5 })
     seedLog({ type: 'arrosage', date: today, parcelId: p2, volumeLiters: 8 })
 
@@ -68,7 +75,7 @@ describe('WaterPage', () => {
       { name: 'Cuve 1', capacityLiters: 500, estimatedLiters: 300 },
       { name: 'Cuve 2', capacityLiters: 500, estimatedLiters: 200 },
     ])
-    const parcelId = await db.parcels.add({ id: newId(), name: 'Carrés du fond' })
+    const parcelId = seedRow('parcels', { id: newId(), name: 'Carrés du fond' })
     const today = new Date().toISOString().slice(0, 10)
     seedLog({ type: 'arrosage', date: today, parcelId, volumeLiters: 35 })
 

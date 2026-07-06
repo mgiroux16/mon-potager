@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { useLiveQuery } from 'dexie-react-hooks'
 import { useNavigate } from 'react-router-dom'
 import {
   AlertTriangle,
@@ -15,9 +14,8 @@ import {
   TreePine,
   Wheat,
 } from 'lucide-react'
-import { db } from '../data/db'
 import { useCollection } from '../data/firestoreHooks'
-import type { CatalogItem, GardenLogEntry, WaterTank } from '../data/model'
+import type { CatalogItem, Crop, GardenLogEntry, Parcel, WaterTank } from '../data/model'
 import { useSettings } from '../services/settingsService'
 import {
   fetchCurrentDetail,
@@ -172,8 +170,8 @@ export function DashboardPage() {
 
   // Données locales
   const settings = useSettings()
-  const parcels = useLiveQuery(() => db.parcels.toArray(), [], [])
-  const crops = useLiveQuery(() => db.crops.toArray(), [], [])
+  const { data: parcels } = useCollection<Parcel>('parcels')
+  const { data: crops } = useCollection<Crop>('crops')
   const { data: catalog } = useCollection<CatalogItem>('catalog')
   const { data: tanks } = useCollection<WaterTank>('tanks')
   const { data: log } = useCollection<GardenLogEntry>('log')

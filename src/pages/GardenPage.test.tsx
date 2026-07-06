@@ -10,6 +10,9 @@ import { describeLogEntry, type LogRefs } from '../services/logView'
 vi.mock('../data/firestoreHooks', async () => {
   return (await import('../test/firestoreHooksMock')).firestoreHooksMock
 })
+vi.mock('../data/firestoreWrites', async () => {
+  return (await import('../test/firestoreHooksMock')).firestoreWritesMock
+})
 
 function seedLog(entry: Record<string, unknown>): Record<string, unknown> {
   const row = { id: newId(), createdAt: Date.now(), ...entry }
@@ -24,7 +27,16 @@ beforeEach(async () => {
   // trees et catalog sont cloud-first : on recopie le seed Dexie dans le store mocke.
   setCollectionData('trees', (await db.trees.toArray()) as unknown as Record<string, unknown>[])
   setCollectionData('catalog', (await db.catalog.toArray()) as unknown as Record<string, unknown>[])
+  setCollectionData('parcels', (await db.parcels.toArray()) as unknown as Record<string, unknown>[])
+  setCollectionData('crops', (await db.crops.toArray()) as unknown as Record<string, unknown>[])
 })
+
+
+function seedRow(table: string, row: Record<string, unknown>): string {
+  const id = (row.id as string | undefined) ?? newId()
+  setCollectionData(table, [...getCollectionData(table), { ...row, id }])
+  return id
+}
 
 describe('GardenPage', () => {
   it('affiche les parcelles chargées', async () => {
@@ -91,9 +103,9 @@ describe('GardenPage', () => {
   })
 
   it('n affiche pas la section Rappels quand toutes les parcelles ont une activite recente et aucune culture n est mure', async () => {
-    await db.parcels.clear()
-    await db.crops.clear()
-    const parcelId = await db.parcels.add({ id: newId(), name: 'Carré test' })
+    setCollectionData('parcels', [])
+    setCollectionData('crops', [])
+    const parcelId = seedRow('parcels', { id: newId(), name: 'Carré test' })
     seedLog({
       type: 'observation',
       date: new Date().toISOString().slice(0, 10),
@@ -128,7 +140,7 @@ describe('GardenPage', () => {
 
     // La culture est soft-deleted (tombstone), plus dans crops.toArray() : resolveTargetName
     // doit rester sans planter et simplement ne plus donner de nom pour cette culture.
-    const remainingCrops = await db.crops.toArray()
+    const remainingCrops = getCollectionData('crops')
     expect(remainingCrops.some((c) => c.id === 'crop-2')).toBe(false)
     const refs: LogRefs = { parcels: new Map(), crops: new Map(), oyas: new Map(), trees: new Map() }
     const entry = seeded as never

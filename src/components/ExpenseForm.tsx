@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
-import { useLiveQuery } from 'dexie-react-hooks'
 import { db, newId } from '../data/db'
-import type { Expense, ExpenseAmortization, ExpenseRecurrence, ExpensePeriodicity } from '../data/model'
+import { useCollection } from '../data/firestoreHooks'
+import type { Crop, Expense, ExpenseAmortization, ExpenseRecurrence, ExpensePeriodicity, Parcel } from '../data/model'
 
 function todayISO(): string {
   const d = new Date()
@@ -14,8 +14,8 @@ const FIELD =
 const LABEL = 'flex flex-col gap-1 text-sm text-indigo-900'
 
 export function ExpenseForm({ onSaved }: { onSaved?: () => void }) {
-  const parcels = useLiveQuery(() => db.parcels.toArray(), [], [])
-  const crops = useLiveQuery(() => db.crops.toArray(), [], [])
+  const { data: parcels } = useCollection<Parcel>('parcels')
+  const { data: crops } = useCollection<Crop>('crops')
 
   const [label, setLabel] = useState('')
   const [amount, setAmount] = useState('')

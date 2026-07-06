@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import { db, newId } from '../data/db'
-import { setCollectionData, clearCollectionData } from '../test/firestoreHooksMock'
+import { setCollectionData, getCollectionData, clearCollectionData } from '../test/firestoreHooksMock'
 import { HarvestPage } from './HarvestPage'
 
 vi.mock('../data/firestoreHooks', async () => {
@@ -13,6 +13,13 @@ beforeEach(async () => {
   clearCollectionData()
 })
 
+
+function seedRow(table: string, row: Record<string, unknown>): string {
+  const id = (row.id as string | undefined) ?? newId()
+  setCollectionData(table, [...getCollectionData(table), { ...row, id }])
+  return id
+}
+
 describe('HarvestPage', () => {
   it('affiche un message si aucune récolte', async () => {
     render(<HarvestPage />)
@@ -22,7 +29,7 @@ describe('HarvestPage', () => {
   })
 
   it('affiche le bilan groupé par légume avec le total en kg et en euros', async () => {
-    const cropId = await db.crops.add({ id: newId(), name: 'Tomates', status: 'en_recolte', pricePerKg: 3 })
+    const cropId = seedRow('crops', { id: newId(), name: 'Tomates', status: 'en_recolte', pricePerKg: 3 })
     setCollectionData('log', [
       {
         id: newId(), type: 'recolte',

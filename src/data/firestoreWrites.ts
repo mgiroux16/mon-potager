@@ -1,4 +1,13 @@
-import { deleteDoc, deleteField, doc, serverTimestamp, setDoc } from 'firebase/firestore'
+import {
+  collection,
+  deleteDoc,
+  deleteField,
+  doc,
+  getDocs,
+  serverTimestamp,
+  setDoc,
+  writeBatch,
+} from 'firebase/firestore'
 import { auth, firestore } from './firebase'
 import type { TableName } from './syncHooks'
 import { canWrite, registerWrites } from './writeGuard'
@@ -64,4 +73,49 @@ export function cloudDelete(table: TableName, id: string): void {
   void deleteDoc(ref(uid, table, id)).catch((err: unknown) =>
     console.error(`[cloud] echec deleteDoc ${table}/${id}`, err),
   )
+}
+
+/**
+ * Lecture ponctuelle d'une table complete (getDocs, une seule fois). Reserve aux
+ * actions manuelles a cout borne (dedoublonnage, export) : les ecrans passent par
+ * useCollection. Renvoie [] si deconnecte.
+ */
+export async function cloudGetAll(table: TableName): Promise<Record<string, unknown>[]> {
+  const uid = uidOrNull()
+  if (uid === null) {
+    console.error(`[cloud] lecture ignoree (deconnecte) ${table}`)
+    return []
+  }
+  const snap = await getDocs(collection(firestore, `users/${uid}/${table}`))
+  return snap.docs.map((d) => ({ ...d.data(), id: d.id }))
+}
+
+export type CloudBatchOp =
+  | { type: 'set'; table: TableName; id: string; data: Record<string, unknown> }
+  | { type: 'delete'; table: TableName; id: string }
+
+const BATCH_LIMIT = 500
+
+/**
+ * Ecritures en lot (writeBatch, paquets de 500). Contrairement a cloudPut, on
+ * attend l'ack serveur : reserve aux operations one-shot lancees en ligne
+ * (dedoublonnage, import), jamais au fil de l'eau de l'UI.
+ */
+export async function cloudBatchWrite(ops: CloudBatchOp[]): Promise<void> {
+  const uid = uidOrNull()
+  if (uid === null) throw new Error('cloudBatchWrite : utilisateur deconnecte')
+  for (let i = 0; i < ops.length; i += BATCH_LIMIT) {
+    const chunk = ops.slice(i, i + BATCH_LIMIT)
+    if (!canWrite()) throw new Error('cloudBatchWrite : disjoncteur quota declenche')
+    registerWrites(chunk.length)
+    const batch = writeBatch(firestore)
+    for (const op of chunk) {
+      if (op.type === 'set') {
+        batch.set(ref(uid, op.table, op.id), { ...sanitize(op.data), updatedAt: serverTimestamp() }, { merge: true })
+      } else {
+        batch.delete(ref(uid, op.table, op.id))
+      }
+    }
+    await batch.commit()
+  }
 }

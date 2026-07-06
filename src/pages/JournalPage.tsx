@@ -33,7 +33,7 @@ import { buildSeasonHistoryLines } from '../services/diagnosticContext'
 import { LOG_TYPE_ICONS } from '../components/logTypeIcons'
 import { PhotoThumbs } from '../components/PhotoThumbs'
 import { WeatherContextBanner } from '../components/WeatherContextBanner'
-import type { Diagnostic, FruitTree, GardenLogEntry, LogEntryType, Oya, SeasonNote } from '../data/model'
+import type { Crop, Diagnostic, FruitTree, GardenLogEntry, LogEntryType, Oya, Parcel, SeasonNote } from '../data/model'
 
 function chipClass(active: boolean): string {
   return [
@@ -140,8 +140,8 @@ export function JournalPage() {
   const navigate = useNavigate()
   const { data: rawLog } = useCollection<GardenLogEntry>('log')
   const entries = useMemo(() => sortLog(rawLog), [rawLog])
-  const parcels = useLiveQuery(() => db.parcels.toArray(), [], [])
-  const crops = useLiveQuery(() => db.crops.toArray(), [], [])
+  const { data: parcels } = useCollection<Parcel>('parcels')
+  const { data: crops } = useCollection<Crop>('crops')
   const { data: oyas } = useCollection<Oya>('oyas')
   const { data: trees } = useCollection<FruitTree>('trees')
   const [filter, setFilter] = useState<LogEntryType | 'tout'>('tout')

@@ -30,6 +30,8 @@ const CLOUD_FIRST_TABLES: readonly TableName[] = [
   'varieties',
   'trees',
   'oyas',
+  'parcels',
+  'crops',
 ]
 
 let installed = false

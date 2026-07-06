@@ -4,7 +4,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../data/db'
 import { cloudDelete, cloudPut } from '../data/firestoreWrites'
 import { useCollection } from '../data/firestoreHooks'
-import type { FruitTree, GardenLogEntry, SeasonNote, WaterNeed } from '../data/model'
+import type { FruitTree, GardenLogEntry, Parcel, SeasonNote, WaterNeed } from '../data/model'
 import { summarizeTreeHarvests } from '../services/treeHarvestService'
 import { getTreeNote, setTreeNote } from '../services/seasonNotesService'
 
@@ -19,7 +19,7 @@ const WATER_NEED_LABELS: Record<WaterNeed, string> = {
 }
 
 export function TreeCard({ tree }: TreeCardProps) {
-  const parcels = useLiveQuery(() => db.parcels.toArray(), [], [])
+  const { data: parcels } = useCollection<Parcel>('parcels')
   const { data: log } = useCollection<GardenLogEntry>('log')
   const seasonNotes = useLiveQuery(() => db.seasonNotes.toArray(), [], [])
 

@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { db, newId } from '../data/db'
-import { setCollectionData, clearCollectionData } from '../test/firestoreHooksMock'
+import { setCollectionData, getCollectionData, clearCollectionData } from '../test/firestoreHooksMock'
 import { SeasonSummaryPage } from './SeasonSummaryPage'
 
 vi.mock('../data/firestoreHooks', async () => {
@@ -23,6 +23,13 @@ function renderPage() {
   )
 }
 
+
+function seedRow(table: string, row: Record<string, unknown>): string {
+  const id = (row.id as string | undefined) ?? newId()
+  setCollectionData(table, [...getCollectionData(table), { ...row, id }])
+  return id
+}
+
 describe('SeasonSummaryPage', () => {
   it('affiche un message si aucune donnee pour l annee courante', async () => {
     renderPage()
@@ -32,8 +39,8 @@ describe('SeasonSummaryPage', () => {
   })
 
   it('affiche le bilan par culture et par parcelle', async () => {
-    const parcelId = await db.parcels.add({ id: newId(), name: 'Carré nord', areaM2: 8 })
-    const cropId = await db.crops.add({
+    const parcelId = seedRow('parcels', { id: newId(), name: 'Carré nord', areaM2: 8 })
+    const cropId = seedRow('crops', {
       id: newId(), name: 'Tomates',
       status: 'en_recolte',
       parcelId,
@@ -53,8 +60,8 @@ describe('SeasonSummaryPage', () => {
   })
 
   it('permet de saisir une note de culture et une note de parcelle, et les persiste', async () => {
-    const parcelId = await db.parcels.add({ id: newId(), name: 'Carré nord', areaM2: 8 })
-    const cropId = await db.crops.add({
+    const parcelId = seedRow('parcels', { id: newId(), name: 'Carré nord', areaM2: 8 })
+    const cropId = seedRow('crops', {
       id: newId(), name: 'Tomates',
       status: 'en_recolte',
       parcelId,

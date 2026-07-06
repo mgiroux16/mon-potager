@@ -11,8 +11,6 @@ import {
 import { resolveMerge } from './syncMerge'
 
 export const TABLE_NAMES: TableName[] = [
-  'parcels',
-  'crops',
   'expenses',
   'soil',
   'seasonNotes',

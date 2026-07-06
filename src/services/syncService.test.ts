@@ -32,7 +32,7 @@ afterEach(async () => {
 describe('runInitialSync', () => {
   it('pousse les lignes locales absentes de Firestore', async () => {
     const id = newId()
-    await db.parcels.add({ id, name: 'Locale uniquement' })
+    await db.table('expenses').add({ id, name: 'Locale uniquement' })
 
     vi.spyOn(firestoreClient, 'fetchAllRecords').mockResolvedValue([])
     const pushSpy = vi.spyOn(firestoreClient, 'pushRecords').mockResolvedValue()
@@ -41,7 +41,7 @@ describe('runInitialSync', () => {
 
     expect(pushSpy).toHaveBeenCalledWith(
       'uid-test',
-      'parcels',
+      'expenses',
       expect.arrayContaining([
         expect.objectContaining({ id, data: expect.objectContaining({ name: 'Locale uniquement' }) }),
       ]),
@@ -50,35 +50,35 @@ describe('runInitialSync', () => {
 
   it('tire les lignes distantes plus recentes vers Dexie', async () => {
     const id = newId()
-    await db.parcels.add({ id, name: 'Ancienne', updatedAt: 100 })
+    await db.table('expenses').add({ id, name: 'Ancienne', updatedAt: 100 })
 
     vi.spyOn(firestoreClient, 'fetchAllRecords').mockImplementation(async (_uid, table) =>
-      table === 'parcels' ? [{ id, name: 'Nouvelle', updatedAt: 200 }] : [],
+      table === 'expenses' ? [{ id, name: 'Nouvelle', updatedAt: 200 }] : [],
     )
     vi.spyOn(firestoreClient, 'pushRecords').mockResolvedValue()
 
     await runInitialSync('uid-test')
 
-    const row = await db.table('parcels').get(id)
+    const row = await db.table('expenses').get(id)
     expect(row?.name).toBe('Nouvelle')
   })
 
   it('garde la version locale si elle est plus recente que le distant', async () => {
     const id = newId()
-    await db.parcels.add({ id, name: 'Locale recente', updatedAt: 300 })
+    await db.table('expenses').add({ id, name: 'Locale recente', updatedAt: 300 })
 
     vi.spyOn(firestoreClient, 'fetchAllRecords').mockImplementation(async (_uid, table) =>
-      table === 'parcels' ? [{ id, name: 'Distante ancienne', updatedAt: 100 }] : [],
+      table === 'expenses' ? [{ id, name: 'Distante ancienne', updatedAt: 100 }] : [],
     )
     const pushSpy = vi.spyOn(firestoreClient, 'pushRecords').mockResolvedValue()
 
     await runInitialSync('uid-test')
 
-    const row = await db.table('parcels').get(id)
+    const row = await db.table('expenses').get(id)
     expect(row?.name).toBe('Locale recente')
     expect(pushSpy).toHaveBeenCalledWith(
       'uid-test',
-      'parcels',
+      'expenses',
       expect.arrayContaining([
         expect.objectContaining({ id, data: expect.objectContaining({ name: 'Locale recente' }) }),
       ]),
@@ -97,7 +97,7 @@ describe('runInitialSync', () => {
 
   it('continue a synchroniser les autres tables si une table echoue', async () => {
     vi.spyOn(firestoreClient, 'fetchAllRecords').mockImplementation(async (_uid, table) => {
-      if (table === 'parcels') throw new Error('quota exceeded')
+      if (table === 'expenses') throw new Error('quota exceeded')
       return []
     })
     vi.spyOn(firestoreClient, 'pushRecords').mockResolvedValue()
@@ -109,7 +109,7 @@ describe('runInitialSync', () => {
 
   it('ne reste pas bloque indefiniment si une table ne repond jamais (getDocs pendu)', async () => {
     vi.spyOn(firestoreClient, 'fetchAllRecords').mockImplementation(async (_uid, table) => {
-      if (table === 'parcels') return new Promise(() => {}) // ne resout et ne rejette jamais
+      if (table === 'expenses') return new Promise(() => {}) // ne resout et ne rejette jamais
       return []
     })
     vi.spyOn(firestoreClient, 'pushRecords').mockResolvedValue()
@@ -121,7 +121,7 @@ describe('runInitialSync', () => {
 
   it('utilise fetchRecordsSince si un curseur lastSyncAt existe (sync incrementale)', async () => {
     const cursor = 1_000_000
-    localStorage.setItem('sync:lastAt:parcels', String(cursor))
+    localStorage.setItem('sync:lastAt:expenses', String(cursor))
 
     const incrementalSpy = vi.spyOn(firestoreClient, 'fetchRecordsSince').mockResolvedValue([])
     const fullSpy = vi.spyOn(firestoreClient, 'fetchAllRecords').mockResolvedValue([])
@@ -130,8 +130,8 @@ describe('runInitialSync', () => {
     await runInitialSync('uid-test')
 
     // parcels a un curseur -> fetchRecordsSince; les autres n'en ont pas -> fetchAllRecords
-    expect(incrementalSpy).toHaveBeenCalledWith('uid-test', 'parcels', expect.any(Number))
-    expect(fullSpy).not.toHaveBeenCalledWith('uid-test', 'parcels')
+    expect(incrementalSpy).toHaveBeenCalledWith('uid-test', 'expenses', expect.any(Number))
+    expect(fullSpy).not.toHaveBeenCalledWith('uid-test', 'expenses')
   })
 
   it('recupere un enregistrement distant dont updatedAt est dans le buffer de recouvrement (decalage horloge)', async () => {
@@ -141,10 +141,10 @@ describe('runInitialSync', () => {
     // Simule un record ecrit par un autre appareil avec une horloge en retard de 1 min
     const skewedRecord = { id, name: 'Hors cursor mais dans buffer', updatedAt: cursor - 60_000 }
 
-    localStorage.setItem('sync:lastAt:parcels', String(cursor))
+    localStorage.setItem('sync:lastAt:expenses', String(cursor))
 
     vi.spyOn(firestoreClient, 'fetchRecordsSince').mockImplementation(async (_uid, table, sinceMs) => {
-      if (table === 'parcels') {
+      if (table === 'expenses') {
         // Verifie que la requete part bien de cursor - buffer (pas de cursor seul)
         expect(sinceMs).toBe(cursor - bufferMs)
         return [skewedRecord]
@@ -156,7 +156,7 @@ describe('runInitialSync', () => {
 
     await runInitialSync('uid-test')
 
-    const row = await db.table('parcels').get(id)
+    const row = await db.table('expenses').get(id)
     expect(row?.name).toBe('Hors cursor mais dans buffer')
   })
 })
@@ -164,10 +164,10 @@ describe('runInitialSync', () => {
 describe('boucle d echo sync (regression fuite memoire/CPU)', () => {
   it('ne re-echange pas une ligne identique des deux cotes (meme updatedAt)', async () => {
     const id = newId()
-    await db.parcels.add({ id, name: 'En phase', updatedAt: 100 })
+    await db.table('expenses').add({ id, name: 'En phase', updatedAt: 100 })
 
     vi.spyOn(firestoreClient, 'fetchAllRecords').mockImplementation(async (_uid, table) =>
-      table === 'parcels' ? [{ id, name: 'En phase', updatedAt: 100 }] : [],
+      table === 'expenses' ? [{ id, name: 'En phase', updatedAt: 100 }] : [],
     )
     const pushRecordsSpy = vi.spyOn(firestoreClient, 'pushRecords').mockResolvedValue()
 
@@ -178,11 +178,11 @@ describe('boucle d echo sync (regression fuite memoire/CPU)', () => {
 
   it('laisse en paix un tombstone identique en local et en distant', async () => {
     const id = newId()
-    await db.parcels.add({ id, name: 'Supprimee', deletedAt: 500, updatedAt: 500 })
+    await db.table('expenses').add({ id, name: 'Supprimee', deletedAt: 500, updatedAt: 500 })
     setSyncUid('uid-test')
 
     vi.spyOn(firestoreClient, 'fetchAllRecords').mockImplementation(async (_uid, table) =>
-      table === 'parcels' ? [{ id, name: 'Supprimee', deletedAt: 500, updatedAt: 500 }] : [],
+      table === 'expenses' ? [{ id, name: 'Supprimee', deletedAt: 500, updatedAt: 500 }] : [],
     )
     const pushRecordsSpy = vi.spyOn(firestoreClient, 'pushRecords').mockResolvedValue()
     const pushRecordSpy = vi.spyOn(firestoreClient, 'pushRecord').mockResolvedValue()
@@ -196,11 +196,11 @@ describe('boucle d echo sync (regression fuite memoire/CPU)', () => {
 
   it('applique une ligne distante plus recente sans la re-pousser vers Firestore', async () => {
     const id = newId()
-    await db.parcels.add({ id, name: 'Ancienne', updatedAt: 100 })
+    await db.table('expenses').add({ id, name: 'Ancienne', updatedAt: 100 })
     setSyncUid('uid-test')
 
     vi.spyOn(firestoreClient, 'fetchAllRecords').mockImplementation(async (_uid, table) =>
-      table === 'parcels' ? [{ id, name: 'Nouvelle', updatedAt: 200 }] : [],
+      table === 'expenses' ? [{ id, name: 'Nouvelle', updatedAt: 200 }] : [],
     )
     vi.spyOn(firestoreClient, 'pushRecords').mockResolvedValue()
     const pushRecordSpy = vi.spyOn(firestoreClient, 'pushRecord').mockResolvedValue()
@@ -208,14 +208,14 @@ describe('boucle d echo sync (regression fuite memoire/CPU)', () => {
     await runInitialSync('uid-test')
     await new Promise((r) => setTimeout(r, 10))
 
-    const row = await db.table('parcels').get(id)
+    const row = await db.table('expenses').get(id)
     expect(row?.name).toBe('Nouvelle')
     expect(pushRecordSpy).not.toHaveBeenCalled()
   })
 
   it('en temps reel, applique un changement distant sans echo ni re-put d un tombstone deja connu', async () => {
     const id = newId()
-    await db.parcels.add({ id, name: 'Supprimee', deletedAt: 500, updatedAt: 500 })
+    await db.table('expenses').add({ id, name: 'Supprimee', deletedAt: 500, updatedAt: 500 })
     setSyncUid('uid-test')
 
     const callbacks = new Map<string, (changes: firestoreClient.DocChange[]) => void>()
@@ -224,11 +224,11 @@ describe('boucle d echo sync (regression fuite memoire/CPU)', () => {
       return () => {}
     })
     const pushRecordSpy = vi.spyOn(firestoreClient, 'pushRecord').mockResolvedValue()
-    const putSpy = vi.spyOn(db.parcels, 'put')
+    const putSpy = vi.spyOn(db.expenses, 'put')
 
     startRealtimeSync('uid-test')
     // Le serveur renvoie le tombstone deja present en local : rien ne doit bouger.
-    callbacks.get('parcels')!([
+    callbacks.get('expenses')!([
       { type: 'modified', record: { id, name: 'Supprimee', deletedAt: 500, updatedAt: 500 } },
     ])
     await new Promise((r) => setTimeout(r, 10))
@@ -237,12 +237,12 @@ describe('boucle d echo sync (regression fuite memoire/CPU)', () => {
     expect(pushRecordSpy).not.toHaveBeenCalled()
 
     // Un vrai changement distant est applique, sans repartir vers Firestore.
-    callbacks.get('parcels')!([
+    callbacks.get('expenses')!([
       { type: 'modified', record: { id, name: 'Restauree', updatedAt: 900 } },
     ])
     await new Promise((r) => setTimeout(r, 10))
 
-    const row = await db.table('parcels').get(id)
+    const row = await db.table('expenses').get(id)
     expect(row?.name).toBe('Restauree')
     expect(pushRecordSpy).not.toHaveBeenCalled()
   })
@@ -289,23 +289,23 @@ describe('purgeOldTombstones', () => {
   it('supprime physiquement les lignes locales avec deletedAt vieux de plus de 30 jours', async () => {
     const id = newId()
     const old = Date.now() - 31 * 24 * 60 * 60 * 1000
-    await db.table('parcels').add({ id, name: 'Vieux tombstone', deletedAt: old, updatedAt: old })
+    await db.table('expenses').add({ id, name: 'Vieux tombstone', deletedAt: old, updatedAt: old })
 
     await purgeOldTombstones()
 
     // .get()/.toArray() filtrent deja les lignes deletedAt (hook reading) : on verifie la
     // disparition physique via count(), qui ne passe pas par ce hook.
-    expect(await db.table('parcels').count()).toBe(0)
+    expect(await db.table('expenses').count()).toBe(0)
   })
 
   it('garde les tombstones recents', async () => {
     const id = newId()
     const recent = Date.now() - 5 * 24 * 60 * 60 * 1000
-    await db.table('parcels').add({ id, name: 'Tombstone recent', deletedAt: recent, updatedAt: recent })
+    await db.table('expenses').add({ id, name: 'Tombstone recent', deletedAt: recent, updatedAt: recent })
 
     await purgeOldTombstones()
 
-    expect(await db.table('parcels').count()).toBe(1)
+    expect(await db.table('expenses').count()).toBe(1)
     void id
   })
 })

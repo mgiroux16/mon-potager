@@ -1,10 +1,16 @@
-import { db } from '../data/db'
-import { softDelete } from '../data/syncHooks'
+import { cloudBatchWrite, cloudGetAll, type CloudBatchOp } from '../data/firestoreWrites'
 import type { Crop, Diagnostic, GardenLogEntry, Parcel } from '../data/model'
 
 export interface DedupeSummary {
   parcelsMerged: number
   cropsMerged: number
+}
+
+export interface DedupePlan {
+  parcelIdMap: Map<string, string>
+  cropIdMap: Map<string, string>
+  // Remaps de references (set merge) puis suppressions des doublons (delete).
+  ops: CloudBatchOp[]
 }
 
 /** Retire les suffixes "(copie)" (repetes eventuellement) pour comparer les noms d'origine. */
@@ -13,17 +19,18 @@ function normalizeName(name: string): string {
 }
 
 /**
- * Regroupe les elements de meme nom (une fois les suffixes "(copie)" retires) et choisit,
- * par groupe, celui a conserver : d'abord un nom sans "(copie)" s'il existe, sinon le plus
- * ancien (updatedAt le plus bas). Retourne l'association id supprime -> id conserve.
+ * Regroupe les elements par cle et choisit, par groupe, celui a conserver :
+ * d'abord un nom sans "(copie)" s'il existe, sinon le plus ancien (updatedAt le
+ * plus bas). Retourne l'association id supprime -> id conserve.
  */
 function planMerge<T extends { id?: string; name: string; updatedAt?: number }>(
   items: T[],
+  keyOf: (item: T) => string,
 ): Map<string, string> {
   const groups = new Map<string, T[]>()
   for (const item of items) {
     if (item.id == null) continue
-    const key = normalizeName(item.name)
+    const key = keyOf(item)
     const list = groups.get(key) ?? []
     list.push(item)
     groups.set(key, list)
@@ -51,79 +58,39 @@ function remap(id: string | undefined, idMap: Map<string, string>): string | und
   return idMap.get(id) ?? id
 }
 
-/**
- * Fusionne les parcelles et cultures en doublon (meme nom, avec ou sans suffixe "(copie)") :
- * reattribue d'abord toutes les references (journal, cultures, diagnostics) vers l'exemplaire
- * conserve, puis supprime les autres via softDelete (tombstone, synchronise sur tous les
- * appareils comme une suppression manuelle).
- */
-export async function dedupeGardenData(): Promise<DedupeSummary> {
-  const [parcels, crops, log, diagnostics] = await Promise.all([
-    db.parcels.toArray(),
-    db.crops.toArray(),
-    db.log.toArray(),
-    db.diagnostics.toArray(),
-  ])
-
-  // DEBUG TEMPORAIRE (diagnostic doublons non detectes) : a retirer une fois la
-  // cause confirmee. Reproduit exactement le regroupement de planMerge (meme
-  // normalizeName) et n'affiche QUE les groupes de 2+ : console.log ligne par ligne
-  // en JSON.stringify (jamais tronque par une colonne de table, contrairement a
-  // console.table) pour voir si les noms qui semblent identiques a l'ecran le sont
-  // vraiment caractere pour caractere.
-  for (const [label, items] of [
-    ['parcelles', parcels],
-    ['cultures', crops],
-  ] as const) {
-    const groups = new Map<string, { id?: string; name?: string }[]>()
-    for (const item of items) {
-      const it = item as { id?: string; name?: string }
-      if (it.id == null) continue
-      const key = normalizeName(it.name ?? '')
-      const list = groups.get(key) ?? []
-      list.push(it)
-      groups.set(key, list)
-    }
-    const dupGroups = [...groups.entries()].filter(([, list]) => list.length > 1)
-    console.log(
-      `[dedupe][debug] ${label} : ${items.length} lignes, ${groups.size} cles distinctes, ${dupGroups.length} groupe(s) en doublon`,
-    )
-    for (const [key, list] of dupGroups) {
-      console.log(`  groupe cle=${JSON.stringify(key)} (${list.length} membres)`)
-      for (const it of list) {
-        console.log(`    id=${it.id} name=${JSON.stringify(it.name)}`)
-      }
-    }
-  }
-
-  const parcelIdMap = planMerge(parcels as (Parcel & { id: string })[])
-  const cropIdMap = planMerge(crops as (Crop & { id: string })[])
-
-  if (parcelIdMap.size > 0 || cropIdMap.size > 0) {
-    await reassignLogReferences(log, parcelIdMap, cropIdMap)
-    await reassignCropParcelReferences(crops, parcelIdMap)
-    await reassignDiagnosticReferences(diagnostics, parcelIdMap, cropIdMap)
-  }
-
-  for (const removedId of parcelIdMap.keys()) {
-    await softDelete('parcels', removedId)
-  }
-  for (const removedId of cropIdMap.keys()) {
-    await softDelete('crops', removedId)
-  }
-
-  return { parcelsMerged: parcelIdMap.size, cropsMerged: cropIdMap.size }
+function notTombstone<T extends { deletedAt?: number }>(row: T): boolean {
+  return typeof row.deletedAt !== 'number'
 }
 
-async function reassignLogReferences(
+/**
+ * Construit le plan de fusion (pur, aucune ecriture) :
+ * - parcelles en doublon par nom (suffixes "(copie)" ignores) ;
+ * - cultures en doublon par nom + parcelle (une fois les parcelles remappees) :
+ *   deux "Tomates" sur deux parcelles distinctes ne sont PAS des doublons ;
+ * - reattribue les references (journal, cultures, diagnostics) vers l'exemplaire
+ *   conserve, puis supprime les doublons (vraie suppression, pas de tombstone).
+ */
+export function buildDedupePlan(
+  parcels: Parcel[],
+  crops: Crop[],
   log: GardenLogEntry[],
-  parcelIdMap: Map<string, string>,
-  cropIdMap: Map<string, string>,
-): Promise<void> {
+  diagnostics: Diagnostic[],
+): DedupePlan {
+  const liveParcels = parcels.filter(notTombstone)
+  const liveCrops = crops.filter(notTombstone)
+
+  const parcelIdMap = planMerge(liveParcels as (Parcel & { id: string })[], (p) =>
+    normalizeName(p.name),
+  )
+  const cropIdMap = planMerge(liveCrops as (Crop & { id: string })[], (c) =>
+    `${normalizeName(c.name)}|${remap(c.parcelId, parcelIdMap) ?? ''}`,
+  )
+
+  const ops: CloudBatchOp[] = []
+
   for (const entry of log) {
     if (entry.id == null) continue
-    const updates: Partial<GardenLogEntry> = {}
-
+    const updates: Record<string, unknown> = {}
     if (entry.parcelId != null && parcelIdMap.has(entry.parcelId)) {
       updates.parcelId = remap(entry.parcelId, parcelIdMap)
     }
@@ -133,34 +100,26 @@ async function reassignLogReferences(
     if (entry.cropId != null && cropIdMap.has(entry.cropId)) {
       updates.cropId = remap(entry.cropId, cropIdMap)
     }
-
     if (Object.keys(updates).length > 0) {
-      await db.log.update(entry.id, updates)
+      ops.push({ type: 'set', table: 'log', id: entry.id, data: updates })
     }
   }
-}
 
-async function reassignCropParcelReferences(
-  crops: Crop[],
-  parcelIdMap: Map<string, string>,
-): Promise<void> {
-  if (parcelIdMap.size === 0) return
-  for (const crop of crops) {
-    if (crop.id == null || crop.parcelId == null) continue
-    if (parcelIdMap.has(crop.parcelId)) {
-      await db.crops.update(crop.id, { parcelId: remap(crop.parcelId, parcelIdMap) })
+  for (const crop of liveCrops) {
+    if (crop.id == null || cropIdMap.has(crop.id)) continue
+    if (crop.parcelId != null && parcelIdMap.has(crop.parcelId)) {
+      ops.push({
+        type: 'set',
+        table: 'crops',
+        id: crop.id,
+        data: { parcelId: remap(crop.parcelId, parcelIdMap) },
+      })
     }
   }
-}
 
-async function reassignDiagnosticReferences(
-  diagnostics: Diagnostic[],
-  parcelIdMap: Map<string, string>,
-  cropIdMap: Map<string, string>,
-): Promise<void> {
   for (const diag of diagnostics) {
     if (diag.id == null) continue
-    const updates: Partial<Diagnostic> = {}
+    const updates: Record<string, unknown> = {}
     if (diag.parcelId != null && parcelIdMap.has(diag.parcelId)) {
       updates.parcelId = remap(diag.parcelId, parcelIdMap)
     }
@@ -168,7 +127,38 @@ async function reassignDiagnosticReferences(
       updates.cropId = remap(diag.cropId, cropIdMap)
     }
     if (Object.keys(updates).length > 0) {
-      await db.diagnostics.update(diag.id, updates)
+      ops.push({ type: 'set', table: 'diagnostics', id: diag.id, data: updates })
     }
   }
+
+  for (const removedId of parcelIdMap.keys()) {
+    ops.push({ type: 'delete', table: 'parcels', id: removedId })
+  }
+  for (const removedId of cropIdMap.keys()) {
+    ops.push({ type: 'delete', table: 'crops', id: removedId })
+  }
+
+  return { parcelIdMap, cropIdMap, ops }
+}
+
+/** Lit les 4 tables une fois (getDocs) et construit le plan. Aucune ecriture. */
+export async function planDedupe(): Promise<DedupePlan> {
+  const [parcels, crops, log, diagnostics] = await Promise.all([
+    cloudGetAll('parcels'),
+    cloudGetAll('crops'),
+    cloudGetAll('log'),
+    cloudGetAll('diagnostics'),
+  ])
+  return buildDedupePlan(
+    parcels as unknown as Parcel[],
+    crops as unknown as Crop[],
+    log as unknown as GardenLogEntry[],
+    diagnostics as unknown as Diagnostic[],
+  )
+}
+
+/** Applique le plan en lots de 500 (attend l'ack serveur : action manuelle en ligne). */
+export async function executeDedupe(plan: DedupePlan): Promise<DedupeSummary> {
+  await cloudBatchWrite(plan.ops)
+  return { parcelsMerged: plan.parcelIdMap.size, cropsMerged: plan.cropIdMap.size }
 }
