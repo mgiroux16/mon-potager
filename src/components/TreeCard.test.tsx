@@ -1,12 +1,18 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { db } from '../data/db'
+import { setCollectionData, clearCollectionData } from '../test/firestoreHooksMock'
 import { TreeCard } from './TreeCard'
 import type { FruitTree } from '../data/model'
 
+vi.mock('../data/firestoreHooks', async () => {
+  return (await import('../test/firestoreHooksMock')).firestoreHooksMock
+})
+
 beforeEach(async () => {
   await Promise.all(db.tables.map((t) => t.clear()))
+  clearCollectionData()
 })
 
 describe('TreeCard', () => {
@@ -28,17 +34,17 @@ describe('TreeCard', () => {
   it('affiche la galerie photo de l arbre triee par date decroissante', async () => {
     const tree: FruitTree = { id: 'tree1', name: 'Poirier' }
     await db.trees.add(tree)
-    await db.log.add({
-      id: 'e1', type: 'observation', date: '2026-05-01', treeId: 'tree1',
-      photoUrls: ['data:image/jpeg;base64,AAA'], createdAt: 1,
-    })
-    await db.log.add({
-      id: 'e2', type: 'floraison', date: '2026-06-10', treeId: 'tree1',
-      photoUrls: ['data:image/jpeg;base64,BBB'], createdAt: 2,
-    })
-    await db.log.add({
-      id: 'e3', type: 'observation', date: '2026-04-01', treeId: 'tree1', createdAt: 3,
-    })
+    setCollectionData('log', [
+      {
+        id: 'e1', type: 'observation', date: '2026-05-01', treeId: 'tree1',
+        photoUrls: ['data:image/jpeg;base64,AAA'], createdAt: 1,
+      },
+      {
+        id: 'e2', type: 'floraison', date: '2026-06-10', treeId: 'tree1',
+        photoUrls: ['data:image/jpeg;base64,BBB'], createdAt: 2,
+      },
+      { id: 'e3', type: 'observation', date: '2026-04-01', treeId: 'tree1', createdAt: 3 },
+    ])
 
     render(<TreeCard tree={tree} />)
     await userEvent.click(screen.getByLabelText("Afficher l'historique"))

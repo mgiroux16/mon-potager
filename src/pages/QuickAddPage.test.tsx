@@ -3,9 +3,20 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { db, newId } from '../data/db'
-import { listLog } from '../services/logService'
+import type { GardenLogEntry } from '../data/model'
+import { sortLog } from '../services/logService'
+import { getCollectionData, clearCollectionData } from '../test/firestoreHooksMock'
 import { findOrCreateVariety } from '../services/varietyService'
 import { QuickAddPage } from './QuickAddPage'
+
+vi.mock('../data/firestoreWrites', async () => {
+  return (await import('../test/firestoreHooksMock')).firestoreWritesMock
+})
+
+// Equivalent de l'ancien listLog : lit le store cloud mocke, trie comme la page.
+function listLog(): GardenLogEntry[] {
+  return sortLog(getCollectionData('log') as unknown as GardenLogEntry[])
+}
 
 vi.mock('../services/imageService', () => ({
   compressImage: vi.fn(async () => 'data:image/jpeg;base64,COMPRESSED'),
@@ -19,6 +30,7 @@ vi.mock('../services/weatherService', () => ({
 
 beforeEach(async () => {
   await Promise.all(db.tables.map((t) => t.clear()))
+  clearCollectionData()
 })
 
 describe('QuickAddPage', () => {
@@ -159,9 +171,8 @@ describe('QuickAddPage', () => {
     await user.type(screen.getByLabelText('Description'), 'feuilles flétries')
     await user.click(screen.getByRole('button', { name: 'Valider' }))
 
-    await waitFor(async () => {
-      const all = await db.log.toArray()
-      const saved = all.find((e) => e.description === 'feuilles flétries')
+    await waitFor(() => {
+      const saved = listLog().find((e) => e.description === 'feuilles flétries')
       expect(saved?.weather?.tempC).toBe(36.3)
       expect(saved?.weather?.source).toBe('open-meteo')
     })
@@ -319,11 +330,10 @@ describe('QuickAddPage avec selecteur de variete', () => {
     await user.type(screen.getByLabelText('Quantité (kg)'), '1.5')
     await user.click(screen.getByRole('button', { name: 'Valider' }))
 
-    await waitFor(async () => {
-      const all = await db.log.toArray()
-      expect(all).toHaveLength(1)
+    await waitFor(() => {
+      expect(listLog()).toHaveLength(1)
     })
-    const [entry] = await db.log.toArray()
+    const [entry] = listLog()
     expect(entry.varietyId).toBeDefined()
     expect(entry.quantityKg).toBe(1.5)
   })

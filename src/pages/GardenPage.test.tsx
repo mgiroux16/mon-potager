@@ -3,11 +3,23 @@ import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { db, newId } from '../data/db'
 import { seedDatabase } from '../data/seed'
+import { setCollectionData, getCollectionData, clearCollectionData } from '../test/firestoreHooksMock'
 import { GardenPage } from './GardenPage'
 import { describeLogEntry, type LogRefs } from '../services/logView'
 
+vi.mock('../data/firestoreHooks', async () => {
+  return (await import('../test/firestoreHooksMock')).firestoreHooksMock
+})
+
+function seedLog(entry: Record<string, unknown>): Record<string, unknown> {
+  const row = { id: newId(), createdAt: Date.now(), ...entry }
+  setCollectionData('log', [...getCollectionData('log'), row])
+  return row
+}
+
 beforeEach(async () => {
   await Promise.all(db.tables.map((t) => t.clear()))
+  clearCollectionData()
   await seedDatabase(db)
 })
 
@@ -63,12 +75,10 @@ describe('GardenPage', () => {
   it('affiche une section Rappels pour une parcelle a culture active sans activite depuis 21+ j', async () => {
     const old = new Date()
     old.setDate(old.getDate() - 25)
-    await db.log.add({
-      id: newId(),
+    seedLog({
       type: 'observation',
       date: old.toISOString().slice(0, 10),
       parcelId: 'parcel-1',
-      createdAt: Date.now(),
     })
     render(<GardenPage />, { wrapper: MemoryRouter })
     await waitFor(() => {
@@ -81,11 +91,10 @@ describe('GardenPage', () => {
     await db.parcels.clear()
     await db.crops.clear()
     const parcelId = await db.parcels.add({ id: newId(), name: 'Carré test' })
-    await db.log.add({
-      id: newId(), type: 'observation',
+    seedLog({
+      type: 'observation',
       date: new Date().toISOString().slice(0, 10),
       parcelId,
-      createdAt: Date.now(),
     })
     render(<GardenPage />, { wrapper: MemoryRouter })
     await waitFor(() => {
@@ -95,13 +104,11 @@ describe('GardenPage', () => {
   })
 
   it('supprime une culture en doublon (softDelete) : elle disparait, les logs lies ne plantent pas', async () => {
-    await db.log.add({
-      id: newId(),
+    const seeded = seedLog({
       type: 'recolte',
       date: '2026-06-24',
       cropId: 'crop-2',
       quantityKg: 3,
-      createdAt: Date.now(),
     })
     vi.spyOn(window, 'confirm').mockReturnValue(true)
     render(<GardenPage />, { wrapper: MemoryRouter })
@@ -120,7 +127,7 @@ describe('GardenPage', () => {
     const remainingCrops = await db.crops.toArray()
     expect(remainingCrops.some((c) => c.id === 'crop-2')).toBe(false)
     const refs: LogRefs = { parcels: new Map(), crops: new Map(), oyas: new Map(), trees: new Map() }
-    const entry = (await db.log.toArray()).find((e) => e.cropId === 'crop-2')!
+    const entry = seeded as never
     expect(() => describeLogEntry(entry, refs)).not.toThrow()
     expect(describeLogEntry(entry, refs).target).toBeUndefined()
   })

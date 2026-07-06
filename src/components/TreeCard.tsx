@@ -3,7 +3,8 @@ import { ChevronDown, ChevronUp, Trash2 } from 'lucide-react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../data/db'
 import { softDelete } from '../data/syncHooks'
-import type { FruitTree, SeasonNote, WaterNeed } from '../data/model'
+import { useCollection } from '../data/firestoreHooks'
+import type { FruitTree, GardenLogEntry, SeasonNote, WaterNeed } from '../data/model'
 import { summarizeTreeHarvests } from '../services/treeHarvestService'
 import { getTreeNote, setTreeNote } from '../services/seasonNotesService'
 
@@ -19,7 +20,7 @@ const WATER_NEED_LABELS: Record<WaterNeed, string> = {
 
 export function TreeCard({ tree }: TreeCardProps) {
   const parcels = useLiveQuery(() => db.parcels.toArray(), [], [])
-  const log = useLiveQuery(() => db.log.toArray(), [], [])
+  const { data: log } = useCollection<GardenLogEntry>('log')
   const seasonNotes = useLiveQuery(() => db.seasonNotes.toArray(), [], [])
 
   const [renaming, setRenaming] = useState(false)

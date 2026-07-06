@@ -1,11 +1,17 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { db, newId } from '../data/db'
+import { setCollectionData, clearCollectionData } from '../test/firestoreHooksMock'
 import { SeasonSummaryPage } from './SeasonSummaryPage'
+
+vi.mock('../data/firestoreHooks', async () => {
+  return (await import('../test/firestoreHooksMock')).firestoreHooksMock
+})
 
 beforeEach(async () => {
   await Promise.all(db.tables.map((t) => t.clear()))
+  clearCollectionData()
 })
 
 // Le bilan contient un <Link> vers /pilotage/argent : il faut un contexte Router.
@@ -34,14 +40,9 @@ describe('SeasonSummaryPage', () => {
       pricePerKg: 3,
     })
     const year = new Date().getFullYear()
-    await db.log.add({
-      id: newId(), type: 'recolte',
-      date: `${year}-06-01`,
-      cropId,
-      parcelId,
-      quantityKg: 4,
-      createdAt: Date.now(),
-    })
+    setCollectionData('log', [
+      { id: newId(), type: 'recolte', date: `${year}-06-01`, cropId, parcelId, quantityKg: 4, createdAt: Date.now() },
+    ])
 
     renderPage()
     await waitFor(() => {
@@ -60,14 +61,9 @@ describe('SeasonSummaryPage', () => {
       pricePerKg: 3,
     })
     const year = new Date().getFullYear()
-    await db.log.add({
-      id: newId(), type: 'recolte',
-      date: `${year}-06-01`,
-      cropId,
-      parcelId,
-      quantityKg: 4,
-      createdAt: Date.now(),
-    })
+    setCollectionData('log', [
+      { id: newId(), type: 'recolte', date: `${year}-06-01`, cropId, parcelId, quantityKg: 4, createdAt: Date.now() },
+    ])
 
     renderPage()
 

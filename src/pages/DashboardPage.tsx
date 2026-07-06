@@ -16,6 +16,8 @@ import {
   Wheat,
 } from 'lucide-react'
 import { db } from '../data/db'
+import { useCollection } from '../data/firestoreHooks'
+import type { GardenLogEntry } from '../data/model'
 import { getSettings } from '../services/settingsService'
 import {
   fetchCurrentDetail,
@@ -174,7 +176,7 @@ export function DashboardPage() {
   const crops = useLiveQuery(() => db.crops.toArray(), [], [])
   const catalog = useLiveQuery(() => db.catalog.toArray(), [], [])
   const tanks = useLiveQuery(() => db.tanks.toArray(), [], [])
-  const log = useLiveQuery(() => db.log.toArray(), [], [])
+  const { data: log } = useCollection<GardenLogEntry>('log')
 
   // Données météo (async, peuvent être null si hors-ligne)
   const [current, setCurrent] = useState<CurrentWeatherDetail | null>(null)

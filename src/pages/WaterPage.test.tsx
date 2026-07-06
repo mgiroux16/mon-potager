@@ -1,10 +1,20 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import { db, newId } from '../data/db'
+import { setCollectionData, getCollectionData, clearCollectionData } from '../test/firestoreHooksMock'
 import { WaterPage } from './WaterPage'
+
+vi.mock('../data/firestoreHooks', async () => {
+  return (await import('../test/firestoreHooksMock')).firestoreHooksMock
+})
+
+function seedLog(entry: Record<string, unknown>): void {
+  setCollectionData('log', [...getCollectionData('log'), { id: newId(), createdAt: Date.now(), ...entry }])
+}
 
 beforeEach(async () => {
   await Promise.all(db.tables.map((t) => t.clear()))
+  clearCollectionData()
 })
 
 describe('WaterPage', () => {
@@ -17,12 +27,11 @@ describe('WaterPage', () => {
 
   it('affiche le cumul par parcelle pour les fenetres glissantes et l annee', async () => {
     const parcelId = await db.parcels.add({ id: newId(), name: 'Carrés du fond' })
-    await db.log.add({
-      id: newId(), type: 'arrosage',
+    seedLog({
+      type: 'arrosage',
       date: new Date().toISOString().slice(0, 10),
       parcelId,
       volumeLiters: 5,
-      createdAt: Date.now(),
     })
 
     render(<WaterPage />)
@@ -37,8 +46,8 @@ describe('WaterPage', () => {
     const today = new Date().toISOString().slice(0, 10)
     const p1 = await db.parcels.add({ id: newId(), name: 'Carrés du fond' })
     const p2 = await db.parcels.add({ id: newId(), name: 'Allée' })
-    await db.log.add({ id: newId(), type: 'arrosage', date: today, parcelId: p1, volumeLiters: 5, createdAt: Date.now() })
-    await db.log.add({ id: newId(), type: 'arrosage', date: today, parcelId: p2, volumeLiters: 8, createdAt: Date.now() })
+    seedLog({ type: 'arrosage', date: today, parcelId: p1, volumeLiters: 5 })
+    seedLog({ type: 'arrosage', date: today, parcelId: p2, volumeLiters: 8 })
 
     render(<WaterPage />)
     await waitFor(() => {
@@ -54,7 +63,7 @@ describe('WaterPage', () => {
     ])
     const parcelId = await db.parcels.add({ id: newId(), name: 'Carrés du fond' })
     const today = new Date().toISOString().slice(0, 10)
-    await db.log.add({ id: newId(), type: 'arrosage', date: today, parcelId, volumeLiters: 35, createdAt: Date.now() })
+    seedLog({ type: 'arrosage', date: today, parcelId, volumeLiters: 35 })
 
     render(<WaterPage />)
     await waitFor(() => {

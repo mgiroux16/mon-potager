@@ -3,6 +3,8 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { Link } from 'react-router-dom'
 import { Info, Loader2, Send } from 'lucide-react'
 import { db } from '../data/db'
+import { useCollection } from '../data/firestoreHooks'
+import type { GardenLogEntry } from '../data/model'
 import { getSettings } from '../services/settingsService'
 import { callGemini } from '../services/geminiService'
 import { summarizeHarvests } from '../services/harvestService'
@@ -30,7 +32,7 @@ function todayISO(): string {
 
 export function AssistantPage() {
   const settings = useLiveQuery(() => getSettings(), [], undefined)
-  const entries = useLiveQuery(() => db.log.toArray(), [], [])
+  const { data: entries } = useCollection<GardenLogEntry>('log')
   const crops = useLiveQuery(() => db.crops.toArray(), [], [])
   const parcels = useLiveQuery(() => db.parcels.toArray(), [], [])
   const oyas = useLiveQuery(() => db.oyas.toArray(), [], [])

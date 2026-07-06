@@ -4,7 +4,8 @@ import { Sprout, Trees, MapPin, Pencil, Bell, Trash2 } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { db, newId } from '../data/db'
 import { softDelete } from '../data/syncHooks'
-import type { Crop, VegetableFamily } from '../data/model'
+import { useCollection } from '../data/firestoreHooks'
+import type { Crop, GardenLogEntry, VegetableFamily } from '../data/model'
 import { getInactiveParcels, getHarvestReminders, getRotationReminders } from '../services/reminderService'
 import { ParcelCard } from '../components/ParcelCard'
 import { TreeCard } from '../components/TreeCard'
@@ -74,7 +75,7 @@ export function GardenPage() {
   const parcels = useLiveQuery(() => db.parcels.toArray(), [], [])
   const crops = useLiveQuery(() => db.crops.toArray(), [], [])
   const trees = useLiveQuery(() => db.trees.toArray(), [], [])
-  const log = useLiveQuery(() => db.log.toArray(), [], [])
+  const { data: log } = useCollection<GardenLogEntry>('log')
   const catalog = useLiveQuery(() => db.catalog.toArray(), [], [])
 
   const [creatingParcel, setCreatingParcel] = useState(false)

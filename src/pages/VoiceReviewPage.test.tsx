@@ -3,8 +3,19 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { db } from '../data/db'
-import { listLog } from '../services/logService'
+import type { GardenLogEntry } from '../data/model'
+import { sortLog } from '../services/logService'
+import { getCollectionData, clearCollectionData } from '../test/firestoreHooksMock'
 import { VoiceReviewPage } from './VoiceReviewPage'
+
+vi.mock('../data/firestoreWrites', async () => {
+  return (await import('../test/firestoreHooksMock')).firestoreWritesMock
+})
+
+// Equivalent de l'ancien listLog : lit le store cloud mocke, trie comme la page.
+function listLog(): GardenLogEntry[] {
+  return sortLog(getCollectionData('log') as unknown as GardenLogEntry[])
+}
 
 const h = vi.hoisted(() => ({ navigateSpy: vi.fn() }))
 
@@ -20,6 +31,7 @@ vi.mock('../services/weatherService', () => ({
 
 beforeEach(async () => {
   await Promise.all(db.tables.map((t) => t.clear()))
+  clearCollectionData()
   h.navigateSpy.mockClear()
 })
 

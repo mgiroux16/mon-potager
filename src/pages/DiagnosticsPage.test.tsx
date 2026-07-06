@@ -1,10 +1,16 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { db, newId } from '../data/db'
+import { setCollectionData, clearCollectionData } from '../test/firestoreHooksMock'
 import { DiagnosticsPage } from './DiagnosticsPage'
+
+vi.mock('../data/firestoreHooks', async () => {
+  return (await import('../test/firestoreHooksMock')).firestoreHooksMock
+})
 
 beforeEach(async () => {
   await Promise.all(db.tables.map((t) => t.clear()))
+  clearCollectionData()
 })
 
 describe('DiagnosticsPage', () => {
@@ -14,13 +20,9 @@ describe('DiagnosticsPage', () => {
   })
 
   it('affiche les hypotheses avec leur niveau de confiance et permet de cloturer', async () => {
-    await db.log.add({
-      id: 'entry1',
-      type: 'probleme',
-      date: '2026-06-20',
-      description: 'feuilles jaunes',
-      createdAt: 1,
-    })
+    setCollectionData('log', [
+      { id: 'entry1', type: 'probleme', date: '2026-06-20', description: 'feuilles jaunes', createdAt: 1 },
+    ])
     await db.diagnostics.add({
       id: newId(),
       problemEntryId: 'entry1',
@@ -50,7 +52,9 @@ describe('DiagnosticsPage', () => {
   })
 
   it('affiche la piste de traitement suggeree quand elle est presente', async () => {
-    await db.log.add({ id: 'p1', type: 'probleme', date: '2026-06-20', description: 'taches', createdAt: 1 })
+    setCollectionData('log', [
+      { id: 'p1', type: 'probleme', date: '2026-06-20', description: 'taches', createdAt: 1 },
+    ])
     await db.diagnostics.add({
       id: 'd1',
       problemEntryId: 'p1',
@@ -65,7 +69,9 @@ describe('DiagnosticsPage', () => {
   })
 
   it('n affiche rien de plus si suggestedTreatment est absent', async () => {
-    await db.log.add({ id: 'p2', type: 'probleme', date: '2026-06-21', description: 'fletrissement', createdAt: 1 })
+    setCollectionData('log', [
+      { id: 'p2', type: 'probleme', date: '2026-06-21', description: 'fletrissement', createdAt: 1 },
+    ])
     await db.diagnostics.add({
       id: 'd2',
       problemEntryId: 'p2',

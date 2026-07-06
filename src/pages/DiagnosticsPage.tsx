@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Stethoscope } from 'lucide-react'
 import { db } from '../data/db'
+import { useCollection } from '../data/firestoreHooks'
 import { updateDiagnosticOutcome } from '../services/diagnosticService'
 import type { Diagnostic, GardenLogEntry, HypothesisConfidence } from '../data/model'
 
@@ -97,7 +98,7 @@ function DiagnosticCard({ diagnostic, problem }: { diagnostic: Diagnostic; probl
 
 export function DiagnosticsPage() {
   const diagnostics = useLiveQuery(() => db.diagnostics.toArray(), [], [])
-  const entries = useLiveQuery(() => db.log.toArray(), [], [])
+  const { data: entries } = useCollection<GardenLogEntry>('log')
   const entryById = new Map(entries.map((e) => [e.id, e] as [string | undefined, GardenLogEntry]))
 
   const open = diagnostics.filter((d) => d.status === 'ouvert').sort((a, b) => b.createdAt - a.createdAt)

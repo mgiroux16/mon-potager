@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Link, useNavigate } from 'react-router-dom'
 import { NotebookPen, Pencil, Trash2 } from 'lucide-react'
 import { db } from '../data/db'
-import { softDelete } from '../data/syncHooks'
-import { listLog } from '../services/logService'
+import { useCollection } from '../data/firestoreHooks'
+import { cloudDelete } from '../data/firestoreWrites'
+import { sortLog } from '../services/logService'
 import {
   describeLogEntry,
   formatLogDate,
@@ -137,7 +138,8 @@ function DiagnoseButton({
 
 export function JournalPage() {
   const navigate = useNavigate()
-  const entries = useLiveQuery(() => listLog(), [], [])
+  const { data: rawLog } = useCollection<GardenLogEntry>('log')
+  const entries = useMemo(() => sortLog(rawLog), [rawLog])
   const parcels = useLiveQuery(() => db.parcels.toArray(), [], [])
   const crops = useLiveQuery(() => db.crops.toArray(), [], [])
   const oyas = useLiveQuery(() => db.oyas.toArray(), [], [])
@@ -209,7 +211,7 @@ export function JournalPage() {
 
   async function handleDelete(entry: GardenLogEntry) {
     if (!window.confirm('Supprimer cette entrée du journal ?')) return
-    await softDelete('log', entry.id as string)
+    cloudDelete('log', entry.id as string)
   }
 
   function handleEdit(entry: GardenLogEntry) {

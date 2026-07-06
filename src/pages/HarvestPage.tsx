@@ -1,5 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../data/db'
+import { useCollection } from '../data/firestoreHooks'
+import type { GardenLogEntry } from '../data/model'
 import { summarizeHarvests, type HarvestRow } from '../services/harvestService'
 
 function groupByCrop(rows: HarvestRow[]): Map<string, HarvestRow[]> {
@@ -31,7 +33,7 @@ function HarvestBarChart({ rows }: { rows: HarvestRow[] }) {
 }
 
 export function HarvestPage() {
-  const entries = useLiveQuery(() => db.log.toArray(), [], [])
+  const { data: entries } = useCollection<GardenLogEntry>('log')
   const crops = useLiveQuery(() => db.crops.toArray(), [], [])
   const rows = summarizeHarvests(entries, crops)
   const grouped = groupByCrop(rows)

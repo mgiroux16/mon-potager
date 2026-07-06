@@ -2,14 +2,33 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
-import { db, newId } from '../data/db'
-import { addLogEntry } from '../services/logService'
+import { db } from '../data/db'
+import {
+  setCollectionData,
+  getCollectionData,
+  clearCollectionData,
+} from '../test/firestoreHooksMock'
 import { JournalPage } from './JournalPage'
 
 const mockNavigate = vi.fn()
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom')
   return { ...actual, useNavigate: () => mockNavigate }
+})
+
+vi.mock('../data/firestoreHooks', async () => {
+  return (await import('../test/firestoreHooksMock')).firestoreHooksMock
+})
+
+vi.mock('../data/firestoreWrites', async () => {
+  const { getCollectionData, setCollectionData } = await import('../test/firestoreHooksMock')
+  return {
+    cloudPut: vi.fn(),
+    cloudAdd: vi.fn(),
+    cloudDelete: vi.fn((table: string, id: string) => {
+      setCollectionData(table, getCollectionData(table).filter((r) => r.id !== id))
+    }),
+  }
 })
 
 vi.mock('../services/weatherService', () => ({
@@ -29,8 +48,17 @@ vi.mock('../services/geminiService', () => ({
   callGeminiVision: (...args: unknown[]) => callGeminiVision(...(args as [])),
 }))
 
+let seq = 0
+function seedLog(entry: Record<string, unknown>): Record<string, unknown> {
+  seq += 1
+  const row = { id: `entry-${seq}`, createdAt: seq, status: 'valide', ...entry }
+  setCollectionData('log', [...getCollectionData('log'), row])
+  return row
+}
+
 beforeEach(async () => {
   await Promise.all(db.tables.map((t) => t.clear()))
+  clearCollectionData()
   mockNavigate.mockClear()
 })
 
@@ -44,8 +72,8 @@ function renderJournal() {
 
 describe('JournalPage', () => {
   it('affiche les entrées du journal', async () => {
-    await addLogEntry({ type: 'arrosage', date: '2026-06-24', volumeLiters: 30 })
-    await addLogEntry({ type: 'recolte', date: '2026-06-24', quantityKg: 2 })
+    seedLog({ type: 'arrosage', date: '2026-06-24', volumeLiters: 30 })
+    seedLog({ type: 'recolte', date: '2026-06-24', quantityKg: 2 })
     renderJournal()
     await waitFor(() => {
       expect(screen.getByText('30 L')).toBeInTheDocument()
@@ -54,8 +82,8 @@ describe('JournalPage', () => {
   })
 
   it('un filtre de type masque les entrées des autres types', async () => {
-    await addLogEntry({ type: 'arrosage', date: '2026-06-24', volumeLiters: 30 })
-    await addLogEntry({ type: 'recolte', date: '2026-06-24', quantityKg: 2 })
+    seedLog({ type: 'arrosage', date: '2026-06-24', volumeLiters: 30 })
+    seedLog({ type: 'recolte', date: '2026-06-24', quantityKg: 2 })
     renderJournal()
     await waitFor(() => expect(screen.getByText('30 L')).toBeInTheDocument())
 
@@ -67,8 +95,8 @@ describe('JournalPage', () => {
   })
 
   it('le filtre Arrosage masque les entrées des autres types', async () => {
-    await addLogEntry({ type: 'arrosage', date: '2026-06-24', volumeLiters: 30 })
-    await addLogEntry({ type: 'recolte', date: '2026-06-24', quantityKg: 2 })
+    seedLog({ type: 'arrosage', date: '2026-06-24', volumeLiters: 30 })
+    seedLog({ type: 'recolte', date: '2026-06-24', quantityKg: 2 })
     renderJournal()
     await waitFor(() => expect(screen.getByText('2 kg')).toBeInTheDocument())
 
@@ -79,9 +107,9 @@ describe('JournalPage', () => {
     expect(screen.queryByText('2 kg')).not.toBeInTheDocument()
   })
 
-  it('supprime une entrée (softDelete) : elle disparaît, les autres restent', async () => {
-    await addLogEntry({ type: 'arrosage', date: '2026-06-24', volumeLiters: 30 })
-    await addLogEntry({ type: 'recolte', date: '2026-06-24', quantityKg: 2 })
+  it('supprime une entrée (cloudDelete) : elle disparaît, les autres restent', async () => {
+    seedLog({ type: 'arrosage', date: '2026-06-24', volumeLiters: 30 })
+    seedLog({ type: 'recolte', date: '2026-06-24', quantityKg: 2 })
     vi.spyOn(window, 'confirm').mockReturnValue(true)
     renderJournal()
     await waitFor(() => expect(screen.getByText('30 L')).toBeInTheDocument())
@@ -95,7 +123,7 @@ describe('JournalPage', () => {
   })
 
   it('Modifier navigue vers /ajouter avec l entree a editer dans le state', async () => {
-    await addLogEntry({ type: 'arrosage', date: '2026-06-24', volumeLiters: 30 })
+    seedLog({ type: 'arrosage', date: '2026-06-24', volumeLiters: 30 })
     renderJournal()
     await waitFor(() => expect(screen.getByText('30 L')).toBeInTheDocument())
 
@@ -109,8 +137,8 @@ describe('JournalPage', () => {
   })
 
   it('la recherche restreint la liste affichée', async () => {
-    await addLogEntry({ type: 'observation', date: '2026-06-24', description: 'feuilles jaunes' })
-    await addLogEntry({ type: 'recolte', date: '2026-06-24', quantityKg: 2 })
+    seedLog({ type: 'observation', date: '2026-06-24', description: 'feuilles jaunes' })
+    seedLog({ type: 'recolte', date: '2026-06-24', quantityKg: 2 })
     renderJournal()
     await waitFor(() => expect(screen.getByText('feuilles jaunes')).toBeInTheDocument())
 
@@ -122,8 +150,8 @@ describe('JournalPage', () => {
   })
 
   it('la recherche est insensible aux accents via le libellé de type', async () => {
-    await addLogEntry({ type: 'observation', date: '2026-06-24', description: 'feuilles jaunes' })
-    await addLogEntry({ type: 'recolte', date: '2026-06-24', quantityKg: 2 })
+    seedLog({ type: 'observation', date: '2026-06-24', description: 'feuilles jaunes' })
+    seedLog({ type: 'recolte', date: '2026-06-24', quantityKg: 2 })
     renderJournal()
     await waitFor(() => expect(screen.getByText('2 kg')).toBeInTheDocument())
 
@@ -135,7 +163,7 @@ describe('JournalPage', () => {
   })
 
   it('affiche les vignettes des photos d\'une entrée', async () => {
-    await addLogEntry({
+    seedLog({
       type: 'observation',
       date: '2026-06-24',
       description: 'feuilles jaunes',
@@ -150,7 +178,7 @@ describe('JournalPage', () => {
     callGemini.mockClear()
     callGeminiVision.mockClear()
     await db.settings.put({ id: 'settings', geminiApiKey: 'AIza-x' } as never)
-    await addLogEntry({
+    seedLog({
       type: 'probleme',
       date: '2026-06-24',
       description: 'taches sur les feuilles',
@@ -171,11 +199,10 @@ describe('JournalPage', () => {
   })
 
   it('affiche le badge température sur une entrée qui porte un snapshot', async () => {
-    await db.log.add({
-      id: newId(), type: 'observation',
+    seedLog({
+      type: 'observation',
       date: '2026-06-25',
       description: 'feuilles flétries',
-      createdAt: 1,
       weather: { capturedAt: 1, source: 'open-meteo', tempC: 36.3 },
     })
     renderJournal()
@@ -183,11 +210,10 @@ describe('JournalPage', () => {
   })
 
   it('affiche le bandeau de contexte météo sous une observation', async () => {
-    await db.log.add({
-      id: newId(), type: 'observation',
+    seedLog({
+      type: 'observation',
       date: '2026-06-25',
       description: 'tomates à l arrêt',
-      createdAt: 2,
     })
     renderJournal()
     expect(await screen.findByText(/forte chaleur/)).toBeInTheDocument()

@@ -14,7 +14,8 @@ import { summarizeHarvests } from '../services/harvestService'
 import { getCropNote, getParcelNote, setCropNote, setParcelNote } from '../services/seasonNotesService'
 import { EconomicBalanceBanner } from '../components/EconomicBalanceBanner'
 import { ListCard } from '../components/ui/ListCard'
-import type { AppSettings, Expense, SeasonNote } from '../data/model'
+import { useCollection } from '../data/firestoreHooks'
+import type { AppSettings, Expense, GardenLogEntry, SeasonNote } from '../data/model'
 
 function useSettings(): AppSettings | undefined {
   return useLiveQuery(() => getSettings(), [], undefined)
@@ -153,7 +154,7 @@ export function SeasonSummaryPage() {
   const currentYear = new Date().getFullYear()
   const [year, setYear] = useState(currentYear)
   const settings = useSettings()
-  const entries = useLiveQuery(() => db.log.toArray(), [], [])
+  const { data: entries } = useCollection<GardenLogEntry>('log')
   const crops = useLiveQuery(() => db.crops.toArray(), [], [])
   const varieties = useLiveQuery(() => db.varieties.toArray(), [], [])
   const parcels = useLiveQuery(() => db.parcels.toArray(), [], [])
