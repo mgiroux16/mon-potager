@@ -10,7 +10,7 @@ const cloudAddMock = vi.fn((_table: string, data: Record<string, unknown>) => {
 const cloudPutMock = vi.fn((_table: string, id: string, data: Record<string, unknown>) => {
   store = store.map((row) => (row.id === id ? { ...row, ...data } : row))
 })
-const cloudGetAllMock = vi.fn(async () => store)
+const cloudGetAllMock = vi.fn(async (_table: string) => store)
 vi.mock('../data/firestoreWrites', () => ({
   cloudAdd: (...args: [string, Record<string, unknown>]) => cloudAddMock(...args),
   cloudPut: (...args: [string, string, Record<string, unknown>]) => cloudPutMock(...args),

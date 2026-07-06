@@ -2,16 +2,14 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
-import { seedDatabase } from './data/seed'
-import { installSyncHooks } from './data/syncHooks'
 import { registerServiceWorker } from './registerServiceWorker'
 
-// Installe les hooks Dexie (updatedAt/deletedAt/push) ici plutot que dans db.ts :
-// db.ts et syncHooks.ts s'importent mutuellement (syncHooks a besoin de `db`), et
-// appeler installSyncHooks() au chargement de db.ts creait un cycle d'import dont
-// l'ordre d'evaluation n'est pas garanti par le bundler de production (TABLE_NAMES
-// pouvait ne pas encore exister au moment de l'appel, plantant toute l'app au demarrage).
-installSyncHooks()
+// Nettoyage post-demontage de la synchro maison (Lot 5) : les curseurs sync:lastAt:*
+// ne sont plus lus ni ecrits par personne, on les purge une bonne fois pour ne pas
+// les laisser trainer indefiniment dans localStorage.
+for (const key of Object.keys(localStorage)) {
+  if (key.startsWith('sync:lastAt:')) localStorage.removeItem(key)
+}
 
 // En dev, purger tout service worker laissé par une session précédente :
 // un SW de dev peut servir une coquille vide et provoquer une page blanche.
@@ -25,9 +23,6 @@ if (import.meta.env.DEV && 'serviceWorker' in navigator) {
     }
   })
 }
-
-// Charge le vrai jardin au premier lancement (idempotent : sans effet si déjà présent).
-void seedDatabase()
 
 registerServiceWorker()
 

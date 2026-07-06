@@ -9,7 +9,7 @@ import {
   writeBatch,
 } from 'firebase/firestore'
 import { auth, firestore } from './firebase'
-import type { TableName } from './syncHooks'
+import type { TableName } from './model'
 import { canWrite, registerWrites } from './writeGuard'
 
 // Ecritures cloud-first. Convention de timestamps (voir firebase.ts) :

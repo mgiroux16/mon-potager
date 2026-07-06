@@ -1,7 +1,7 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 
-const setDocMock = vi.fn(() => Promise.resolve())
-const deleteDocMock = vi.fn(() => Promise.resolve())
+const setDocMock = vi.fn((..._args: unknown[]) => Promise.resolve())
+const deleteDocMock = vi.fn((..._args: unknown[]) => Promise.resolve())
 const SERVER_TS = { __serverTimestamp: true }
 const DELETE_FIELD = { __deleteField: true }
 
@@ -22,8 +22,8 @@ vi.mock('./firebase', () => ({
   auth: authState,
 }))
 
-// Meme precaution que firestoreClient.test.ts : setup.ts a deja charge le vrai
-// ./firebase, on reimporte apres resetModules pour brancher les mocks.
+// setup.ts a deja charge le vrai ./firebase : on reimporte apres resetModules
+// pour brancher les mocks.
 let cloudPut: typeof import('./firestoreWrites').cloudPut
 let cloudAdd: typeof import('./firestoreWrites').cloudAdd
 let cloudDelete: typeof import('./firestoreWrites').cloudDelete

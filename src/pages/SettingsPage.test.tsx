@@ -17,11 +17,6 @@ vi.mock('../services/geminiService', () => ({
 }))
 import { testGeminiConnection } from '../services/geminiService'
 
-vi.mock('../services/syncService', () => ({
-  getSyncStatus: vi.fn(() => 'synced'),
-}))
-import { getSyncStatus } from '../services/syncService'
-
 beforeEach(async () => {
   await Promise.all(db.tables.map((t) => t.clear()))
   clearCollectionData()
@@ -95,28 +90,11 @@ describe('SettingsPage', () => {
     })
   })
 
-  it('affiche "Synchronisé" quand le statut est synced', async () => {
-    vi.mocked(getSyncStatus).mockReturnValue('synced')
+  it('recherche les tombstones restants et affiche "aucun" si rien a purger', async () => {
+    const user = userEvent.setup()
     render(<SettingsPage />)
-    await waitFor(() => expect(screen.getByText('Synchronisé')).toBeInTheDocument())
-  })
-
-  it('affiche "Synchronisation…" quand le statut est syncing', async () => {
-    vi.mocked(getSyncStatus).mockReturnValue('syncing')
-    render(<SettingsPage />)
-    await waitFor(() => expect(screen.getByText('Synchronisation…')).toBeInTheDocument())
-  })
-
-  it('affiche "Hors ligne" quand le statut est offline', async () => {
-    vi.mocked(getSyncStatus).mockReturnValue('offline')
-    render(<SettingsPage />)
-    await waitFor(() => expect(screen.getByText('Hors ligne')).toBeInTheDocument())
-  })
-
-  it('affiche "Erreur de synchronisation" quand le statut est error', async () => {
-    vi.mocked(getSyncStatus).mockReturnValue('error')
-    render(<SettingsPage />)
-    await waitFor(() => expect(screen.getByText('Erreur de synchronisation')).toBeInTheDocument())
+    await user.click(screen.getByRole('button', { name: 'Chercher les tombstones restants' }))
+    await waitFor(() => expect(screen.getByText('Aucun tombstone restant.')).toBeInTheDocument())
   })
 
   it('affiche la suspension quota et rearme via le bouton quand le disjoncteur est declenche', async () => {

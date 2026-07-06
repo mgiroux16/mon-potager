@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { db } from '../data/db'
-import { TABLE_NAMES } from '../data/syncHooks'
+import { TABLE_NAMES } from '../data/model'
 
 let store: Record<string, Record<string, unknown>[]> = {}
 const cloudGetAllMock = vi.fn(async (table: string) => store[table] ?? [])
@@ -19,7 +19,7 @@ const cloudBatchWriteMock = vi.fn(async (ops: { type: string; table: string; id:
 })
 vi.mock('../data/firestoreWrites', () => ({
   cloudGetAll: (...args: [string]) => cloudGetAllMock(...args),
-  cloudBatchWrite: (...args: [unknown[]]) => cloudBatchWriteMock(...args),
+  cloudBatchWrite: (...args: Parameters<typeof cloudBatchWriteMock>) => cloudBatchWriteMock(...args),
 }))
 
 import {

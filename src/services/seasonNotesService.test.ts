@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import type { SeasonNote } from '../data/model'
 
-const cloudPutMock = vi.fn()
-const cloudAddMock = vi.fn(() => 'new-id')
-const cloudDeleteMock = vi.fn()
+const cloudPutMock = vi.fn((..._args: unknown[]) => undefined)
+const cloudAddMock = vi.fn((..._args: unknown[]) => 'new-id')
+const cloudDeleteMock = vi.fn((..._args: unknown[]) => undefined)
 vi.mock('../data/firestoreWrites', () => ({
   cloudPut: (...args: unknown[]) => cloudPutMock(...args),
   cloudAdd: (...args: unknown[]) => cloudAddMock(...args),

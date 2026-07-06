@@ -56,6 +56,16 @@ export const firestoreWritesMock = {
   cloudDelete: vi.fn((table: string, id: string) => {
     setCollectionData(table, (store.get(table) ?? EMPTY).filter((r) => r.id !== id))
   }),
+  cloudGetAll: vi.fn(async (table: string) => store.get(table) ?? EMPTY),
+  cloudBatchWrite: vi.fn(async (ops: { type: string; table: string; id: string; data?: Record<string, unknown> }[]) => {
+    for (const op of ops) {
+      if (op.type === 'delete') {
+        firestoreWritesMock.cloudDelete(op.table, op.id)
+      } else {
+        firestoreWritesMock.cloudPut(op.table, op.id, op.data ?? {})
+      }
+    }
+  }),
 }
 
 export const firestoreHooksMock = {

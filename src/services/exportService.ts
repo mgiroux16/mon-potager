@@ -1,7 +1,6 @@
 import { db, newId } from '../data/db'
 import { cloudBatchWrite, cloudGetAll, type CloudBatchOp } from '../data/firestoreWrites'
-import { TABLE_NAMES, type TableName } from '../data/syncHooks'
-import type { AuditLogType, Crop, GardenLogEntry, Parcel } from '../data/model'
+import { TABLE_NAMES, type AuditLogType, type Crop, type GardenLogEntry, type Parcel, type TableName } from '../data/model'
 import { entryParcelIds } from './logView'
 
 export interface PotagerExport {
@@ -110,7 +109,7 @@ export async function exportHarvestsCsv(season?: number): Promise<string> {
   return csv
 }
 
-/** Tables cloud-first + auditLog (seule table restee locale, cf. syncHooks.ts). */
+/** Tables cloud-first + auditLog (seule table restee locale, cf. data/model.ts). */
 const ALL_TABLES: readonly string[] = [...TABLE_NAMES, 'auditLog']
 
 export async function exportAll(): Promise<PotagerExport> {

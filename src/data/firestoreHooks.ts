@@ -12,7 +12,7 @@ import {
 } from 'firebase/firestore'
 import { onAuthStateChanged } from 'firebase/auth'
 import { auth, firestore } from './firebase'
-import type { TableName } from './syncHooks'
+import type { TableName } from './model'
 
 // Hooks de lecture temps reel Firestore, prealables a la bascule cloud-first.
 // NON branches aux pages a ce stade : Dexie reste la source de verite. Ils

@@ -41,143 +41,42 @@ async function seedLegacyData() {
   await legacy.open()
 
   const parcelId = await legacy.table('parcels').add({ name: 'Planche tomates', areaM2: 25 })
-  const catalogId = await legacy.table('catalog').add({ vegetable: 'Tomate', family: 'solanacees' })
-  const varietyId = await legacy.table('varieties').add({ name: 'Saint-Pierre', vegetable: 'Tomate', catalogId })
-  const cropId = await legacy.table('crops').add({
-    name: 'Tomates',
-    parcelId,
-    catalogId,
-    varietyId,
-    status: 'en_place',
-  })
-  const oyaId = await legacy.table('oyas').add({
-    name: 'Oya nord',
-    parcelId,
-    capacityLiters: 10,
-    cropIds: [cropId],
-  })
-  await legacy.table('settings').add({ id: 1, locationName: 'Champniers', latitude: 0, longitude: 0 })
   await legacy.table('log').add({
     type: 'arrosage',
     date: '2026-06-01',
     parcelId,
-    cropId,
-    oyaId,
-    varietyId,
     volumeLiters: 10,
     createdAt: 1,
   })
 
   legacy.close()
-  return { parcelId, catalogId, varietyId, cropId, oyaId }
 }
 
-describe('migration UUID (v3 -> v4)', () => {
-  it('convertit tous les ids numeriques en UUID et reecrit les relations', async () => {
-    const legacyIds = await seedLegacyData()
+// Depuis le Lot 5 (demontage de la synchro maison), la version 14 supprime toutes
+// les tables sauf auditLog : ces donnees vivent desormais uniquement dans Firestore
+// (voir Lots 1 a 4). Ce test protege le chemin de migration complet pour un appareil
+// qui n'a encore jamais ouvert l'app depuis ce demontage (legacy v1-v3 -> v14 d'un coup).
+describe('migration complete jusqu a v14 (demontage synchro maison)', () => {
+  it('ne perd pas et ne plante pas sur une base legacy, et ne garde que auditLog', async () => {
+    await seedLegacyData()
 
     const upgraded = new PotagerDB()
     await upgraded.open()
 
-    const parcels = await upgraded.parcels.toArray()
-    const catalog = await upgraded.catalog.toArray()
-    const varieties = await upgraded.varieties.toArray()
-    const crops = await upgraded.crops.toArray()
-    const oyas = await upgraded.oyas.toArray()
-    const log = await upgraded.log.toArray()
-    const settings = await upgraded.settings.toArray()
-
-    expect(parcels).toHaveLength(1)
-    expect(varieties).toHaveLength(1)
-    expect(crops).toHaveLength(1)
-    expect(oyas).toHaveLength(1)
-    expect(log).toHaveLength(1)
-    expect(settings).toHaveLength(1)
-
-    // Le catalogue contient la tomate migree + les 12 legumes injectes par la
-    // migration v12 (catalogue elargi). On isole la tomate migree par sa relation
-    // au lieu de figer le nombre total de lignes.
-    const tomato = catalog.find((c) => c.id === crops[0].catalogId)
-    expect(tomato).toBeDefined()
-    expect(tomato?.vegetable).toBe('Tomate')
-
-    // tous les ids sont desormais des UUID string, plus jamais les anciens numeriques.
-    for (const row of [...parcels, ...varieties, ...crops, ...oyas, ...log, tomato!]) {
-      expect(typeof row.id).toBe('string')
-      expect(row.id).not.toBe(String(legacyIds.parcelId))
-    }
-    expect(settings[0].id).toBe('settings')
-
-    // les relations croisees pointent vers les nouveaux UUID, pas vers les anciens nombres.
-    expect(crops[0].parcelId).toBe(parcels[0].id)
-    expect(crops[0].catalogId).toBe(tomato!.id)
-    expect(crops[0].varietyId).toBe(varieties[0].id)
-    expect(varieties[0].catalogId).toBe(tomato!.id)
-    expect(oyas[0].parcelId).toBe(parcels[0].id)
-    expect(oyas[0].cropIds).toEqual([crops[0].id])
-    expect(log[0].parcelId).toBe(parcels[0].id)
-    expect(log[0].cropId).toBe(crops[0].id)
-    expect(log[0].oyaId).toBe(oyas[0].id)
-    expect(log[0].varietyId).toBe(varieties[0].id)
+    expect(upgraded.tables.map((t) => t.name)).toEqual(['auditLog'])
+    expect(await upgraded.auditLog.count()).toBe(0)
 
     upgraded.close()
   })
 
-  it('ne perd aucune donnee quand la base legacy est vide', async () => {
+  it('ne plante pas sur une base legacy vide', async () => {
     const legacy = new LegacyDB()
     await legacy.open()
     legacy.close()
 
     const upgraded = new PotagerDB()
     await upgraded.open()
-    expect(await upgraded.parcels.count()).toBe(0)
-    upgraded.close()
-  })
-})
-
-describe('migration v8 (ajout updatedAt/deletedAt)', () => {
-  it("donne un updatedAt aux lignes existantes qui n'en ont pas", async () => {
-    const legacy = new LegacyDB()
-    await legacy.open()
-    const parcelId = await legacy.table('parcels').add({ name: 'Planche tomates', areaM2: 25 })
-    legacy.close()
-
-    const upgraded = new PotagerDB()
-    await upgraded.open()
-    const parcel = await upgraded.parcels.get((await upgraded.parcels.toArray())[0].id as string)
-    expect(parcel?.updatedAt).toBeTypeOf('number')
-    upgraded.close()
-    void parcelId
-  })
-
-  it('peut filtrer/indexer par updatedAt sans erreur', async () => {
-    const upgraded = new PotagerDB()
-    await upgraded.open()
-    const rows = await upgraded.parcels.where('updatedAt').above(0).toArray()
-    expect(rows).toEqual([])
-    upgraded.close()
-  })
-})
-
-describe('migration v13 (recurrence des depenses)', () => {
-  it("donne recurrence 'ponctuelle' aux depenses existantes qui n'en ont pas", async () => {
-    const legacy = new LegacyDB()
-    await legacy.open()
-    await legacy.table('expenses').add({
-      label: 'Terreau',
-      amountEuros: 12,
-      date: '2026-04-01',
-      amortization: 'consommable',
-    })
-    legacy.close()
-
-    const upgraded = new PotagerDB()
-    await upgraded.open()
-    const expenses = await upgraded.expenses.toArray()
-    expect(expenses).toHaveLength(1)
-    expect(expenses[0].recurrence).toBe('ponctuelle')
-    // l'amortissement existant n'est pas touche
-    expect(expenses[0].amortization).toBe('consommable')
+    expect(upgraded.tables.map((t) => t.name)).toEqual(['auditLog'])
     upgraded.close()
   })
 })

@@ -2,87 +2,26 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import { db, newId } from './db'
 
 beforeEach(async () => {
-  await Promise.all(db.tables.map((t) => t.clear()))
+  await db.auditLog.clear()
 })
 
 describe('PotagerDB', () => {
-  it('expose les 14 tables du modèle', () => {
+  it('expose uniquement la table auditLog (Lot 5 : demontage de la synchro maison)', () => {
     const names = db.tables.map((t) => t.name).sort()
-    expect(names).toEqual(
-      [
-        'auditLog',
-        'catalog',
-        'crops',
-        'diagnostics',
-        'expenses',
-        'log',
-        'oyas',
-        'parcels',
-        'seasonNotes',
-        'settings',
-        'soil',
-        'tanks',
-        'trees',
-        'varieties',
-      ].sort(),
-    )
+    expect(names).toEqual(['auditLog'])
   })
 
-  it('écrit et relit une entrée de journal', async () => {
+  it('écrit et relit une entrée du journal système', async () => {
     const id = newId()
-    await db.log.add({
+    await db.auditLog.add({
       id,
-      type: 'arrosage',
-      date: '2026-06-24',
-      volumeLiters: 30,
-      createdAt: Date.now(),
+      type: 'export-json',
+      date: Date.now(),
+      label: 'test',
+      recordCount: 1,
     })
-    const back = await db.log.get(id)
-    expect(back?.type).toBe('arrosage')
-    expect(back?.volumeLiters).toBe(30)
-  })
-})
-
-describe('migration version 2', () => {
-  it('expose le store varieties', async () => {
-    const id = newId()
-    await db.varieties.add({ id, name: 'Saint-Pierre', vegetable: 'Tomate' })
-    const stored = await db.varieties.get(id)
-    expect(stored?.name).toBe('Saint-Pierre')
-  })
-
-  it('permet de filtrer le journal par varietyId', async () => {
-    await db.log.add({ id: newId(), type: 'recolte', date: '2026-06-25', varietyId: 'variety-7', createdAt: 1 })
-    await db.log.add({ id: newId(), type: 'recolte', date: '2026-06-25', varietyId: 'variety-9', createdAt: 2 })
-    const found = await db.log.where('varietyId').equals('variety-7').toArray()
-    expect(found).toHaveLength(1)
-  })
-})
-
-describe('migration version 10 (diagnostics)', () => {
-  it('cree la table diagnostics', async () => {
-    const id = newId()
-    await db.diagnostics.add({
-      id,
-      problemEntryId: 'p1',
-      createdAt: 1,
-      hypotheses: [],
-      status: 'ouvert',
-    })
-    const rows = await db.diagnostics.toArray()
-    expect(rows).toHaveLength(1)
-    // La table diagnostics est introduite en v10 ; on vérifie le plancher sans
-    // figer le numéro exact (il monte à chaque migration : v13 et au-delà).
-    expect(db.verno).toBeGreaterThanOrEqual(10)
-  })
-})
-
-describe('migration version 4 (UUID)', () => {
-  it('utilise des ids string non auto-incrementes', async () => {
-    const id = newId()
-    await db.parcels.add({ id, name: 'Test' })
-    const stored = await db.parcels.get(id)
-    expect(stored?.id).toBe(id)
-    expect(typeof stored?.id).toBe('string')
+    const back = await db.auditLog.get(id)
+    expect(back?.type).toBe('export-json')
+    expect(back?.recordCount).toBe(1)
   })
 })

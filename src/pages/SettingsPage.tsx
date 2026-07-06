@@ -1,12 +1,11 @@
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
-import type { AppSettings } from '../data/model'
+import { TABLE_NAMES, type AppSettings } from '../data/model'
 import { saveSettings, useSettings } from '../services/settingsService'
 import { testGeminiConnection } from '../services/geminiService'
 import { signOutUser } from '../services/authService'
-import { getSyncStatus, resetSyncCursors, runInitialSync } from '../services/syncService'
-import type { SyncStatus } from '../services/syncService'
 import { auth } from '../data/firebase'
+import { cloudBatchWrite, cloudGetAll, type CloudBatchOp } from '../data/firestoreWrites'
 import { fetchPublishedVersion, type PublishedVersion } from '../services/versionService'
 import { isTripped, resetWriteGuard, sessionWriteCount } from '../data/writeGuard'
 import { ExportButton } from '../components/ExportButton'
@@ -14,46 +13,102 @@ import { ImportButton } from '../components/ImportButton'
 import { CsvExportPanel } from '../components/CsvExportPanel'
 import { AuditLogPanel } from '../components/AuditLogPanel'
 
-const SYNC_STATUS_LABELS: Record<SyncStatus, string> = {
-  synced: 'Synchronisé',
-  syncing: 'Synchronisation…',
-  offline: 'Hors ligne',
-  error: 'Erreur de synchronisation',
-}
-
-const SYNC_STATUS_COLORS: Record<SyncStatus, string> = {
-  synced: 'text-green-700',
-  syncing: 'text-yellow-700',
-  offline: 'text-gray-500',
-  error: 'text-red-600',
-}
-
-function SyncStatusIndicator() {
-  const [status, setStatus] = useState<SyncStatus>(getSyncStatus())
-
-  useEffect(() => {
-    const interval = setInterval(() => setStatus(getSyncStatus()), 2000)
-    return () => clearInterval(interval)
-  }, [])
-
-  return <p className={`text-sm ${SYNC_STATUS_COLORS[status]}`}>{SYNC_STATUS_LABELS[status]}</p>
-}
-
 type TestState =
   | { status: 'idle' }
   | { status: 'en_cours' }
   | { status: 'ok' }
   | { status: 'erreur'; message: string }
 
+type PurgeState =
+  | { status: 'idle' }
+  | { status: 'recherche' }
+  | { status: 'pret'; ops: CloudBatchOp[] }
+  | { status: 'purge' }
+  | { status: 'fait'; count: number }
+  | { status: 'erreur' }
+
 const fieldClass =
   'w-full rounded-lg border border-green-200 bg-white px-3 py-2 text-sm text-green-950'
+
+/** Recherche les tombstones (ancien mecanisme de suppression douce, avant Lot 5)
+ * qui trainent encore dans Firestore : aucun code n'en pose plus, mais quelques-uns
+ * peuvent rester d'avant le demontage de la synchro maison. */
+async function findTombstones(): Promise<CloudBatchOp[]> {
+  const ops: CloudBatchOp[] = []
+  for (const table of TABLE_NAMES) {
+    const rows = (await cloudGetAll(table)) as { id: string; deletedAt?: number }[]
+    for (const row of rows) {
+      if (typeof row.deletedAt === 'number') ops.push({ type: 'delete', table, id: row.id })
+    }
+  }
+  return ops
+}
+
+function TombstonePurgePanel() {
+  const [state, setState] = useState<PurgeState>({ status: 'idle' })
+
+  async function handleSearch() {
+    setState({ status: 'recherche' })
+    try {
+      const ops = await findTombstones()
+      setState({ status: 'pret', ops })
+    } catch {
+      setState({ status: 'erreur' })
+    }
+  }
+
+  async function handlePurge(ops: CloudBatchOp[]) {
+    setState({ status: 'purge' })
+    try {
+      await cloudBatchWrite(ops)
+      setState({ status: 'fait', count: ops.length })
+    } catch {
+      setState({ status: 'erreur' })
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <button
+        type="button"
+        onClick={() => void handleSearch()}
+        disabled={state.status === 'recherche' || state.status === 'purge'}
+        className="rounded-lg border border-green-300 px-4 py-2 text-sm font-medium text-green-800 disabled:opacity-60"
+      >
+        {state.status === 'recherche' ? 'Recherche…' : 'Chercher les tombstones restants'}
+      </button>
+      {state.status === 'pret' && state.ops.length === 0 && (
+        <p className="text-sm text-green-700">Aucun tombstone restant.</p>
+      )}
+      {state.status === 'pret' && state.ops.length > 0 && (
+        <>
+          <p className="text-sm text-green-800">
+            {state.ops.length} document{state.ops.length > 1 ? 's' : ''} à supprimer définitivement.
+          </p>
+          <button
+            type="button"
+            onClick={() => void handlePurge(state.ops)}
+            className="rounded-lg border border-red-300 px-4 py-2 text-sm font-medium text-red-700"
+          >
+            Purger définitivement
+          </button>
+        </>
+      )}
+      {state.status === 'fait' && (
+        <p className="text-sm text-green-700">{state.count} document(s) purgé(s).</p>
+      )}
+      {state.status === 'erreur' && (
+        <p className="text-sm text-red-600">Erreur pendant la recherche/purge.</p>
+      )}
+    </div>
+  )
+}
 
 export function SettingsPage() {
   const stored = useSettings()
   const [settings, setSettings] = useState<AppSettings | null>(null)
   const [saved, setSaved] = useState(false)
   const [test, setTest] = useState<TestState>({ status: 'idle' })
-  const [resyncState, setResyncState] = useState<'idle' | 'syncing' | 'done' | 'erreur'>('idle')
   const [published, setPublished] = useState<PublishedVersion | null>(null)
   const [guardTripped, setGuardTripped] = useState(() => isTripped())
 
@@ -81,16 +136,6 @@ export function SettingsPage() {
     if (!settings) return
     saveSettings(settings)
     setSaved(true)
-  }
-
-  async function handleResync() {
-    const uid = auth.currentUser?.uid
-    if (!uid) return
-    setResyncState('syncing')
-    resetSyncCursors()
-    await runInitialSync(uid)
-    setResyncState(getSyncStatus() === 'synced' ? 'done' : 'erreur')
-    setTimeout(() => setResyncState('idle'), 3000)
   }
 
   async function handleTest() {
@@ -252,11 +297,15 @@ export function SettingsPage() {
       </section>
 
       <section className="flex flex-col gap-2">
+        <h2 className="text-sm font-semibold text-green-900">Maintenance</h2>
+        <TombstonePurgePanel />
+      </section>
+
+      <section className="flex flex-col gap-2">
         <h2 className="text-sm font-semibold text-green-900">Compte</h2>
         {auth.currentUser && (
           <p className="text-sm text-green-700">{auth.currentUser.email}</p>
         )}
-        <SyncStatusIndicator />
         {guardTripped ? (
           <>
             <p className="text-sm text-red-600">
@@ -278,20 +327,6 @@ export function SettingsPage() {
           <p className="text-xs text-green-600">
             Écritures cloud cette session : {sessionWriteCount()}
           </p>
-        )}
-        <button
-          type="button"
-          onClick={() => void handleResync()}
-          disabled={resyncState === 'syncing'}
-          className="rounded-lg border border-green-300 px-4 py-2 text-sm font-medium text-green-800 disabled:opacity-60"
-        >
-          {resyncState === 'syncing' ? 'Synchronisation en cours…' : 'Resynchroniser tout'}
-        </button>
-        {resyncState === 'done' && (
-          <p className="text-sm text-green-700">Synchronisation complète.</p>
-        )}
-        {resyncState === 'erreur' && (
-          <p className="text-sm text-red-600">Erreur de synchronisation. Réessaie plus tard.</p>
         )}
         <button
           type="button"

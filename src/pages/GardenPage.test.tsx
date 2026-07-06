@@ -1,8 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
-import { db, newId } from '../data/db'
-import { seedDatabase } from '../data/seed'
+import { newId } from '../data/db'
 import { setCollectionData, getCollectionData, clearCollectionData } from '../test/firestoreHooksMock'
 import { GardenPage } from './GardenPage'
 import { describeLogEntry, type LogRefs } from '../services/logView'
@@ -20,15 +19,16 @@ function seedLog(entry: Record<string, unknown>): Record<string, unknown> {
   return row
 }
 
-beforeEach(async () => {
-  await Promise.all(db.tables.map((t) => t.clear()))
+// Jeu de donnees representatif du vrai jardin (ex-seed.ts, retire au Lot 5 :
+// les donnees vivent uniquement dans Firestore desormais).
+beforeEach(() => {
   clearCollectionData()
-  await seedDatabase(db)
-  // trees et catalog sont cloud-first : on recopie le seed Dexie dans le store mocke.
-  setCollectionData('trees', (await db.trees.toArray()) as unknown as Record<string, unknown>[])
-  setCollectionData('catalog', (await db.catalog.toArray()) as unknown as Record<string, unknown>[])
-  setCollectionData('parcels', (await db.parcels.toArray()) as unknown as Record<string, unknown>[])
-  setCollectionData('crops', (await db.crops.toArray()) as unknown as Record<string, unknown>[])
+  setCollectionData('parcels', [{ id: 'parcel-1', name: 'Planche tomates', areaM2: 25 }])
+  setCollectionData('crops', [
+    { id: 'crop-2', name: 'Pommes de terre Agata', parcelId: 'parcel-1', status: 'en_place' },
+  ])
+  setCollectionData('trees', [{ id: 'tree-1', name: 'Pommier Belchard' }])
+  setCollectionData('catalog', [])
 })
 
 

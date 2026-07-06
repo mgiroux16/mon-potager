@@ -19,7 +19,6 @@ import { JardinSectionPage } from './pages/JardinSectionPage'
 import { PilotageSectionPage } from './pages/PilotageSectionPage'
 import { ArgentPage } from './pages/ArgentPage'
 import { AssistantPage } from './pages/AssistantPage'
-import { ReconciliationDevPage } from './pages/ReconciliationDevPage'
 
 function App() {
   return (
@@ -65,10 +64,6 @@ function App() {
 
             {/* Réglages */}
             <Route path="reglages" element={<SettingsPage />} />
-
-            {/* Outil dev, etape 2 migration cloud-first : pas de lien dans la nav,
-                accessible uniquement via l'URL #/dev/reconciliation */}
-            <Route path="dev/reconciliation" element={<ReconciliationDevPage />} />
 
             {/* Redirects depuis les anciennes routes */}
             <Route path="journal" element={<Navigate to="/carnet/journal" replace />} />

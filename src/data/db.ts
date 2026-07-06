@@ -1,20 +1,5 @@
 import Dexie, { type Table } from 'dexie'
-import type {
-  GardenLogEntry,
-  Parcel,
-  Crop,
-  Oya,
-  FruitTree,
-  WaterTank,
-  CatalogItem,
-  Expense,
-  SoilNote,
-  AppSettings,
-  Variety,
-  SeasonNote,
-  Diagnostic,
-  AuditLogEntry,
-} from './model'
+import type { AuditLogEntry } from './model'
 
 const TABLE_NAMES = [
   'log',
@@ -49,19 +34,6 @@ const FINAL_STORES: Record<string, string> = {
 const TMP_SUFFIX = '_v4tmp'
 
 export class PotagerDB extends Dexie {
-  log!: Table<GardenLogEntry, string>
-  parcels!: Table<Parcel, string>
-  crops!: Table<Crop, string>
-  oyas!: Table<Oya, string>
-  trees!: Table<FruitTree, string>
-  tanks!: Table<WaterTank, string>
-  catalog!: Table<CatalogItem, string>
-  expenses!: Table<Expense, string>
-  soil!: Table<SoilNote, string>
-  settings!: Table<AppSettings, string>
-  varieties!: Table<Variety, string>
-  seasonNotes!: Table<SeasonNote, string>
-  diagnostics!: Table<Diagnostic, string>
   auditLog!: Table<AuditLogEntry, string>
 
   constructor() {
@@ -271,6 +243,14 @@ export class PotagerDB extends Dexie {
           await tx.table('expenses').update(row.id, { recurrence: 'ponctuelle' })
         }
       }
+    })
+
+    // Demontage de la synchro maison (Lot 5, migration cloud-first) : toutes ces
+    // tables ont leur equivalent dans Firestore depuis les Lots 1 a 4, plus rien
+    // ne les lit ni ne les ecrit. Dexie ne garde que auditLog (local par design).
+    this.version(14).stores({
+      ...Object.fromEntries(TABLE_NAMES.map((name) => [name, null])),
+      diagnostics: null,
     })
   }
 }
