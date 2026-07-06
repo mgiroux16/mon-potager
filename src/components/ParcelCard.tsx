@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { Camera, Copy, Pencil, Trash2 } from 'lucide-react'
 import { useCollection } from '../data/firestoreHooks'
 import { cloudAdd, cloudDelete, cloudPut } from '../data/firestoreWrites'
-import type { Parcel } from '../data/model'
+import type { Crop, Parcel } from '../data/model'
 import { compressImage } from '../services/imageService'
 import { isPointInPolygon } from '../services/geometry'
 import { nextFreeMapSlot } from '../services/mapLayout'
@@ -17,6 +17,7 @@ interface ParcelCardProps {
 export function ParcelCard({ parcel }: ParcelCardProps) {
   const navigate = useNavigate()
   const { data: allParcels } = useCollection<Parcel>('parcels')
+  const { data: crops } = useCollection<Crop>('crops')
   const [renaming, setRenaming] = useState(false)
   const [name, setName] = useState(parcel.name)
   const [editingPhoto, setEditingPhoto] = useState(false)
@@ -32,6 +33,12 @@ export function ParcelCard({ parcel }: ParcelCardProps) {
     const trimmed = name.trim()
     if (parcel.id != null && trimmed && trimmed !== parcel.name) {
       cloudPut('parcels', parcel.id, { name: trimmed })
+      const linkedCrop = crops.find((c) => c.parcelId === parcel.id)
+      if (linkedCrop?.id != null) {
+        cloudPut('crops', linkedCrop.id, { name: trimmed })
+      } else {
+        cloudAdd('crops', { name: trimmed, parcelId: parcel.id, status: 'en_place' })
+      }
     } else {
       setName(parcel.name)
     }

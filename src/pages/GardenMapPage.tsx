@@ -3,7 +3,7 @@ import type { MouseEvent as ReactMouseEvent, WheelEvent as ReactWheelEvent, Touc
 import { useNavigate } from 'react-router-dom'
 import { useCollection } from '../data/firestoreHooks'
 import { cloudAdd, cloudDelete, cloudPut } from '../data/firestoreWrites'
-import type { Parcel } from '../data/model'
+import type { Crop, Parcel } from '../data/model'
 import { nextFreeMapSlot } from '../services/mapLayout'
 
 const CELL_PX = 32
@@ -76,6 +76,7 @@ interface ResizeState {
 export function GardenMapPage() {
   const navigate = useNavigate()
   const { data: parcels } = useCollection<Parcel>('parcels')
+  const { data: crops } = useCollection<Crop>('crops')
   const [scale, setScale] = useState(1)
   const gridCols = Math.round(TOTAL_WIDTH_M / scale)
   const gridRows = Math.round(TOTAL_HEIGHT_M / scale)
@@ -150,7 +151,15 @@ export function GardenMapPage() {
   async function saveRename() {
     if (renamingId == null) return
     const trimmed = renameValue.trim()
-    if (trimmed) cloudPut('parcels', renamingId, { name: trimmed })
+    if (trimmed) {
+      cloudPut('parcels', renamingId, { name: trimmed })
+      const linkedCrop = crops.find((c) => c.parcelId === renamingId)
+      if (linkedCrop?.id != null) {
+        cloudPut('crops', linkedCrop.id, { name: trimmed })
+      } else {
+        cloudAdd('crops', { name: trimmed, parcelId: renamingId, status: 'en_place' })
+      }
+    }
     setRenamingId(null)
   }
 

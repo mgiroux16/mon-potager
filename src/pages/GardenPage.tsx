@@ -175,7 +175,7 @@ export function GardenPage() {
               const trimmed = newParcelName.trim()
               if (trimmed) {
                 const slot = nextFreeMapSlot(parcels)
-                cloudAdd('parcels', {
+                const parcelId = cloudAdd('parcels', {
                   name: trimmed,
                   mapX: slot.x,
                   mapY: slot.y,
@@ -183,6 +183,7 @@ export function GardenPage() {
                   mapHeight: DEFAULT_MAP_SIZE_M,
                   mapRotation: 0,
                 })
+                cloudAdd('crops', { name: trimmed, parcelId, status: 'en_place' })
               }
               setNewParcelName('')
               setCreatingParcel(false)
