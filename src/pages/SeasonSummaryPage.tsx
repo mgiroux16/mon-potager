@@ -11,6 +11,7 @@ import {
 import { summarizeHarvests } from '../services/harvestService'
 import { getCropNote, getParcelNote, setCropNote, setParcelNote } from '../services/seasonNotesService'
 import { EconomicBalanceBanner } from '../components/EconomicBalanceBanner'
+import { AutoSaveNoteField } from '../components/AutoSaveNoteField'
 import { ListCard } from '../components/ui/ListCard'
 import { useCollection } from '../data/firestoreHooks'
 import type { Crop, Expense, GardenLogEntry, Parcel, SeasonNote, Variety } from '../data/model'
@@ -21,66 +22,6 @@ function formatKg(kg: number): string {
 
 function formatEuros(value: number): string {
   return `${value.toLocaleString('fr-FR')} €`
-}
-
-function CropNoteField({
-  row,
-  year,
-  notes,
-}: {
-  row: CropSeasonRow
-  year: number
-  notes: SeasonNote[]
-}) {
-  const [value, setValue] = useState(getCropNote(notes, row.cropId, year))
-
-  function save() {
-    setCropNote(notes, row.cropId, year, value)
-  }
-
-  return (
-    <label className="mt-1 flex flex-col gap-1 text-xs text-gray-600">
-      À refaire ou à changer
-      <textarea
-        aria-label={`À refaire ou à changer pour ${row.cropName}`}
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        onBlur={save}
-        rows={2}
-        className="w-full rounded border border-green-200 px-2 py-1 text-sm"
-      />
-    </label>
-  )
-}
-
-function ParcelNoteField({
-  row,
-  year,
-  notes,
-}: {
-  row: ParcelSeasonRow
-  year: number
-  notes: SeasonNote[]
-}) {
-  const [value, setValue] = useState(getParcelNote(notes, row.parcelId, year))
-
-  function save() {
-    setParcelNote(notes, row.parcelId, year, value)
-  }
-
-  return (
-    <label className="mt-1 flex flex-col gap-1 text-xs text-gray-600">
-      Météo marquante
-      <textarea
-        aria-label={`Météo marquante pour ${row.parcelName}`}
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        onBlur={save}
-        rows={2}
-        className="w-full rounded border border-green-200 px-2 py-1 text-sm"
-      />
-    </label>
-  )
 }
 
 function CropRowView({ row, year, notes }: { row: CropSeasonRow; year: number; notes: SeasonNote[] }) {
@@ -95,7 +36,13 @@ function CropRowView({ row, year, notes }: { row: CropSeasonRow; year: number; n
         {row.yieldPerM2Kg != null ? ` · ${row.yieldPerM2Kg.toFixed(2)} kg/m²` : ''}
         {row.netEuros != null ? ` · net ${formatEuros(row.netEuros)}` : ''}
       </div>
-      <CropNoteField row={row} year={year} notes={notes} />
+      <AutoSaveNoteField
+        key={year}
+        label="À refaire ou à changer"
+        ariaLabel={`À refaire ou à changer pour ${row.cropName}`}
+        value={getCropNote(notes, row.cropId, year)}
+        onSave={(text) => setCropNote(notes, row.cropId, year, text)}
+      />
     </li>
   )
 }
@@ -111,7 +58,13 @@ function ParcelRowView({ row, year, notes }: { row: ParcelSeasonRow; year: numbe
         {` · ${row.totalWaterLiters} L arrosés`}
         {` · ${row.totalRainLiters} L de pluie`}
       </div>
-      <ParcelNoteField row={row} year={year} notes={notes} />
+      <AutoSaveNoteField
+        key={year}
+        label="Météo marquante"
+        ariaLabel={`Météo marquante pour ${row.parcelName}`}
+        value={getParcelNote(notes, row.parcelId, year)}
+        onSave={(text) => setParcelNote(notes, row.parcelId, year, text)}
+      />
     </li>
   )
 }

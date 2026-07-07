@@ -5,6 +5,7 @@ import { useCollection } from '../data/firestoreHooks'
 import type { FruitTree, GardenLogEntry, Parcel, SeasonNote, WaterNeed } from '../data/model'
 import { summarizeTreeHarvests } from '../services/treeHarvestService'
 import { getTreeNote, setTreeNote } from '../services/seasonNotesService'
+import { AutoSaveNoteField } from './AutoSaveNoteField'
 
 interface TreeCardProps {
   tree: FruitTree
@@ -30,13 +31,6 @@ export function TreeCard({ tree }: TreeCardProps) {
   const [expanded, setExpanded] = useState(false)
   const currentYear = new Date().getFullYear()
   const [qualityYear, setQualityYear] = useState(currentYear)
-  const qualityNote = getTreeNote(seasonNotes, tree.id ?? '', qualityYear)
-  const [qualityText, setQualityText] = useState(qualityNote)
-
-  function saveQualityNote() {
-    if (tree.id == null) return
-    setTreeNote(seasonNotes, tree.id, qualityYear, qualityText)
-  }
 
   async function saveName() {
     setRenaming(false)
@@ -247,17 +241,12 @@ export function TreeCard({ tree }: TreeCardProps) {
           </div>
 
           <div>
-            <p className="font-medium text-green-800">Qualité de récolte</p>
             <label className="flex items-center gap-1 text-xs text-gray-600">
               Année :
               <select
                 aria-label="Année qualité de récolte"
                 value={qualityYear}
-                onChange={(e) => {
-                  const year = Number(e.target.value)
-                  setQualityYear(year)
-                  setQualityText(getTreeNote(seasonNotes, tree.id ?? '', year))
-                }}
+                onChange={(e) => setQualityYear(Number(e.target.value))}
                 className="rounded border border-green-300 bg-white px-1 text-sm"
               >
                 {Array.from({ length: 5 }, (_, i) => currentYear - i).map((y) => (
@@ -265,13 +254,12 @@ export function TreeCard({ tree }: TreeCardProps) {
                 ))}
               </select>
             </label>
-            <textarea
-              aria-label="Qualité de récolte"
-              rows={2}
-              value={qualityText}
-              onChange={(e) => setQualityText(e.target.value)}
-              onBlur={saveQualityNote}
-              className="mt-1 w-full rounded border border-green-300 px-1 text-sm"
+            <AutoSaveNoteField
+              key={qualityYear}
+              label="Qualité de récolte"
+              ariaLabel="Qualité de récolte"
+              value={getTreeNote(seasonNotes, tree.id ?? '', qualityYear)}
+              onSave={(text) => tree.id != null && setTreeNote(seasonNotes, tree.id, qualityYear, text)}
             />
           </div>
         </div>

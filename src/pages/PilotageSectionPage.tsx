@@ -3,6 +3,7 @@ import { useEffect } from 'react'
 
 const TABS = [
   { to: '/pilotage/bilan', label: 'Bilan' },
+  { to: '/pilotage/notes', label: 'Notes' },
   { to: '/pilotage/recoltes', label: 'Récoltes' },
   { to: '/pilotage/argent', label: 'Argent' },
   { to: '/pilotage/calendrier', label: 'Calendrier' },

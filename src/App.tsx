@@ -11,6 +11,7 @@ import { GardenMapPage } from './pages/GardenMapPage'
 import { HarvestPage } from './pages/HarvestPage'
 import { WaterPage } from './pages/WaterPage'
 import { SeasonSummaryPage } from './pages/SeasonSummaryPage'
+import { SeasonNotesPage } from './pages/SeasonNotesPage'
 import { CalendarPage } from './pages/CalendarPage'
 import { DiagnosticsPage } from './pages/DiagnosticsPage'
 import { SettingsPage } from './pages/SettingsPage'
@@ -57,6 +58,7 @@ function App() {
             <Route path="pilotage" element={<PilotageSectionPage />}>
               <Route index element={<Navigate to="bilan" replace />} />
               <Route path="bilan" element={<SeasonSummaryPage />} />
+              <Route path="notes" element={<SeasonNotesPage />} />
               <Route path="recoltes" element={<HarvestPage />} />
               <Route path="argent" element={<ArgentPage />} />
               <Route path="calendrier" element={<CalendarPage />} />
