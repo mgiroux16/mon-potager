@@ -30,6 +30,7 @@ export const LOG_ENTRY_TYPES = [
   'probleme',
   'compost',
   'taille',
+  'tonte',
   'depense',
   'diagnostic',
   'note',

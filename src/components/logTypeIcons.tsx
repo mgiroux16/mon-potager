@@ -17,6 +17,7 @@ import {
   Sprout,
   Stethoscope,
   StickyNote,
+  Wheat,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { LogEntryType } from '../data/model'
@@ -34,6 +35,7 @@ export const LOG_TYPE_ICONS: Record<LogEntryType, LucideIcon> = {
   probleme: AlertTriangle,
   compost: Recycle,
   taille: Scissors,
+  tonte: Wheat,
   depense: Euro,
   diagnostic: Stethoscope,
   note: StickyNote,

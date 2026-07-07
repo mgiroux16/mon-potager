@@ -35,7 +35,7 @@ const FREQUENT: FormConfig[] = [
 // restent affiches dans le Journal mais ne sont plus creables ici.
 const OTHER_TYPES: LogEntryType[] = [
   'semis', 'plantation', 'paillage', 'traitement', 'compost',
-  'taille', 'diagnostic', 'releve_pluie', 'note',
+  'taille', 'tonte', 'diagnostic', 'releve_pluie', 'note',
   'floraison', 'nouaison', 'chute_fruits',
 ]
 

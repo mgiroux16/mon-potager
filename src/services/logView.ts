@@ -34,6 +34,7 @@ export const LOG_TYPE_LABELS: Record<LogEntryType, string> = {
   probleme: 'Problème',
   compost: 'Compost',
   taille: 'Taille',
+  tonte: 'Tonte',
   depense: 'Dépense',
   diagnostic: 'Diagnostic',
   note: 'Note',
