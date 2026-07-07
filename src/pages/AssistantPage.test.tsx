@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 
 const h = vi.hoisted(() => ({
-  callGeminiChat: vi.fn(async () => 'Réponse'),
+  callGeminiChat: vi.fn(async (_history: { role: 'user' | 'model'; text: string }[], _apiKey: string) => 'Réponse'),
 }))
 
 vi.mock('../services/geminiService', () => ({
