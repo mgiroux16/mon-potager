@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Euro, MoreHorizontal } from 'lucide-react'
+import { ArrowLeft, Euro } from 'lucide-react'
 import { useCollection } from '../data/firestoreHooks'
 import type { CatalogItem, Crop, FruitTree, GardenLogEntry, LogEntryType, Oya, Parcel, Variety } from '../data/model'
 import { addLogEntry, updateLogEntry, type NewLogEntry } from '../services/logService'
@@ -25,7 +25,6 @@ export interface FormConfig {
 
 const FREQUENT: FormConfig[] = [
   { type: 'arrosage', target: 'parcelle', measure: 'volume', withTime: true },
-  { type: 'remplissage_oya', target: 'oya', measure: 'volume', withTime: true },
   { type: 'recolte', target: 'culture', measure: 'quantite', withTime: false },
   { type: 'observation', target: 'element', measure: 'description', withTime: false },
   { type: 'probleme', target: 'element', measure: 'description', withTime: false },
@@ -42,13 +41,23 @@ const OTHER_TYPES: LogEntryType[] = [
 
 const TREE_OBSERVATION_TYPES: LogEntryType[] = ['floraison', 'nouaison', 'chute_fruits']
 
+// Retiré de la saisie rapide (plus utilisé), mais garde son formulaire d'origine
+// pour la modification d'entrées 'remplissage_oya' historiques depuis le Journal.
+const LEGACY_CONFIGS: FormConfig[] = [
+  { type: 'remplissage_oya', target: 'oya', measure: 'volume', withTime: true },
+]
+
 function genericConfig(type: LogEntryType): FormConfig {
   const target = TREE_OBSERVATION_TYPES.includes(type) ? 'arbre' : 'none'
   return { type, target, measure: 'titre_description', withTime: false }
 }
 
 export function configForType(type: LogEntryType): FormConfig {
-  return FREQUENT.find((c) => c.type === type) ?? genericConfig(type)
+  return (
+    FREQUENT.find((c) => c.type === type) ??
+    LEGACY_CONFIGS.find((c) => c.type === type) ??
+    genericConfig(type)
+  )
 }
 
 function todayISO(): string {
@@ -61,7 +70,7 @@ function nowHM(): string {
   return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 }
 
-type View = 'grid' | 'autre' | 'depense' | FormConfig
+type View = 'grid' | 'depense' | FormConfig
 
 type TargetField = 'parcelle' | 'culture' | 'oya' | 'arbre'
 
@@ -519,39 +528,6 @@ export function QuickAddPage() {
     setView('grid')
   }
 
-  if (view === 'autre') {
-    return (
-      <section className="flex flex-col gap-4">
-        <button
-          type="button"
-          onClick={backToGrid}
-          className="flex items-center gap-1 self-start text-sm text-green-700"
-        >
-          <ArrowLeft className="size-4" /> Retour
-        </button>
-        <h1 className="text-xl font-semibold text-green-950">Autre type d'entrée</h1>
-        <ul className="flex flex-col gap-2">
-          {OTHER_TYPES.map((type) => {
-            const Icon = LOG_TYPE_ICONS[type]
-            return (
-              <li key={type}>
-                <button
-                  type="button"
-                  onClick={() => setView(genericConfig(type))}
-                  className="flex w-full items-center gap-3 rounded-xl bg-white px-3 py-2.5 text-left shadow-sm"
-                >
-                  <span className="grid size-9 place-items-center rounded-lg bg-green-100 text-green-700">
-                    <Icon className="size-4.5" />
-                  </span>
-                  <span className="text-sm font-medium text-green-950">{LOG_TYPE_LABELS[type]}</span>
-                </button>
-              </li>
-            )
-          })}
-        </ul>
-      </section>
-    )
-  }
 
   if (view === 'depense') {
     return (
@@ -634,20 +610,26 @@ export function QuickAddPage() {
           </span>
           <span className="text-sm font-medium text-green-950">Dépense</span>
         </button>
-        <button
-          type="button"
-          onClick={() => {
-            setConfirmation(null)
-            setDraft(undefined)
-            setView('autre')
-          }}
-          className="flex flex-col items-center gap-2 rounded-2xl bg-white px-3 py-5 shadow-sm"
-        >
-          <span className="grid size-11 place-items-center rounded-xl bg-green-100 text-green-700">
-            <MoreHorizontal className="size-6" />
-          </span>
-          <span className="text-sm font-medium text-green-950">Autre…</span>
-        </button>
+        {OTHER_TYPES.map((type) => {
+          const Icon = LOG_TYPE_ICONS[type]
+          return (
+            <button
+              key={type}
+              type="button"
+              onClick={() => {
+                setConfirmation(null)
+                setDraft(undefined)
+                setView(genericConfig(type))
+              }}
+              className="flex flex-col items-center gap-2 rounded-2xl bg-white px-3 py-5 shadow-sm"
+            >
+              <span className="grid size-11 place-items-center rounded-xl bg-green-100 text-green-700">
+                <Icon className="size-6" />
+              </span>
+              <span className="text-sm font-medium text-green-950">{LOG_TYPE_LABELS[type]}</span>
+            </button>
+          )
+        })}
       </div>
     </section>
   )
