@@ -136,7 +136,9 @@ export function Layout() {
         </header>
 
         <main className="flex-1 px-4 py-5 pb-24 lg:px-8 lg:py-8 lg:pb-8">
-          <Outlet />
+          <div className="mx-auto max-w-3xl">
+            <Outlet />
+          </div>
         </main>
 
         {/* Barre du bas mobile */}
